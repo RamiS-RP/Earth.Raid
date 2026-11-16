@@ -1,0 +1,22 @@
+{
+  "name": "raid-earth-es",
+  "events": [
+    {
+      "id": "sierra-morena-2026",
+      "file": "kmz/XLIII-Rallye-ERC-Sierra-Morena-2026.kmz",
+      "name": "43 Rally Sierra Morena 2026", "short": "Rally Sierra Morena",
+      "type": "rally", "surface": "asphalt", "dates": "2026-04-17/2026-04-19",
+      "country": "es", "city": "Córdoba", "region": "Andalucía",
+      "championship": "ERC · S-CER", "organizer": "Automóvil Club de Córdoba",
+      "source": "KMZ oficial (rallysierramorena.com)",
+      "stageKmOfficial": 203.8, "totalKmOfficial": 870.98
+    },
+    {
+      "id": "ejemplo-descarga",
+      "url": "https://ORGANIZADOR.example/recorrido.kmz",
+      "name": "Rally de ejemplo (sustituye la URL por la del KMZ/GPX que publique el organizador)",
+      "type": "rally", "surface": "gravel", "dates": "2027-05-14/2027-05-15", "country": "es",
+      "championship": "CERT", "source": "KMZ del organizador"
+    }
+  ]
+}

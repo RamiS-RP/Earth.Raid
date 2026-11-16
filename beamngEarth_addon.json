@@ -1,0 +1,9 @@
+{
+  "options": [
+    { "key": "propose", "label": "Propose nearby events", "type": "choice", "choices": ["on", "off"], "default": "on",
+      "help": "When a rally or raid of the catalogue is near where you are, a message offers it." },
+    { "key": "searchKm", "label": "Search radius (km)", "type": "choice", "choices": ["5", "15", "30", "60"], "default": "15",
+      "help": "How near the event's area you must be for it to be offered." },
+    { "key": "units", "label": "Units", "type": "choice", "choices": ["km", "mi"], "default": "km" }
+  ]
+}

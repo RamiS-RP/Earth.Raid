@@ -1,0 +1,23 @@
+{
+  "domElement": "<earth-raid-hud></earth-raid-hud>",
+  "name": "Raid.Earth",
+  "types": ["ui.apps.categories.vehicle_control"],
+  "css": {
+    "left": "110px",
+    "top": "8px",
+    "width": "620px",
+    "min-width": "420px",
+    "max-width": "1100px",
+    "height": "200px",
+    "min-height": "90px",
+    "max-height": "420px"
+  },
+  "description": "Stage clock, start line, countdown and progress of your Raid.Earth stage.",
+  "author": "Raid.Earth",
+  "version": "0.3",
+  "preserveAspectRatio": false,
+  "directive": "EarthRaidHud",
+  "category": "Gameplay",
+  "isAuxiliary": false,
+  "interactive": "no"
+}

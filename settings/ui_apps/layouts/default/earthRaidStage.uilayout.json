@@ -1,0 +1,19 @@
+{
+  "apps":[
+    { "appName":"EarthRaidHud", "placement":{ "left":"0px", "top":"0px", "width":"100%", "height":"100%", "position":"absolute" } },
+    { "appName":"RallyVisualPacenotes", "placement":{ "left":0, "right":0, "margin":"auto", "top":"70px", "width":"400px", "height":"160px", "position":"absolute" } },
+    { "appName":"tacho2", "appVersion":1, "placement":{ "bottom":"5px", "height":"300px", "right":"5px", "width":"300px", "position":"absolute" }, "settings":{ "noCockpit":true } },
+    { "appName":"simplePowertrainControl", "placement":{ "bottom":"0px", "height":"170px", "right":"300px", "width":"230px", "position":"absolute" } },
+    { "appName":"gForcesDebug", "placement":{ "bottom":"310px", "height":"190px", "right":"5px", "width":"190px", "position":"absolute" } },
+    { "appName":"Odometer", "placement":{ "bottom":"175px", "height":"80px", "right":"310px", "width":"150px", "position":"absolute" } },
+    { "appName":"SimpleTrip", "placement":{ "bottom":"180px", "height":"140px", "right":"470px", "width":"220px", "position":"absolute" } },
+    { "appName":"damageApp", "placement":{ "bottom":"220px", "height":"280px", "left":"0px", "width":"158px", "position":"absolute" } },
+    { "appName":"simpleSteering", "placement":{ "bottom":"120px", "height":"100px", "left":"0px", "width":"160px", "position":"absolute" } },
+    { "appName":"simplePedals", "placement":{ "bottom":"5px", "height":"110px", "left":"0px", "width":"160px", "position":"absolute" } },
+    { "appName":"beamngEarthCredits", "placement":{ "bottom":"0px", "height":"60px", "left":"170px", "width":"520px", "position":"absolute" } }
+  ],
+  "description":"Raid.Earth: tramos y rally (sin minimapa: manda el copiloto)",
+  "title":"Raid.Earth - Tramo",
+  "type":"earthRaidStage",
+  "version":1
+}

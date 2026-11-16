@@ -1,0 +1,18 @@
+{
+"earthRaid_menu": {
+"cat": "gameplay",
+"order": 99,
+"ctx": "tlua",
+"onDown": "if earthRaid_main then earthRaid_main.toggleMenu() end",
+"title": "Raid.Earth: open the events menu",
+"desc": "Opens the menu with the rallies and raids near you, their stages and a search box (Ctrl+Shift+G)."
+},
+"earthRaid_skip": {
+"cat": "gameplay",
+"order": 100,
+"ctx": "tlua",
+"onDown": "if earthRaid_main then earthRaid_main.skipWait() end",
+"title": "Raid.Earth: skip the start wait",
+"desc": "With the car staged at the start line, starts the 10 s countdown now (Shift+E)."
+}
+}

@@ -1,0 +1,8 @@
+{
+  "displayName": "Keyboard",
+  "bindings":[
+    {"control":"ctrl shift g", "action":"earthRaid_menu"},
+    {"control":"shift e", "action":"earthRaid_skip"},
+    {"control":"ctrl shift e", "action":"earthRaid_skip"}
+  ]
+}

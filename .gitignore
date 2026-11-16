@@ -1,0 +1,8 @@
+# Datos del jugador y cachés (nunca en el repositorio)
+_staging/
+tools/catalog/.cache/
+tools/catalog/out/
+*.zip
+__pycache__/
+.DS_Store
+Thumbs.db
