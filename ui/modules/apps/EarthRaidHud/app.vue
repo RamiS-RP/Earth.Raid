@@ -1,5 +1,16 @@
 <template>
   <div class="erh-root" ref="root">
+  <!-- Carga al iniciar (como la pantalla de carga del juego): el coche está congelado mientras se carga la zona y se
+       monta el tramo -->
+  <div class="erh-load" v-if="ld && ld.on">
+    <div class="lbox">
+      <img v-if="ld.logo" :src="ld.logo" class="llogo" alt="" />
+      <div class="lev">{{ ld.event }}</div>
+      <div class="ltitle"><span class="lslash"></span>{{ ld.title }}</div>
+      <div class="lbar"><div class="lfill" :style="{ width: Math.round((ld.progress || 0) * 100) + '%' }"></div></div>
+      <div class="lstep">{{ loadStep }}</div>
+    </div>
+  </div>
   <!-- Rally completo: en la asistencia y los enlaces, como el panel de enlace del juego (reloj del evento, tu tiempo,
        instrucciones), la tarjeta del siguiente control y el carnet de ruta -->
   <div class="erh rally" v-if="r && r.active && r.phase !== 'stage'">
@@ -126,6 +137,19 @@ const events = useEvents()
 const d = ref(null)
 const view = ref({ show: false })
 const r = ref(null)
+const ld = ref(null)
+events.on("EarthRaidLoading", data => { ld.value = data })
+const LOAD_TEXT = {
+  es: { tp: "Viajando a la zona de salida…", roads: "Cargando carreteras…", dress: "Montando controles, salida y público…",
+    place: "Colocando el coche…", settle: "Preparando la salida…" },
+  en: { tp: "Travelling to the start area…", roads: "Loading roads…", dress: "Setting up controls, start and crowd…",
+    place: "Placing the car…", settle: "Getting ready…" },
+}
+const loadStep = computed(() => {
+  const x = ld.value
+  if (!x) return ""
+  return (LOAD_TEXT[x.lang === "es" ? "es" : "en"] || LOAD_TEXT.en)[x.step] || ""
+})
 events.on("EarthRaidHud", data => {
   d.value = data
   // tamaño y opacidad de las notas visuales del juego (ajustes del jugador)
@@ -380,6 +404,18 @@ const frameStyle = computed(() => {
 </style>
 
 <style lang="scss">
+/* pantalla de carga de Raid.Earth: a pantalla completa, por encima de todo, como la del juego */
+.erh-load { position: fixed; inset: 0; z-index: 9999; pointer-events: auto;
+  background: radial-gradient(ellipse at 30% 40%, rgba(40, 42, 48, 0.97), rgba(8, 9, 11, 0.99));
+  display: flex; align-items: flex-end; justify-content: flex-start; padding: 0 0 7vh 6vw; color: #f2f2f2; }
+.erh-load .lbox { width: min(720px, 80vw); }
+.erh-load .llogo { max-width: 360px; max-height: 180px; object-fit: contain; display: block; margin-bottom: 18px; }
+.erh-load .lev { color: #a7abb3; font-size: 18px; margin-bottom: 4px; }
+.erh-load .ltitle { font-size: 40px; font-weight: 800; font-style: italic; display: flex; align-items: center; margin-bottom: 18px; }
+.erh-load .lslash { display: inline-block; width: 14px; height: 38px; background: var(--bng-orange, #ff6600); transform: skewX(-18deg); margin-right: 14px; }
+.erh-load .lbar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
+.erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
+.erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
 // la app de notas del juego (RallyVisualPacenotes): más pequeña y algo transparente, para no tapar la carretera
 .pacenotes-app { opacity: var(--er-notes-opacity, 0.72); transform: scale(var(--er-notes-scale, 0.72)); transform-origin: top center; }
 </style>

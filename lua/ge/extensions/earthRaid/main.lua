@@ -18,6 +18,8 @@ M.TELEPORT_OVER_M = 60000  -- más lejos que esto de la salida: accept() teletra
 local catalog = require('earthRaid/catalog')
 local clean = require('earthRaid/clean')
 local dressing = require('earthRaid/dressing')
+local loader = require('earthRaid/loader')
+local props = require('earthRaid/props')
 local geo = require('earthRaid/geo')
 local stage = require('earthRaid/stage')
 local rally = require('earthRaid/rally')
@@ -68,6 +70,7 @@ local function refresh()
 end
 
 local settings = require('earthRaid/settings')
+local guide = require('earthRaid/guide')
 local function radiusM() return (tonumber(settings.get().radiusKm) or tonumber(S.opts.searchKm) or 50) * 1000 end
 
 -- Un paquete: su index.json; cada evento recuerda su carpeta (para su archivo y su logo) y de qué paquete viene
@@ -442,6 +445,21 @@ local function eventCard(ev, lat, lon)
     stages = ev.stages, source = ev.source, link = ev.link, pack = ev._pack, custom = ev._pack == 'import' and (ev.type == 'custom' or not ev.dates) }
 end
 
+-- el mod recomendado "hotw" (pone un piloto al volante): si está instalado, el menú no lo recomienda
+function M.hasHotw()
+  if S.hotw == nil then
+    local ok, list = pcall(function() return core_modmanager.getModList() end)
+    S.hotw = false
+    if ok and type(list) == 'table' then
+      for name, m in pairs(list) do
+        local n = tostring(m.modname or name):lower()
+        if n:find('hotw', 1, true) and m.active ~= false then S.hotw = true break end
+      end
+    end
+  end
+  return S.hotw
+end
+
 local function buildModel()
   if not S.index then M.loadIndex() end
   local a = api()
@@ -458,6 +476,7 @@ local function buildModel()
     target = S.target, events = {}, total = #S.index.events,
     facets = { country = {}, type = {}, category = {}, surface = {}, status = {} },
     settings = settings.get(), voicepacks = settings.voicepacks(), today = os.date('%Y-%m-%d'),
+    racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(),
     importDir = M.IMPORT_DIR, packDirs = M.PACK_DIRS, imports = U.importOpen and M.importsModel() or nil,
     importOpen = U.importOpen or false }
   local q = lower(U.q)
@@ -507,7 +526,8 @@ local function buildModel()
       sel.stages[#sel.stages + 1] = { id = s.id, kind = s.kind, title = s.title, runs = s.runs or {}, road = s.road,
         surface = s.surface or full.surface, best = r.best, tries = r.runs or 0, attempts = r.attempts or {},
         km = clean.length(cp) / 1000, hazards = s.hazards or {}, start = s.start, finish = s.finish,
-        distM = lat and catalog.dist(lat, lon, s.start[1], s.start[2]) or nil, outline = outline(cp) }
+        distM = lat and catalog.dist(lat, lon, s.start[1], s.start[2]) or nil, outline = outline(cp),
+        hasReverse = M.hasReverse(full, s) }
     end
     sel.ssCount = n
     -- el rally completo: el orden de paso y lo que se tarda (para elegir desde qué tramo empezar)
@@ -617,6 +637,108 @@ function M.uiImportMeta(key, json)
   end
   M.uiImportRun(key)
 end
+-- ---- subir un evento desde el menú ----------------------------------------------------------------------------------
+-- La página lee los archivos (ruta y logo) y los manda en trozos base64; aquí se validan (nombre, tipo, tamaño) y se
+-- escriben solo dentro de M.IMPORT_DIR/<clave>/. Luego se guarda la ficha y se convierte como cualquier importación.
+M.UPLOAD_MAX = 25 * 1024 * 1024
+M.UPLOAD_CHUNK_MAX = 96 * 1024
+local uploads = {}
+
+local B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local B64I = {}
+for i = 1, 64 do B64I[B64:byte(i)] = i - 1 end
+local function b64decode(str)
+  str = str:gsub('[^%w%+/]', '')
+  local out, n = {}, #str
+  local byte, char, floor = string.byte, string.char, math.floor
+  for i = 1, n, 4 do
+    local a, b, c, d = B64I[byte(str, i)], B64I[byte(str, i + 1) or 0], B64I[byte(str, i + 2) or 0], B64I[byte(str, i + 3) or 0]
+    if not (a and b) then break end
+    local v = a * 262144 + b * 4096 + (c or 0) * 64 + (d or 0)
+    local b1, b2, b3 = floor(v / 65536), floor(v / 256) % 256, v % 256
+    if c and d then out[#out + 1] = char(b1, b2, b3)
+    elseif c then out[#out + 1] = char(b1, b2)
+    else out[#out + 1] = char(b1) end
+  end
+  return table.concat(out)
+end
+M._b64decode = b64decode
+
+local function slug(name)
+  local s = tostring(name or ''):lower()
+  local map = { ['á'] = 'a', ['é'] = 'e', ['í'] = 'i', ['ó'] = 'o', ['ú'] = 'u', ['ü'] = 'u', ['ñ'] = 'n', ['ç'] = 'c',
+    ['à'] = 'a', ['è'] = 'e', ['ò'] = 'o', ['â'] = 'a', ['ê'] = 'e', ['ô'] = 'o', ['ã'] = 'a', ['õ'] = 'o' }
+  for k, v in pairs(map) do s = s:gsub(k, v) end
+  s = s:gsub('[^a-z0-9]+', '-'):gsub('^%-+', ''):gsub('%-+$', '')
+  return s:sub(1, 40)
+end
+
+local function uploadEvent(data) guihooks.trigger('EarthRaidUpload', data) end
+
+-- empieza: una carpeta nueva para el evento (nombre único)
+function M.uiUploadNew(name)
+  local base = slug(name)
+  if base == '' then base = 'evento' end
+  local key, n = base, 1
+  while FS:directoryExists(M.IMPORT_DIR .. key) do n = n + 1 key = base .. '-' .. n end
+  uploads = {}
+  uploadEvent({ phase = 'key', key = key })
+end
+
+local function uploadName(file)
+  local b = baseName(tostring(file or '')):gsub('[^%w%-_%. ]', '_')
+  local e = ext(b)
+  if M.LOGO_EXT[e] and e ~= 'svg' then return 'logo.' .. e, 'logo' end
+  if M.ROUTE_EXT[e] and e ~= 'json' and b:lower() ~= 'event.json' then return b:sub(1, 80), 'route' end
+  return nil
+end
+
+function M.uiUpload(key, file, idx, total, b64)
+  key, idx, total = tostring(key or ''), tonumber(idx) or 0, tonumber(total) or 0
+  local name = uploadName(file)
+  local fail = function(why) uploads[key .. '/' .. tostring(file)] = nil uploadEvent({ phase = 'error', key = key, file = file, error = why }) end
+  if not key:match('^[a-z0-9%-]+$') or #key > 48 then return fail('clave') end
+  if not name then return fail(spanish() and 'tipo de archivo no admitido' or 'file type not supported') end
+  if type(b64) ~= 'string' or #b64 > M.UPLOAD_CHUNK_MAX or idx < 1 or total < idx or total > 2000 then return fail('chunk') end
+  local id = key .. '/' .. name
+  if idx == 1 then uploads[id] = { parts = {}, size = 0 } end
+  local u = uploads[id]
+  if not u or idx ~= #u.parts + 1 then return fail('chunk order') end
+  local bin = b64decode(b64)
+  u.size = u.size + #bin
+  if u.size > M.UPLOAD_MAX then return fail(spanish() and 'archivo demasiado grande (máx. 25 MB)' or 'file too large (max 25 MB)') end
+  u.parts[idx] = bin
+  if idx == total then
+    local dir = M.IMPORT_DIR .. key .. '/'
+    pcall(function() FS:directoryCreate(dir, true) end)
+    local ok = writeFile(dir .. name, table.concat(u.parts))
+    uploads[id] = nil
+    if not ok then return fail('write') end
+    log('I', TAG, ('upload: %s%s (%d bytes)'):format(dir, name, u.size))
+    uploadEvent({ phase = 'file', key = key, file = file, bytes = u.size })
+  end
+end
+
+-- termina: la ficha (nombre, descripción, enlace...) y la conversión; el menú abre la nueva importación
+function M.uiUploadFinish(key, json)
+  key = tostring(key or '')
+  if not key:match('^[a-z0-9%-]+$') then return end
+  local dir = M.IMPORT_DIR .. key .. '/'
+  if not FS:directoryExists(dir) then uploadEvent({ phase = 'error', key = key, error = spanish() and 'no hay ruta' or 'no route' }) return end
+  local ok, data = pcall(jsonDecode, json or '{}')
+  if ok and type(data) == 'table' then
+    local meta = {}
+    for _, k in ipairs(M.META_KEYS) do
+      local v = data[k]
+      if type(v) == 'string' then v = v:sub(1, 1200):gsub('^%s+', ''):gsub('%s+$', '') end
+      if v ~= nil and v ~= '' then meta[k] = v end
+    end
+    jsonWriteFile(dir .. 'event.json', meta, true)
+  end
+  M.uiImportRun(key)
+  uploadEvent({ phase = 'done', key = key })
+end
+
 -- abre la página de la fuente de un evento en el navegador (solo http/https)
 function M.uiOpenLink(url)
   if type(url) == 'string' and url:match('^https?://[%w%.%-]+') then pcall(openWebBrowser, url) end
@@ -637,6 +759,18 @@ end
 -- Ir a la salida de un tramo: mode 'gps' | 'teleport'
 -- El tramo al revés: mismo trazado de la meta a la salida (id con R, sus propios tiempos)
 local revCache = {}
+-- ¿El rally corre este tramo también al revés? (otro tramo que empieza donde este acaba y acaba donde empieza, o
+-- una ida y vuelta como Ourense). Solo entonces se ofrece el sentido inverso.
+M.REVERSE_MATCH_M = 200
+function M.hasReverse(full, s)
+  if not (s.start and s.finish) then return false end
+  for _, o in ipairs(full.stages or {}) do
+    if o ~= s and o.start and o.finish and catalog.dist(o.start[1], o.start[2], s.finish[1], s.finish[2]) < M.REVERSE_MATCH_M
+      and catalog.dist(o.finish[1], o.finish[2], s.start[1], s.start[2]) < M.REVERSE_MATCH_M then return true end
+  end
+  return false
+end
+
 function M.reversed(s)
   if not s then return nil end
   if revCache[s] then return revCache[s] end
@@ -672,6 +806,10 @@ function M.uiGo(eventId, stageId, mode, reverse)
       local tcLat, tcLon = rally.tcPoint(s)
       local tcLabel = 'TC · ' .. s.title
       if mode == 'teleport' then
+        -- ahora el teletransporte es "iniciar con carga" (el tramo se prepara y el coche llega a la calzada)
+        M.uiClose()
+        return M.uiPlay(eventId, stageId, reverse)
+      elseif mode == 'teleportOld' then
         -- a la carretera, M.TP_BEFORE_TC_M antes del control horario y mirando hacia él (antes: al aparcamiento más
         -- cercano, que en Obejo era monte); al llegar se coloca el coche en la calzada (onBeamNGEarthTeleported)
         local t = geo.track(clean.stage(s))
@@ -781,10 +919,63 @@ function M.uiCancelStage()
 end
 
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
+-- Iniciar con carga: el tramo se prepara, el coche va a la zona de salida congelado, se espera a las carreteras, se
+-- monta el TC y la salida, y se suelta en la calzada M.TP_BEFORE_TC_M antes del control (loader.lua)
+M.PLAY_TELEPORT_M = 1000     -- más lejos que esto de la salida: con teletransporte y carga; si no, se empieza ahí mismo
+function M.uiPlay(eventId, stageId, reverse)
+  local a, full = api(), M.event(eventId)
+  if not (a and full) then return end
+  local s = stageOf(full, stageId, reverse)
+  if not s then return end
+  local lat, lon = nil, nil
+  if a.position then lat, lon = a.position() end
+  local far = not lat or catalog.dist(lat, lon, s.start[1], s.start[2]) > M.PLAY_TELEPORT_M
+  M.uiStart(eventId, stageId, reverse)
+  local st = stage.state()
+  if not (far and st and st.track) then return end
+  local t = geo.track(clean.stage(s))
+  local dx, dy = geo.dirAt(t, 0)
+  local back = dressing.TC_BEFORE_M + M.TP_BEFORE_TC_M
+  local tlat, tlon = geo.toGeo(t, t.pts[1][1] - dx * back, t.pts[1][2] - dy * back)
+  local road = M.roadFromStart(full, s)
+  if road then tlat, tlon = geo.toGeo(road, geo.at(road, math.min(back, road.total))) end
+  local es = spanish()
+  stage.holdJobs(true)
+  local ok, err = loader.begin({
+    title = s.title, event = full.name, lang = es and 'es' or 'en',
+    logo = full._base and full.logo and (full._base .. full.logo) or nil,
+    tpLat = tlat, tpLon = tlon,
+    -- (el TC aún es aproximado: se calcula por la carretera real al montar la salida)
+    near = { { s.start[1], s.start[2] } },
+    dress = function()
+      stage.holdJobs(false)
+      local pl, po = a.position()
+      if pl then dressing.runJobsNear(pl, po, 2) end
+      local left = props.pump(loader.PUMP_MS)
+      return (pl and dressing.pendingJobsNear(pl, po) or 0) + left
+    end,
+    place = function()
+      local cur = stage.state()
+      if not (cur and cur.track) then return end
+      stage.retryStart()
+      local tt = cur.track
+      local atLat, atLon = dressing.lineAt(tt, 0, -(dressing.tcAt(tt) + M.TP_BEFORE_TC_M))
+      M.placeOnRoad(cur.tcLat, cur.tcLon, atLat, atLon)
+    end,
+    done = function()
+      stage.holdJobs(false)
+      local cur = stage.state()
+      if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
+      M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8)
+    end })
+  if not ok then stage.holdJobs(false) M.toast('Raid.Earth: ' .. tostring(err), 6) end
+end
+
 function M.uiStartRally(eventId, fromRun)
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   stage.stop()
+  S.box = nil
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
@@ -795,7 +986,25 @@ function M.uiStartRally(eventId, fromRun)
   local lat, lon = a.position()
   local es = spanish()
   if start and lat and catalog.dist(lat, lon, start[1], start[2]) > M.SERVICE_TELEPORT_M then
-    a.teleport(start[1], start[2], full.name)
+    -- al parque de asistencia con carga: el box se monta y el coche aparece en él, no en el monte
+    loader.begin({ title = es and 'Parque de asistencia' or 'Service park', event = full.name, lang = es and 'es' or 'en',
+      logo = full._base and full.logo and (full._base .. full.logo) or nil, tpLat = start[1], tpLon = start[2],
+      near = { { start[1], start[2], 150 } },
+      dress = function()
+        -- el box (carpa, herramientas) junto a la asistencia, una vez
+        if not S.box then
+          local first = rs.it and rs.it.items and rs.it.items[1]
+          local tw = first and first.stage and first.stage.start
+          S.box = dressing.serviceBox(start[1], start[2], tw and tw[1], tw and tw[2]) or false
+        end
+        local pl, po = a.position()
+        if pl then dressing.runJobsNear(pl, po, 2) end
+        return (pl and dressing.pendingJobsNear(pl, po) or 0) + props.pump(loader.PUMP_MS)
+      end,
+      place = function()
+        if S.box then M.placeAt(S.box.lat, S.box.lon, S.box.faceLat, S.box.faceLon)
+        else M.placeOnRoad(start[1], start[2]) end
+      end })
     M.toast((es and 'Rally completo: vas a la asistencia. Sales a las ' or 'Full rally: going to the service park. You leave at ')
       .. rally.hhmm(rs.startMin * 60) .. (es and ' (Mayús+E: salir ya).' or ' (Shift+E: leave now).'), 10)
   else
@@ -854,6 +1063,21 @@ end
 function M.snapAfter(lat, lon) S.afterTp = { lat = lat, lon = lon, snap = true, noGps = true } end
 -- El coche, en la calzada de la carretera más cercana (en su carril, el derecho si es de doble sentido), mirando hacia
 -- (lat, lon): nunca en el monte ni dentro de una casa tras un teletransporte
+-- el coche en (lat, lon), en el suelo, mirando hacia (faceLat, faceLon) (el box del parque de asistencia)
+function M.placeAt(lat, lon, faceLat, faceLon)
+  local a, v = api(), be:getPlayerVehicle(0)
+  if not (a and v and lat) then return false end
+  local x, y = a.toGame(lat, lon, 0)
+  local fx, fy = a.toGame(faceLat or lat, faceLon or lon, 0)
+  local gz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0)) or v:getPosition().z
+  local hz = be:getSurfaceHeightBelow(vec3(x, y, (gz or 0) + 0.6))
+  local z = (type(hz) == 'number' and hz > -1e5) and hz or gz
+  local dir = vec3((fx or x + 1) - x, (fy or y) - y, 0)
+  if dir:length() < 0.1 then dir = vec3(1, 0, 0) end
+  spawn.safeTeleport(v, vec3(x, y, z + 0.3), quatFromDir(dir:normalized(), vec3(0, 0, 1)), nil, nil, false, nil, true)
+  return true
+end
+
 function M.placeOnRoad(lat, lon, atLat, atLon)
   local a, v = api(), be:getPlayerVehicle(0)
   if not (a and v) then return false end
@@ -862,7 +1086,7 @@ function M.placeOnRoad(lat, lon, atLat, atLon)
     local x, y, z = a.toGame(atLat, atLon, 0)
     if x then p = vec3(x, y, (core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))) or p.z) end
   end
-  local n1, n2, d = map.findClosestRoad(p)
+  local n1, n2, d = props.nearestRoad(p.x, p.y, p.z, 300)
   local m = map.getMap()
   if not (n1 and n2 and d and d < 300 and m.nodes[n1] and m.nodes[n2]) then return false end
   local A, B = m.nodes[n1].pos, m.nodes[n2].pos
@@ -955,6 +1179,10 @@ end
 
 function M.onUpdate(dtReal, dtSim)
   pcall(afterTeleport, dtReal)
+  if loader.active() then
+    local okLd, errLd = pcall(loader.update, dtReal or 0)
+    if not okLd then log('W', TAG, 'loader: ' .. tostring(errLd)) loader.cancel() end
+  end
   if not S.layoutFailed then
     local okL, errL = pcall(raceLayout, dtReal)
     if not okL then log('W', TAG, 'layout: ' .. tostring(errL)) S.layoutFailed = true end
@@ -974,7 +1202,11 @@ function M.onUpdate(dtReal, dtSim)
 end
 
 function M.onBeamNGEarthWorldReady() S.timer = M.CHECK_S end
-function M.onBeamNGEarthTeleported() S.timer = M.CHECK_S if S.afterTp then S.afterTp.t = 0 end end
+function M.onBeamNGEarthTeleported()
+  S.timer = M.CHECK_S
+  if S.afterTp then S.afterTp.t = 0 end
+  loader.onTeleported()
+end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
 function M.onExtensionUnloaded() rally.stop() stage.stop() end

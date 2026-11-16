@@ -142,8 +142,8 @@ local function vehicleName()
   return model and ((model.Brand and (model.Brand .. ' ') or '') .. (model.Name or v.jbeam)) or v.jbeam
 end
 
-local function cleanupProps(keepTraffic)
-  props.clear()
+local function cleanupProps(keepTraffic, recycle)
+  if recycle then props.retire() else props.clear() end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
   post = nil
@@ -270,8 +270,9 @@ local function beforePath(ev, path) return endRoad(ev, path, false) end
 -- Empieza un tramo: ev (el evento completo), st (su tramo con path), info (stageNumber, stageCount, surface)
 function M.start(ev, st, info)
   -- otro tramo encima: el tráfico sigue fuera (se devolverá al acabar este)
-  M.stop(true)
-  cleanupProps(true)
+  M.stop(true, true)
+  -- lo del tramo anterior queda de repuesto: lo que coincida con este (ida y vuelta, salida en la meta) se reutiliza
+  cleanupProps(true, true)
   local orphans = props.purgeOrphans()
   if orphans > 0 then log('I', TAG, 'removed ' .. orphans .. ' leftover objects') end
   if not (st and st.path and #st.path >= 2) then return false, 'no path' end
@@ -295,6 +296,19 @@ function M.start(ev, st, info)
   if bp then
     t.before = geo.track(bp)
     log('I', TAG, ('before the start: %s, %.0f m'):format(bhow, t.before.total))
+  end
+  -- el repuesto lejos de este tramo (y de sus accesos) no se va a aprovechar
+  local function nearTrack(it)
+    for _, tr in ipairs({ t, t.before, t.after }) do
+      local x, y = geo.toLocal(tr, it.lat, it.lon)
+      local _, d = geo.project(tr, x, y, 1, 0, #tr.pts)
+      if d < M.SPARE_KEEP_M then return true end
+    end
+    return false
+  end
+  local dropped = props.flushSpare(nearTrack)
+  if props.spareCount() > 0 or dropped > 0 then
+    log('I', TAG, ('recycling: %d objects kept from the previous stage, %d removed'):format(props.spareCount(), dropped))
   end
   local splitAt = t.total > 1500 and math.floor(t.total / 2 / 100 + 0.5) * 100 or nil
   local hazards = hazardsOf(st, t)
@@ -327,8 +341,54 @@ function M.start(ev, st, info)
   if opt.noTraffic and not S.session then M.trafficOff() end
   startclock.ensure()
   -- la meta y todo lo de más allá de la salida se monta al acercarse (M.DRESS_AHEAD_M): calzada y edificios reales
+  -- Norma: el tramo termina siempre en la calzada (asfalto o tierra). Si el final del archivo se sale de la carretera
+  -- (Ourense: un enlace al parque tomado como tramo; organizadores que acaban el trazo en un aparcamiento), la meta se
+  -- recorta hacia atrás hasta el último punto en la carretera, y lo de después se busca por la red desde ahí.
+  M.ON_ROAD_M = 4
+  local function onRoad(x, y)
+    local la, lo = geo.toGeo(t, x, y)
+    local a = api()
+    local gx, gy = a.toGame(la, lo, 0)
+    if not gx then return nil end
+    local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(gx, gy, 0)) or 0
+    local n1, n2 = map.findClosestRoad(vec3(gx, gy, z or 0))
+    local m = map.getMap()
+    if not (n1 and n2 and m.nodes[n1] and m.nodes[n2]) then return nil end
+    local A, B = m.nodes[n1].pos, m.nodes[n2].pos
+    local sx, sy = B.x - A.x, B.y - A.y
+    local L2 = sx * sx + sy * sy
+    local u = L2 > 0.01 and math.max(0, math.min(1, ((gx - A.x) * sx + (gy - A.y) * sy) / L2)) or 0
+    local d = math.sqrt((gx - A.x - sx * u) ^ 2 + (gy - A.y - sy * u) ^ 2)
+    return d <= (m.nodes[n1].radius or 3) + M.ON_ROAD_M, d
+  end
+  local function trimFinishToRoad()
+    if t.trimmed then return end
+    t.trimmed = true
+    local ok = onRoad(geo.at(t, t.total))
+    if ok ~= false then return end
+    for d = t.total - 5, math.max(t.total * 0.5, t.total - 300), -5 do
+      local x, y = geo.at(t, d)
+      if onRoad(x, y) then
+        local cut = t.total - d
+        geo.truncate(t, d)
+        t.finishCut = true
+        -- lo de después de la meta: por la red de carreteras desde la nueva meta
+        local f = { geo.toGeo(t, geo.at(t, t.total)) }
+        local f0 = { geo.toGeo(t, geo.at(t, math.max(0, t.total - 15))) }
+        local ap = walkRoads(f, f0)
+        if ap then
+          t.after, t._snapT, t.afterOff = geo.track(ap), nil, nil
+          t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, t.after.total))
+        end
+        log('W', TAG, ('finish off the road: moved %.0f m back onto the road'):format(cut))
+        return
+      end
+    end
+  end
+  M._trimFinish = trimFinishToRoad
   local finishLater = function()
-    findAfter()
+    pcall(trimFinishToRoad)
+    if not t.finishCut then findAfter() end
     local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
     dressing.finishLine(t, dressing.hwAt(t, t.total))
     log('I', TAG, ('finish dressed (%s)'):format(flat and 'ok' or '?'))
@@ -344,8 +404,9 @@ function M.start(ev, st, info)
       M.refreshLine()
     end
   end
+  S.startLater = startLater
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
-    { ambience = opt.ambience, closures = opt.closures, finishLater = finishLater, startLater = startLater,
+    { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
       reversed = st.reverse == true,
       onStartClock = function(obj) startclock.setClock(obj) M.refreshLine() end })
   S.dressT = 0
@@ -376,6 +437,15 @@ end
 -- la línea de salida en coordenadas del juego (para la cámara del reloj; cambia tras un rebase)
 -- La línea de salida y el punto de fichaje, anclados al eje de la carretera (se recalculan hasta que el grafo de
 -- carreteras está cargado allí: entonces coinciden con lo pintado)
+-- la carga (loader.lua) retiene el montaje hasta que las carreteras de la zona están cargadas
+M.jobsHeld = false
+function M.holdJobs(on) M.jobsHeld = on == true end
+-- vuelve a buscar la carretera antes de la salida (y el TC) con el grafo ya cargado
+function M.retryStart()
+  if S and S.startLater then pcall(S.startLater) end
+  M.refreshLine()
+end
+
 function M.refreshLine()
   if not S then return end
   local t = S.track
@@ -398,12 +468,14 @@ local function clearScreen()
 end
 
 -- Cancelar: todo fuera ya
-function M.stop(keepTraffic)
+function M.stop(keepTraffic, recycle)
   if S then
     S = nil
     clearScreen()
     guihooks.trigger('EarthRaidHud', { phase = 'idle' })
-    cleanupProps(keepTraffic)
+    cleanupProps(keepTraffic, recycle)
+  elseif not recycle then
+    props.flushSpare()
   end
 end
 
@@ -622,23 +694,42 @@ end
 function M.collision() pcall(function() be:reloadStaticCollision(false) end) end
 
 M.DRESS_AHEAD_M = 1500
-M.DRESS_S = 1.0
+M.DRESS_S = 0.25          -- un trabajo de montaje cada tanto (antes todos de golpe cada segundo)
 
+M.COLLISION_EVERY_S = 2
+local collT = 0
+M.SPARE_KEEP_M = 40       -- repuesto a más de esto del nuevo trazado: se borra al empezar
+M.SPARE_DROP_M = 150      -- y el de alrededor del coche, cuando su zona ya está montada
 function M.update(dtSim, dtReal)
   clock = clock + (dtReal or dtSim)
+  -- los objetos encolados, poco a poco; la colisión se rehace una vez cuando ya están todos (no tras cada tanda)
+  guide.tick(dtReal or dtSim)
+  local left = props.pump()
+  collT = collT + (dtReal or dtSim or 0)
+  if left == 0 and props.collisionDirty and collT >= M.COLLISION_EVERY_S then
+    props.collisionDirty, collT = false, 0
+    M.collision()
+  end
   if (S or post) and props.count() > 0 then reground(dtReal or dtSim or 0) end
-  if S and dressing.pendingJobs() > 0 then
+  if S and not M.jobsHeld and dressing.pendingJobs() > 0 then
     S.dressT = (S.dressT or 0) + (dtReal or dtSim or 0)
     if S.dressT >= M.DRESS_S then
       S.dressT = 0
       local a = api()
       local plat, plon
       if a and a.position then plat, plon = a.position() end
-      local n = plat and dressing.runJobsNear(plat, plon) or 0
+      local n = plat and dressing.runJobsNear(plat, plon, S.loading and 4 or 1) or 0
+      -- el repuesto de esta zona que no se ha reutilizado, fuera (ya está montada)
+      if plat and props.spareCount() > 0 and dressing.pendingJobsNear(plat, plon) == 0 then
+        local k = math.cos(math.rad(plat))
+        props.flushSpare(function(it)
+          return ((it.lon - plon) * 111195 * k) ^ 2 + ((it.lat - plat) * 111195) ^ 2 > M.SPARE_DROP_M ^ 2
+        end)
+      end
       -- la línea y el control se reajustan al eje de la carretera mientras no se haya salido
       if S.phase == 'tc' or S.phase == 'approach' or S.phase == 'staging' or S.phase == 'hold' then M.refreshLine() end
       -- un semáforo nuevo (el de meta): que el reloj del juego lo encuentre; objetos nuevos: colisión
-      if n > 0 then startclock.ensure() M.collision() end
+      if n > 0 then startclock.ensure() end
     end
   end
   -- tras terminar: el montaje se retira al alejarse o pasado un tiempo
@@ -652,7 +743,7 @@ function M.update(dtSim, dtReal)
       local ny = (lat - post.lat) * 111195
       far = math.sqrt(ex * ex + ny * ny) > M.CLEANUP_M
     end
-    if far or clock - post.at > M.CLEANUP_S then cleanupProps() end
+    if far or clock - post.at > M.CLEANUP_S then cleanupProps(false, post.recycle) end
     return
   end
   if not S then return end
@@ -758,6 +849,7 @@ function M.update(dtSim, dtReal)
         audio.say({ 'system_countdowngo' }, true)
       end
       guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+      guide.racingLine(S.opt.racingLine)
       M.callNotes(0, true)
     end
     if nose < S.noseAtArm - M.FALSE_START_M and S.countdown > 0 then go(true)
@@ -812,7 +904,8 @@ function M.update(dtSim, dtReal)
     if S.doneLeft <= 0 then
       -- se acabó: pantalla limpia; el montaje sigue hasta alejarse
       local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
-      post = { at = clock, lat = flat, lon = flon }
+      -- en un rally, lo de este tramo puede servir al siguiente (se recicla al limpiar)
+      post = { at = clock, lat = flat, lon = flon, recycle = S.session ~= nil }
       S = nil
       clearScreen()
       guihooks.trigger('EarthRaidHud', { phase = 'idle' })

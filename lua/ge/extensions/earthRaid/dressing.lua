@@ -295,7 +295,9 @@ function M.recheck(plat, plon)
       if ex * ex + ny * ny < M.RECHECK_M * M.RECHECK_M then
         M._seen = false
         local la, lo = offRoad(it.kind, it.lat, it.lon)
-        if M._seen then it.roadOk = true end
+        it.checks = (it.checks or 0) + 1
+        -- con la carretera cargada, o tras 4 intentos (lejos de toda carretera: nada que comprobar)
+        if M._seen or it.checks >= 4 then it.roadOk = true end
         if la and (la ~= it.lat or lo ~= it.lon) then props.move(it, la, lo) moved = moved + 1 end
       end
     end
@@ -304,7 +306,19 @@ function M.recheck(plat, plon)
   return moved
 end
 
+-- de noche (19:30-7:30 en el reloj del juego): las luces de las carpas solo entonces
+function M.night()
+  local ok, tod = pcall(function() return core_environment.getTimeOfDay() end)
+  if not ok or type(tod) ~= 'table' or not tod.time then return false end
+  local h = ((tod.time + 0.5) % 1) * 24
+  return h >= 19.5 or h < 7.5
+end
+M.SOUND_KINDS = { sndCrowd = true, sndCheer = true, sndGenerator = true }
+
 local function place(kind, t, along, right, yaw, fwd, opts)
+  -- sonido de ambiente: solo si el jugador lo activa (por defecto no; el audio se entrecortaba en los tirones)
+  if M.SOUND_KINDS[kind] and not M.sounds and not M.dry then return nil end
+  if kind == 'lamp' and not M.dry and not M.night() then return nil end
   if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) then
     local from = opts and opts.from or 0
     local hit = freeTo(t, along, right, fwd, from)
@@ -348,10 +362,11 @@ end
 function M.resetJobs() jobs = {} end
 function M.pendingJobs() return #jobs end
 -- runJobs(upTo): por metros del tramo (simulación); runJobsNear(lat, lon): por distancia al jugador
-function M.runJobsNear(lat, lon)
+-- maxJobs: como mucho tantos trabajos por llamada (uno: el montaje se reparte en varios fotogramas)
+function M.runJobsNear(lat, lon, maxJobs)
   local k = math.cos(math.rad(lat))
   local i, n = 1, 0
-  while jobs[i] do
+  while jobs[i] and (not maxJobs or n < maxJobs) do
     local j = jobs[i]
     local near = not j.lat or ((j.lon - lon) * 111195 * k) ^ 2 + ((j.lat - lat) * 111195) ^ 2 < M.JOB_RADIUS_M ^ 2
     if near then
@@ -362,6 +377,71 @@ function M.runJobsNear(lat, lon)
     else
       i = i + 1
     end
+  end
+  return n
+end
+-- El box del parque de asistencia (al empezar el rally desde la primera ronda): una carpa 3x6 junto a la carretera más
+-- cercana a (lat, lon), fuera de la calzada, con cajas de herramientas, banco, neumáticos, taburete y luz; el coche
+-- aparca debajo. Devuelve el sitio del coche { lat, lon, faceLat, faceLon } o nil (sin carretera cargada).
+M.BOX_ROAD_M = 40            -- la asistencia más lejos que esto del asfalto: el box se monta en la propia asistencia
+function M.serviceBox(lat, lon, towardLat, towardLon)
+  local a = api()
+  local x, y = a.toGame(lat, lon, 0)
+  if not x then return nil end
+  local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0)) or 0
+  -- junto a la carretera si pasa cerca de la asistencia; si no (un aparcamiento, un recinto), en el mismo punto
+  local n1, n2, d, px, py = props.nearestRoad(x, y, z, 150)
+  local m = map.getMap()
+  local hx, hy, cx, cy, rx, ry
+  if n1 and d and d < M.BOX_ROAD_M then
+    local A, B = m.nodes[n1].pos, m.nodes[n2].pos
+    local sx, sy = B.x - A.x, B.y - A.y
+    local L = math.sqrt(sx * sx + sy * sy)
+    if L < 0.5 then return nil end
+    hx, hy = sx / L, sy / L
+    if towardLat then
+      local tx, ty = a.toGame(towardLat, towardLon, 0)
+      if tx and ((tx - x) * hx + (ty - y) * hy) < 0 then hx, hy = -hx, -hy end
+    end
+    rx, ry = hy, -hx
+    -- a la derecha de la carretera, la carpa con su borde a 1,5 m del asfalto
+    local r = (m.nodes[n1].radius or 3) + 0.6 + 1.5 + 1.5
+    cx, cy = px + rx * r, py + ry * r
+  else
+    -- mirando a la carretera más cercana (por donde se sale), o hacia el primer tramo
+    local fx, fy
+    if px then fx, fy = px, py elseif towardLat then fx, fy = a.toGame(towardLat, towardLon, 0) end
+    local vx, vy = (fx or x + 1) - x, (fy or y) - y
+    local L = math.sqrt(vx * vx + vy * vy)
+    if L < 0.5 then vx, vy, L = 1, 0, 1 end
+    hx, hy = vx / L, vy / L
+    rx, ry = hy, -hx
+    cx, cy = x, y
+  end
+  local function put(kind, fwd, side, yaw, opts)
+    local la, lo = a.toGeo(cx + hx * fwd + rx * side, cy + hy * fwd + ry * side, z)
+    return props.add(kind, la, lo, hx, hy, yaw or 0, opts)
+  end
+  put('gazebo3x6d', 0, 0, 180)
+  put('lamp', 0, 0, 0, { dz = 2.6 })
+  put('bigToolbox', -1.6, 2.1, -90)
+  put('bigToolbox2', 0.2, 2.1, -90)
+  put('smallToolbox', 1.6, 2.0, -90)
+  put('workbench', 3.9, 1.0, 180)
+  put('stool', 3.4, -0.4, 0)
+  put('tireRack', -3.9, 1.2, 0)
+  put('cone', -4.2, -1.6, 0)
+  put('cone', 4.2, -1.6, 0)
+  local la, lo = a.toGeo(cx, cy, z)
+  local fla, flo = a.toGeo(cx + hx * 10, cy + hy * 10, z)
+  return { lat = la, lon = lo, faceLat = fla, faceLon = flo }
+end
+
+function M.pendingJobsNear(lat, lon)
+  local k = math.cos(math.rad(lat))
+  local n = 0
+  for _, j in ipairs(jobs) do
+    if not j.lat or ((j.lon - lon) * 111195 * k) ^ 2 + ((j.lat - lat) * 111195) ^ 2 < M.JOB_RADIUS_M ^ 2 then n = n + 1 end
   end
   return n
 end
@@ -855,6 +935,7 @@ end
 function M.build(t, notes, hazards, splitAt, opts)
   opts = opts or {}
   M.reversed = opts.reversed == true
+  M.sounds = opts.sounds == true
   local hw0 = halfWidth(t.lat0, t.lon0)
   local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
   local hwF = halfWidth(flat, flon)

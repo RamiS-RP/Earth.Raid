@@ -177,6 +177,13 @@
                 <span>{{ t(k) }}</span>
                 <span class="toggle" :class="{ on: set[k] }"><span class="knob"></span></span>
               </div>
+              <div v-if="s && s.racingLineMod" class="toggle-row" @click="toggle('racingLine')">
+                <span>{{ t("racingLine") }}</span>
+                <span class="toggle" :class="{ on: set.racingLine }"><span class="knob"></span></span>
+              </div>
+              <div class="set-label">{{ t("recMods") }}</div>
+              <p class="recmod"><b>Racing Line Mod</b> — {{ s && s.racingLineMod ? t("installed") : t("recRacing") }}</p>
+              <p class="recmod"><b>hotw</b> (211443_hotw) — {{ s && s.hotwMod ? t("installed") : t("recHotw") }}</p>
             </div>
           </div>
 
@@ -241,7 +248,7 @@
               </div>
             </button>
           </div>
-          <div class="modes" v-if="pick">
+          <div class="modes" v-if="pick && pick.hasReverse">
             <button :class="{ on: !reverse }" @click="reverse = false">→ {{ t("dirNormal") }}</button>
             <button :class="{ on: reverse }" @click="reverse = true">← {{ t("dirReverse") }}</button>
           </div>
@@ -269,6 +276,23 @@
         <div class="imphelp dim small">
           <p>{{ t("importHelp1", { dir: s.importDir }) }}</p>
           <p>{{ t("importHelp2") }}</p>
+        </div>
+        <div class="newimp">
+          <div class="set-label">{{ t("newEvent") }}</div>
+          <div class="frow"><label>{{ t("m_name") }}</label>
+            <input v-model="up.name" type="text" :placeholder="t('ph_name')" @keydown.stop @focus="typing(true)" @blur="typing(false)" /></div>
+          <div class="frow"><label>{{ t("upRoute") }}</label>
+            <input type="file" multiple accept=".kmz,.kml,.gpx,.geojson,.osm" @change="e => (up.routes = Array.from(e.target.files || []))" /></div>
+          <div class="frow"><label>{{ t("upLogo") }}</label>
+            <input type="file" accept=".png,.jpg,.jpeg,.webp" @change="e => (up.logo = (e.target.files || [])[0] || null)" /></div>
+          <div class="frow"><label>{{ t("m_description") }}</label>
+            <textarea v-model="up.description" rows="2" @keydown.stop @focus="typing(true)" @blur="typing(false)"></textarea></div>
+          <div class="frow"><label>{{ t("m_link") }}</label>
+            <input v-model="up.link" type="text" :placeholder="t('ph_link')" @keydown.stop @focus="typing(true)" @blur="typing(false)" /></div>
+          <div class="frow btns">
+            <button class="btn" :disabled="up.busy || !up.name || !up.routes.length" @click="startUpload">⤓ {{ t("upGo") }}</button>
+            <span class="dim small">{{ up.msg }}</span>
+          </div>
         </div>
         <div v-if="!imports.length" class="empty"><b>{{ t("importNone") }}</b></div>
         <div class="implist">
@@ -364,7 +388,7 @@ function startRally() { if (sel.value) call("uiStartRally", sel.value.id, fromRu
 const set = computed(() => (s.value && s.value.settings) || {})
 const voices = computed(() => list(s.value && s.value.voicepacks))
 const voice = computed(() => voices.value.find(v => v.id === set.value.voicepack) || voices.value[0] || { name: "—" })
-const toggles = ["raceHud", "visualNotes", "voice", "notesSafe", "falseStart", "recoveryPenalty", "noTraffic", "closures", "arrows", "cautions", "ambience"]
+const toggles = ["raceHud", "visualNotes", "voice", "notesSafe", "falseStart", "recoveryPenalty", "noTraffic", "closures", "arrows", "cautions", "ambience", "sounds"]
 
 function typed() { if (timer) clearTimeout(timer); timer = setTimeout(() => call("uiSearch", q.value), 200) }
 function clearQ() { q.value = ""; call("uiSearch", "") }
@@ -376,6 +400,62 @@ const imports = computed(() => list(s.value && s.value.imports))
 const metaKeys = ["name", "short", "dates", "country", "city", "region", "championship", "organizer", "type", "surface", "link", "source", "description"]
 const impKey = ref(null)
 const form = ref({})
+
+// ---- subir un evento: los archivos se leen aquí y van a Lua en trozos (Lua valida y escribe en la carpeta de import)
+const CHUNK = 48000
+const up = ref({ name: "", routes: [], logo: null, description: "", link: "", busy: false, msg: "", key: null })
+let upResolve = null
+events_.on("EarthRaidUpload", d => {
+  if (!d) return
+  if (d.phase === "error") { up.value.busy = false; up.value.msg = "⚠ " + (d.file ? d.file + ": " : "") + d.error }
+  if (upResolve) { const r = upResolve; upResolve = null; r(d) }
+})
+function waitUpload(ms = 20000) {
+  return new Promise((res, rej) => { upResolve = res; setTimeout(() => { if (upResolve === res) { upResolve = null; rej(new Error("timeout")) } }, ms) })
+}
+function readB64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = () => res(String(r.result).replace(/^data:[^,]*,/, ""))
+    r.onerror = () => rej(r.error)
+    r.readAsDataURL(file)
+  })
+}
+async function sendFile(key, file) {
+  const b64 = await readB64(file)
+  const n = Math.max(1, Math.ceil(b64.length / CHUNK))
+  const done = waitUpload(60000)
+  for (let i = 0; i < n; i++) {
+    call("uiUpload", key, file.name, i + 1, n, b64.slice(i * CHUNK, (i + 1) * CHUNK))
+    up.value.msg = file.name + " " + Math.round(((i + 1) / n) * 100) + " %"
+    if (i % 4 === 3) await new Promise(r => setTimeout(r, 0))
+  }
+  return done
+}
+async function startUpload() {
+  const u = up.value
+  if (u.busy || !u.name || !u.routes.length) return
+  u.busy = true; u.msg = t("upSending"); typing(false)
+  try {
+    const k = waitUpload()
+    call("uiUploadNew", u.name)
+    const first = await k
+    if (!first || first.phase !== "key") return
+    const key = first.key
+    for (const f of [...u.routes, ...(u.logo ? [u.logo] : [])]) {
+      const r = await sendFile(key, f)
+      if (!u.busy || (r && r.phase === "error")) return
+    }
+    const fin = waitUpload(60000)
+    call("uiUploadFinish", key, JSON.stringify({ name: u.name, description: u.description, link: u.link }))
+    const end = await fin
+    if (end && end.phase === "error") return
+    u.msg = "✓ " + t("upDone"); impKey.value = key
+    Object.assign(u, { name: "", routes: [], logo: null, description: "", link: "" })
+  } catch (e) {
+    u.msg = "⚠ " + (e && e.message ? e.message : e)
+  } finally { u.busy = false }
+}
 function pickImport(i) {
   impKey.value = impKey.value === i.key ? null : i.key
   const m = Object.assign({}, i.meta || {})
@@ -404,7 +484,10 @@ function isRunning(st) {
   return !!(st && a && sel.value && a.eventId === sel.value.id && a.stageId === st.id)
 }
 const reverse = ref(false)
-function startPick() { if (pick.value) call("uiStart", sel.value.id, pick.value.id, reverse.value) }
+// sin tramo al revés en el rally, siempre en su sentido
+watch(() => pick.value && pick.value.id, () => { if (pick.value && !pick.value.hasReverse) reverse.value = false })
+// Iniciar: si estás lejos, el tramo se carga y el coche aparece 100 m antes del control horario (pantalla de carga)
+function startPick() { if (pick.value) call("uiPlay", sel.value.id, pick.value.id, reverse.value) }
 </script>
 
 <style scoped lang="scss">
@@ -561,4 +644,7 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .foot { margin-top: 18px; }
 .sectx { font-style: normal; font-weight: 400; }
+.recmod { margin: 2px 0 6px; font-size: 0.82em; opacity: 0.85; line-height: 1.35; }
+.newimp { border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; }
+.newimp input[type=file] { color: inherit; font-size: 0.85em; }
 </style>

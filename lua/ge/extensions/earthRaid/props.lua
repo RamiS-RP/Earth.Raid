@@ -33,6 +33,13 @@ M.SHAPES = {
   specTarp = A .. 's_spectator_tarp_4m.dae', specTarp2 = A .. 's_spectator_tarp_4m_02.dae', specTarp3 = A .. 's_spectator_tarp_4m_03.dae',
   specGridA = A .. 's_spectator_grid_a_2m.dae', cornerMarker = A .. 's_corner_marker.dae',
   danger = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_other_danger.dae',
+  -- el box del parque de asistencia
+  bigToolbox = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_01.dae',
+  bigToolbox2 = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_02.dae',
+  smallToolbox = '/art/shapes/garage_and_dealership/garage/s_small_toolbox_01.dae',
+  tireRack = '/art/shapes/garage_and_dealership/garage/s_tire_rack.dae',
+  workbench = '/art/shapes/garage_and_dealership/garage/s_garage_workbench_medium.dae',
+  stool = '/art/shapes/garage_and_dealership/garage/s_metal_stool.dae',
 }
 -- sonidos de ambiente (SFXEmitter 3D; los .ogg están en el mod: art/sound/earthRaid, se pueden cambiar por grabaciones
 -- reales con el mismo nombre)
@@ -91,6 +98,9 @@ end
 function M.purgeOrphans()
   local mine = {}
   for _, it in ipairs(items) do if it.obj then pcall(function() mine[it.obj:getName()] = true end) end end
+  for _, l in pairs(M._spare or {}) do
+    for _, it in ipairs(l) do if it.obj then pcall(function() mine[it.obj:getName()] = true end) end end
+  end
   local n = 0
   for _, cls in ipairs({ 'TSStatic', 'Prefab', 'DecalRoad', 'SFXEmitter', 'PointLight' }) do
     for _, name in ipairs(scenetree.findClassObjects(cls) or {}) do
@@ -150,51 +160,174 @@ local function register(o, kind)
 end
 
 -- Coloca un objeto: kind (clave de SHAPES o PREFABS), lat, lon, dx, dy (dirección de marcha), yaw (grados, horario)
+local function create(kind, opts)
+  local shape, prefab, snd = M.SHAPES[kind], M.PREFABS[kind], M.SOUNDS[kind]
+  local o
+  if kind == 'lamp' then
+    -- luz cálida bajo las carpas (se ve de noche)
+    o = createObject('PointLight')
+    o:setField('radius', 0, '10')
+    o:setField('brightness', 0, '1.4')
+    o:setField('color', 0, '1 0.82 0.55 1')
+    o:setField('castShadows', 0, '0')
+    o:setPosition(vec3(0, 0, 0))
+  elseif snd then
+    o = createObject('SFXEmitter')
+    o:setField('fileName', 0, snd.file)
+    o:setField('isLooping', 0, snd.loop and '1' or '0')
+    o:setField('is3D', 0, '1')
+    o:setField('isStreaming', 0, '0')
+    o:setField('volume', 0, tostring(snd.volume))
+    o:setField('referenceDistance', 0, tostring(snd.ref))
+    o:setField('maxDistance', 0, tostring(snd.max))
+    o:setField('playOnAdd', 0, '1')
+    o:setPosition(vec3(0, 0, 0))
+  elseif prefab then
+    o = createObject('Prefab')
+    o:setField('filename', 0, prefab)
+    o:setPosition(vec3(0, 0, 0))
+  else
+    o = createObject('TSStatic')
+    o:setField('shapeName', 0, shape)
+    o:setPosition(vec3(0, 0, 0))
+    o.scale = vec3(1, 1, 1)
+    if opts and opts.noCollision then o:setField('collisionType', 0, 'None')
+    else M.collisionDirty = true end
+  end
+  register(o, kind)
+  if prefab and o.load then pcall(function() o:load() end) end
+  return o
+end
+
+-- Los objetos no se crean todos de golpe (un montaje de salida son ~100 y se notaba un tirón de 0,25 s con el sonido
+-- entrecortado): se encolan y M.pump los crea poco a poco, con un presupuesto de tiempo por fotograma. El semáforo y
+-- los relojes se crean al momento (el reloj del juego los busca enseguida).
+M.PUMP_MS = 2.5
+M.IMMEDIATE = { tree = true }
+local queue = {}
+-- Reciclaje entre tramos: al empezar otro tramo lo del anterior no se borra, queda de repuesto; si el nuevo pone el
+-- mismo objeto (tipo, opciones, dirección) en el mismo sitio (ida y vuelta, salida donde acabó el otro), se reutiliza
+-- en vez de crear uno nuevo. Lo que no se aprovecha se borra cuando su zona ya está montada.
+M.REUSE_M = 1.2
+M.reused = 0
+local spare = {}             -- tipo -> { item... }
+M._spare = spare
+
+local function optsKey(o)
+  if type(o) ~= 'table' then return '' end
+  local ks = {}
+  for k, v in pairs(o) do if type(v) ~= 'table' and type(v) ~= 'function' then ks[#ks + 1] = tostring(k) .. '=' .. tostring(v) end end
+  table.sort(ks)
+  return table.concat(ks, ';')
+end
+
+local function dropObj(it)
+  pcall(function()
+    if it.obj then
+      if it.obj.unload then pcall(function() it.obj:unload() end) end
+      it.obj:delete()
+    end
+  end)
+  it.obj = nil
+end
+
+local function takeSpare(it)
+  local l = spare[it.kind]
+  if not l or #l == 0 then return false end
+  local k = math.cos(math.rad(it.lat))
+  local key = optsKey(it.opts)
+  local fx, fy = rot(it.dx or 0, it.dy or 1, it.yaw or 0)
+  for i, sp in ipairs(l) do
+    local ex = (sp.lon - it.lon) * 111195 * k
+    local ny = (sp.lat - it.lat) * 111195
+    if ex * ex + ny * ny < M.REUSE_M * M.REUSE_M and (sp.key or optsKey(sp.opts)) == key then
+      local gx, gy = rot(sp.dx or 0, sp.dy or 1, sp.yaw or 0)
+      if fx * gx + fy * gy > 0.97 then
+        table.remove(l, i)
+        it.obj = sp.obj
+        pcall(apply, it)
+        M.reused = M.reused + 1
+        return true
+      end
+    end
+  end
+  return false
+end
+
+-- lo de este tramo pasa a ser de repuesto para el siguiente (las luces, sonidos y líneas pintadas no: se borran)
+function M.retire()
+  for _, it in ipairs(queue) do it.dead = true end
+  queue = {}
+  for _, it in ipairs(items) do
+    if it.obj and not it.line and it.kind ~= 'lamp' and not M.SOUNDS[it.kind] then
+      it.key = optsKey(it.opts)
+      local l = spare[it.kind] or {}
+      spare[it.kind] = l
+      l[#l + 1] = it
+    else
+      dropObj(it)
+    end
+  end
+  items = {}
+  M.reused = 0
+end
+
+-- borra los de repuesto que no pasen keep(item) (sin keep: todos)
+function M.flushSpare(keep)
+  local n = 0
+  for kind, l in pairs(spare) do
+    local rest = {}
+    for _, it in ipairs(l) do
+      if keep and keep(it) then rest[#rest + 1] = it else dropObj(it) n = n + 1 end
+    end
+    spare[kind] = rest
+  end
+  if n > 0 then M.collisionDirty = true end
+  return n
+end
+
+function M.spareCount()
+  local n = 0
+  for _, l in pairs(spare) do n = n + #l end
+  return n
+end
+
 function M.add(kind, lat, lon, dx, dy, yaw, opts)
   local shape, prefab, snd = M.SHAPES[kind], M.PREFABS[kind], M.SOUNDS[kind]
   if not (shape or prefab or snd or kind == 'lamp') then return nil end
-  local ok, obj = pcall(function()
-    local o
-    if kind == 'lamp' then
-      -- luz cálida bajo las carpas (se ve de noche)
-      o = createObject('PointLight')
-      o:setField('radius', 0, '10')
-      o:setField('brightness', 0, '1.4')
-      o:setField('color', 0, '1 0.82 0.55 1')
-      o:setField('castShadows', 0, '0')
-      o:setPosition(vec3(0, 0, 0))
-    elseif snd then
-      o = createObject('SFXEmitter')
-      o:setField('fileName', 0, snd.file)
-      o:setField('isLooping', 0, snd.loop and '1' or '0')
-      o:setField('is3D', 0, '1')
-      o:setField('isStreaming', 0, '0')
-      o:setField('volume', 0, tostring(snd.volume))
-      o:setField('referenceDistance', 0, tostring(snd.ref))
-      o:setField('maxDistance', 0, tostring(snd.max))
-      o:setField('playOnAdd', 0, '1')
-      o:setPosition(vec3(0, 0, 0))
-    elseif prefab then
-      o = createObject('Prefab')
-      o:setField('filename', 0, prefab)
-      o:setPosition(vec3(0, 0, 0))
-    else
-      o = createObject('TSStatic')
-      o:setField('shapeName', 0, shape)
-      o:setPosition(vec3(0, 0, 0))
-      o.scale = vec3(1, 1, 1)
-      if opts and opts.noCollision then o:setField('collisionType', 0, 'None') end
-    end
-    register(o, kind)
-    if prefab and o.load then pcall(function() o:load() end) end
-    return o
-  end)
-  if not ok or not obj then log('W', TAG, 'props ' .. kind .. ': ' .. tostring(obj)) return nil end
-  local it = { obj = obj, kind = kind, lat = lat, lon = lon, dx = dx, dy = dy, yaw = yaw or 180, dz = opts and opts.dz }
+  local it = { kind = kind, lat = lat, lon = lon, dx = dx, dy = dy, yaw = yaw or 180, dz = opts and opts.dz, opts = opts }
   items[#items + 1] = it
-  pcall(apply, it)
+  if takeSpare(it) then return it end
+  if M.IMMEDIATE[kind] or M.sync then
+    local ok, obj = pcall(create, kind, opts)
+    if not ok or not obj then log('W', TAG, 'props ' .. kind .. ': ' .. tostring(obj)) return it end
+    it.obj = obj
+    pcall(apply, it)
+  else
+    queue[#queue + 1] = it
+  end
   return it
 end
+
+-- crea lo encolado hasta gastar budgetMs (o M.PUMP_MS); devuelve cuántos quedan
+function M.pump(budgetMs)
+  if #queue == 0 then return 0 end
+  local t0 = os.clock()
+  local limit = (budgetMs or M.PUMP_MS) / 1000
+  local i = 1
+  while i <= #queue do
+    local it = queue[i]
+    if not it.dead then
+      local ok, obj = pcall(create, it.kind, it.opts)
+      if ok and obj then it.obj = obj pcall(apply, it) else log('W', TAG, 'props ' .. it.kind .. ': ' .. tostring(obj)) end
+    end
+    i = i + 1
+    if os.clock() - t0 > limit then break end
+  end
+  for _ = 1, i - 1 do table.remove(queue, 1) end
+  return #queue
+end
+function M.pending() return #queue end
 
 -- Una línea pintada en el suelo de (lat, lon) a (lat2, lon2): material de spray del juego, ancho en metros
 function M.addLine(lat, lon, lat2, lon2, material, width)
@@ -221,7 +354,7 @@ function M.reground(lat, lon, radiusM)
   for _, it in ipairs(items) do
     local dx = (it.lon - lon) * 111195 * k
     local dy = (it.lat - lat) * 111195
-    if dx * dx + dy * dy < radiusM * radiusM then
+    if (it.obj or it.line) and dx * dx + dy * dy < radiusM * radiusM then
       local _, _, z, ok = M.ground(it.lat, it.lon)
       if ok and (it.pending or math.abs((it.z or 0) - z) > 0.25) then
         pcall(apply, it)
@@ -234,6 +367,9 @@ function M.reground(lat, lon, radiusM)
 end
 
 function M.clear()
+  M.flushSpare()
+  for _, it in ipairs(queue) do it.dead = true end
+  queue = {}
   for _, it in ipairs(items) do
     pcall(function()
       if it.obj then
@@ -248,5 +384,41 @@ end
 function M.count() return #items end
 function M.find(kind) for _, it in ipairs(items) do if it.kind == kind then return it.obj end end end
 function M.all() return items end
+
+
+-- La carretera más cercana a (x, y) en planta: n1, n2, distancia, punto más cercano (cx, cy). map.findClosestRoad solo
+-- mira unos 100 m (más allá devuelve 128): si no hay nada ahí, se recorre el grafo entero (son pocos cientos de nodos)
+function M.nearestRoad(x, y, z, maxD)
+  maxD = maxD or 300
+  local ok, n1, n2, d = pcall(map.findClosestRoad, vec3(x, y, z or 0))
+  local m = map.getMap()
+  if not (m and m.nodes) then return nil end
+  local function seg(a, b)
+    local A, B = m.nodes[a].pos, m.nodes[b].pos
+    local sx, sy = B.x - A.x, B.y - A.y
+    local L2 = sx * sx + sy * sy
+    local u = L2 > 0.01 and math.max(0, math.min(1, ((x - A.x) * sx + (y - A.y) * sy) / L2)) or 0
+    local cx, cy = A.x + sx * u, A.y + sy * u
+    return math.sqrt((x - cx) ^ 2 + (y - cy) ^ 2), cx, cy
+  end
+  if ok and n1 and n2 and d and d < 100 and m.nodes[n1] and m.nodes[n2] then
+    local dd, cx, cy = seg(n1, n2)
+    return n1, n2, dd, cx, cy
+  end
+  local bd, b1, b2, bx, by = maxD, nil, nil, nil, nil
+  for id, nd in pairs(m.nodes) do
+    local p = nd.pos
+    if math.abs(p.x - x) < maxD + 200 and math.abs(p.y - y) < maxD + 200 then
+      for nb in pairs(nd.links or {}) do
+        if m.nodes[nb] then
+          local dd, cx, cy = seg(id, nb)
+          if dd < bd then bd, b1, b2, bx, by = dd, id, nb, cx, cy end
+        end
+      end
+    end
+  end
+  if b1 then return b1, b2, bd, bx, by end
+  return nil
+end
 
 return M

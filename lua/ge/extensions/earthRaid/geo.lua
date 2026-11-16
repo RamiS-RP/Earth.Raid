@@ -19,6 +19,17 @@ function M.track(path)
   return t
 end
 
+-- corta el trazado en `along` (la meta pasa a estar ahí)
+function M.truncate(t, along)
+  if along >= t.total or along <= 0 then return end
+  local x, y = M.at(t, along)
+  local i = 1
+  while t.cum[i + 1] and t.cum[i + 1] < along do i = i + 1 end
+  for k = #t.pts, i + 1, -1 do t.pts[k], t.cum[k] = nil, nil end
+  t.pts[i + 1], t.cum[i + 1] = { x, y }, along
+  t.total = along
+end
+
 function M.toLocal(t, lat, lon) return (lon - t.lon0) * M.M_PER_DEG * t.k, (lat - t.lat0) * M.M_PER_DEG end
 function M.toGeo(t, x, y) return t.lat0 + y / M.M_PER_DEG, t.lon0 + x / (M.M_PER_DEG * t.k) end
 

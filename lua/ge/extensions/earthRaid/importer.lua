@@ -256,6 +256,12 @@ function M.lineKind(name, where)
   if has(n, 'liaison', 'enlace', 'link ', 'link:', 'transfer', '->', 'road section', 'warming zone', 'tramo de enlace', 'podium') then
     return 'liaison'
   end
+  -- de un control a otro (Ourense: "Llegada - Asistencia", "Asistencia-Salida"): enlace, salvo que diga que es tramo
+  local stageWord = n:match('^%s*s?ss%s*%d') or n:match('^%s*tramo') or n:match('^%s*stage') or has(n, 'special stage', 'shakedown', 'test')
+  if not stageWord and has(n, 'asistencia', 'service', 'llegada', 'arrival', 'salida a ', 'regroup', 'reagrup', 'parque',
+    'parc ', 'repostaje', 'refuel', 'hotel', 'ceremon') then
+    return 'liaison'
+  end
   if has(n, 'shakedown', 'test', 'qualifying', ' qs ') or (has(ctx, 'shakedown') and not has(n, 'special stage', 'ss ')) then
     return 'shakedown'
   end
@@ -301,7 +307,7 @@ function M.runsOf(text)
 end
 
 local function prettyTitle(s)
-  s = tostring(s or ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
+  s = tostring(s or ''):gsub('%.[Kk][Mm][LlZz]$', ''):gsub('%.[Gg][Pp][Xx]$', ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
   return (s:gsub('^%s+', ''):gsub('%s+$', ''))
 end
 
@@ -362,6 +368,42 @@ function M.build(sources, id, meta)
       local k = key(l.where)
       perKey[k] = (perKey[k] or 0) + 1
     end
+  end
+  -- un "tramo" que empieza donde acaba otro y acaba en un punto de asistencia/parque, o al revés, es un enlace
+  local svc = {}
+  for _, p in ipairs(points) do
+    local k = M.pointKind(p.name)
+    if k == 'service' or k == 'regroup' or k == 'parcFerme' or k == 'refuel' then svc[#svc + 1] = p.pos end
+  end
+  local function nearSvc(q) for _, s2 in ipairs(svc) do if dist(q, s2) < 150 then return true end end return false end
+  if #svc > 0 and #stages > 1 then
+    local keep = {}
+    for _, st in ipairs(stages) do
+      local a, b = st.raw[1], st.raw[#st.raw]
+      local fullN = low(st.name)
+      local named = M.runsOf(select(2, splitCat(st.name))) or M.runsOf(st.where[#st.where] or '')
+        or has(fullN, 'special stage', 'tramo', 'stage', 'shakedown', 'test', 'super')
+      if not named and st.kind == 'ss' and (nearSvc(a) or nearSvc(b)) then
+        local touches = false
+        for _, o in ipairs(stages) do
+          if o ~= st then
+            for _, q in ipairs({ o.raw[1], o.raw[#o.raw] }) do
+              if dist(q, a) < 80 or dist(q, b) < 80 then touches = true end
+            end
+          end
+        end
+        if touches then
+          liaisons[#liaisons + 1] = { name = st.road ~= '' and st.road or st.name, lengthM = floor(length(st.raw) + 0.5), path = thin(st.raw) }
+          perKey[key(st.where)] = (perKey[key(st.where)] or 1) - 1
+          report.warnings[#report.warnings + 1] = (st.road or st.name) .. ': es un enlace (une un tramo con la asistencia)'
+        else
+          keep[#keep + 1] = st
+        end
+      else
+        keep[#keep + 1] = st
+      end
+    end
+    stages = keep
   end
   if #stages == 0 then return nil, 'no special stages in the file (only liaisons)' end
 
@@ -429,7 +471,7 @@ function M.build(sources, id, meta)
     local title = (runsL and restL ~= '' and restL) or (runsF and restF ~= '' and restF) or
       (folder and folder ~= '' and folder) or lineName
     if st.kind == 'shakedown' then
-      title = (folder and folder ~= '' and folder) or lineName
+      title = (lineName ~= '' and not lineName:lower():match('^special stage') and lineName) or (folder and folder ~= '' and folder) or lineName
       runs = nil
     end
     st.runs = runs or {}
