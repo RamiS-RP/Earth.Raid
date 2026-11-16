@@ -46,11 +46,20 @@ local function rlExt()
   return rawget(_G, 'racingline')
 end
 
+-- si el juego se cierra en mitad de un tramo, lo guardado aquí permite devolver la línea azul al volver a cargar
+M.RL_FILE = '/settings/earthRaid/blueline.json'
+
 local function blueLine(show)
   pcall(function()
     if not show and not rl.saved then
       rl.saved = { gm = settings.getValue('showNavigationGroundmarkers'), ar = settings.getValue('showNavigationArrows') }
+      pcall(jsonWriteFile, M.RL_FILE, rl.saved)
     end
+    if show and not rl.saved and FS:fileExists(M.RL_FILE) then
+      local ok, d = pcall(jsonReadFile, M.RL_FILE)
+      if ok and type(d) == 'table' then rl.saved = d end
+    end
+    if show then pcall(function() FS:removeFile(M.RL_FILE) end) end
     if show and rl.saved then
       settings.setValue('showNavigationGroundmarkers', rl.saved.gm ~= false)
       settings.setValue('showNavigationArrows', rl.saved.ar ~= false)
@@ -83,6 +92,11 @@ function M.tick(dt)
       if ext and ext.uiAction then pcall(ext.uiAction, 'navline') end
     end
   end
+end
+
+-- al cargar el addon: la línea azul que quedó oculta por un cierre a mitad de tramo
+function M.restoreBlueLine()
+  if FS:fileExists(M.RL_FILE) then blueLine(true) end
 end
 
 local function racingLineOff()

@@ -1027,6 +1027,7 @@ function M.sendHud() stage.sendHud() rally.sendHud() end
 
 
 function M.onExtensionLoaded()
+  pcall(guide.restoreBlueLine)
   pcall(function()
     local n = require('earthRaid/props').purgeOrphans()
     if n > 0 then log('I', TAG, 'removed ' .. n .. ' leftover objects') end
