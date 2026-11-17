@@ -1202,7 +1202,22 @@ function M.onUpdate(dtReal, dtSim)
   end
 end
 
-function M.onBeamNGEarthWorldReady() S.timer = M.CHECK_S end
+function M.onBeamNGEarthWorldReady()
+  S.timer = M.CHECK_S
+  -- una vez por sesión: dónde está el menú (quien lo instala por primera vez no lo encuentra)
+  if not S.hello then
+    S.hello = true
+    M.toast(spanish() and 'Raid.Earth listo: menú de pausa → Mods → Raid.Earth, o Ctrl+Mayús+G.'
+      or 'Raid.Earth ready: pause menu → Mods → Raid.Earth, or Ctrl+Shift+G.', 8)
+  end
+end
+-- en un mapa sin BeamNG.Earth: avisar de que hace falta (si no, parece que el mod no hace nada)
+function M.onClientPostStartMission()
+  local ok, why = M.checkEarth()
+  if not ok then
+    M.toast((spanish() and 'Raid.Earth necesita BeamNG.Earth (y su mapa): ' or 'Raid.Earth needs BeamNG.Earth (and its map): ') .. tostring(why), 10)
+  end
+end
 function M.onBeamNGEarthTeleported()
   S.timer = M.CHECK_S
   if S.afterTp then S.afterTp.t = 0 end
