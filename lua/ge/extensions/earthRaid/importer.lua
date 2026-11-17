@@ -6,6 +6,7 @@
 -- una ruta propia (cada línea es un tramo; "Enlace" / "->" / "Liaison" = enlace; "Asistencia" / "Service" = parque).
 -- Puro (sin juego): texto -> datos. M.build(sources, meta) -> evento, entrada del índice | nil, error.
 local M = {}
+M.MIN_STAGE_M = 300
 
 local R = 6371008.8
 local rad, sin, cos, asin, sqrt, min, max, floor, abs = math.rad, math.sin, math.cos, math.asin, math.sqrt, math.min,
@@ -85,6 +86,13 @@ function M.readKml(text)
         local where = {}
         for i, f in ipairs(stack) do where[i] = f.name or '' end
         local nm = unescape(body:match('<name>(.-)</name>'))
+        -- capas exportadas de un SIG (Junta de Andalucía, IGN...): el nombre va en los datos del elemento
+        if not nm or nm == '' then
+          for _, k in ipairs({ 'nombre', 'name', 'Name', 'NOMBRE', 'NAME', 'title', 'titulo', 'denominacion' }) do
+            local v = body:match('<SimpleData name="' .. k .. '">(.-)</SimpleData>') or body:match('<Data name="' .. k .. '">%s*<value>(.-)</value>')
+            if v and v ~= '' then nm = unescape(v) break end
+          end
+        end
         local desc = unescape(body:match('<description>(.-)</description>'))
         local any = false
         for coords in body:gmatch('<LineString.->.-<coordinates>(.-)</coordinates>') do
@@ -476,6 +484,7 @@ function M.build(sources, id, meta)
     end
     st.runs = runs or {}
     st.title = prettyTitle(title)
+    if not st.title or st.title == '' then st.title = 'Tramo ' .. i end
     st.super = (superF or superL) and true or nil
     -- avisos (saltos, chicanes, no cortar) y radios, con su distancia desde la salida
     local cum = cumulative(st.path)
@@ -495,6 +504,29 @@ function M.build(sources, id, meta)
     table.sort(st.hazards, function(a, b) return a.atM < b.atM end)
     table.sort(st.radios)
     st.order = i
+  end
+
+  -- varios tramos con el mismo nombre (una ruta larga partida en trozos): se numeran
+  do
+    local seen = {}
+    for _, st in ipairs(stages) do if st.title then seen[st.title] = (seen[st.title] or 0) + 1 end end
+    local n = {}
+    for _, st in ipairs(stages) do
+      if st.title and seen[st.title] > 1 and (st.lengthM or 0) >= M.MIN_STAGE_M then
+        n[st.title] = (n[st.title] or 0) + 1
+        st.title = st.title .. ' · ' .. n[st.title]
+      end
+    end
+  end
+
+  -- trozos de menos de 300 m (cortes del dibujo, una línea de 0 m): no son tramos
+  do
+    local keep = {}
+    for _, st in ipairs(stages) do
+      if (st.lengthM or 0) >= M.MIN_STAGE_M or st.super then keep[#keep + 1] = st
+      else report.warnings[#report.warnings + 1] = (st.title or st.name or '?') .. ': descartado (menos de 300 m)' end
+    end
+    stages = keep
   end
 
   -- 4. el mismo tramo dibujado dos veces (una por pasada): uno solo con las dos pasadas
