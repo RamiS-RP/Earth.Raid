@@ -42,9 +42,28 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 3. Entra en BeamNG.Earth. Raid.Earth tiene su propia pestaña en el menú de pausa (**Esc** → **Raid.Earth**), junto a BeamNG.Earth y BeamMP. Si quieres un atajo, asígnalo en Opciones → Controles → «Raid.Earth: open the events menu».
 4. Ten **una sola copia**: si instalaste desde Add-ons (`earth_raid-1.zip`) y además a mano (`earth_raid.zip`), borra una. Dos copias a la vez se pisan.
 
-**Mods recomendados (opcionales):**
-- **Racing Line Mod** (`racingline`): en el tramo, su línea de carrera sustituye a la línea azul del GPS (se puede apagar en Ajustes).
-- **hotw** (`211443_hotw`): añade un piloto al coche.
+## Mods recomendados (para una mejor experiencia)
+
+No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:**
+
+1. Entra en cada enlace de la tabla (es la web oficial de BeamNG).
+2. Pulsa **Download** (Descargar). Se descarga un archivo `.zip`.
+3. Copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods`
+   (o abre el juego → menú principal → **Mods** → **Abrir carpeta de mods**).
+4. Abre el juego. **Raid.Earth activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Raid.Earth → Ajustes → «Activar solos los mods recomendados descargados»).
+5. Para comprobarlo: Raid.Earth → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
+
+| Mod | Para qué sirve |
+|---|---|
+| [Racing Line Mod](https://www.beamng.com/resources/racing-line-mod.39806/) | Dibuja la trazada ideal **dentro del tramo** (de la salida a la meta), en lugar de la línea azul del GPS. Fuera del tramo (hacia el control horario y hacia la salida) siempre se usa la línea azul del GPS del juego. Se puede apagar en Ajustes; si no lo tienes, verás la línea azul. |
+| [Hands on the Wheel](https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/) | Pone las manos del piloto en el volante (vista interior más real). |
+| [EnvyFFB](https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/) | Force feedback del volante más realista (si juegas con volante). |
+| [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Faros y antinieblas realistas: imprescindible en tramos de noche. |
+| [Smoke Dust FX](https://www.beamng.com/resources/smoke-dust-fx.39628/) | Humo y polvo realistas, sobre todo en tramos de tierra. |
+
+**Idioma:** Raid.Earth usa el idioma del juego (por ahora español o inglés).
+
+**Superficies:** cada tramo lleva su superficie FIA: asfalto, tierra (grava), nieve o mixto. Al importar una ruta, elígela en el formulario o déjala en *Automática* (se lee de los nombres: «tierra», «grava», «nieve»...). En pistas y caminos de tierra que el juego no tiene como carretera, el propio trazado del tramo cuenta como calzada, así que no se pone nada encima.
 
 **Copiloto en español:** cada release trae también `earth_raid_voice_es.zip` (voz generada con Piper a partir de `tools/voicepack/es.json`). Cópialo a `mods/` como el otro y elige el copiloto en Ajustes. Para otros idiomas o voces: traduce `es.json` y ejecuta `tools/voicepack/make_voicepack.py` (Piper, voces de Windows o espeak-ng); cualquier voicepack con el formato del juego aparece en Ajustes → Copiloto.
 
@@ -121,3 +140,26 @@ Las incidencias y las propuestas son bienvenidas en *Issues*. Para enviar códig
 - **Route importer:** KMZ, KML, GPX, GeoJSON and OSM, with a logo, a source link and event details.
 
 Install it from BeamNG.Earth → Add-ons → Add from GitHub → `RamiroRP/earth.raid`, or copy `earth_raid.zip` from Releases (unzipped NO: as is) into `mods/`, and open it from its own tab in the pause menu (**Esc → Raid.Earth**). Contributors are welcome, especially for the worldwide automatic rally discovery from public data.
+
+### Recommended mods (for a better experience)
+
+They are optional, but rallying feels much better with them. **Step by step:**
+
+1. Open each link in the table (it is BeamNG's official website).
+2. Click **Download**. You get a `.zip` file.
+3. Copy that `.zip` **as it is, without unzipping it**, into your mods folder: `Documents\BeamNG.drive\<version>\mods`
+   (or start the game → main menu → **Mods** → **Open mods folder**).
+4. Start the game. **Raid.Earth turns on by itself** the recommended mods it finds downloaded (to stop that, switch off Raid.Earth → Settings → "Turn on downloaded recommended mods automatically").
+5. To check: Raid.Earth → Settings → **Recommended mods**: each one says *enabled*, *downloaded* or *not installed*.
+
+| Mod | What it does |
+|---|---|
+| [Racing Line Mod](https://www.beamng.com/resources/racing-line-mod.39806/) | Draws the ideal racing line **inside the stage** (from the start to the finish) instead of the blue GPS line. Outside the stage (to the time control and to the start line) the game's blue GPS line is always used. It can be switched off in Settings; without the mod you get the blue line. |
+| [Hands on the Wheel](https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/) | Puts the driver's hands on the steering wheel (a more real cockpit view). |
+| [EnvyFFB](https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/) | More realistic steering-wheel force feedback (if you play with a wheel). |
+| [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Realistic headlights and fog lights: a must for night stages. |
+| [Smoke Dust FX](https://www.beamng.com/resources/smoke-dust-fx.39628/) | Realistic smoke and dust, above all on gravel stages. |
+
+**Language:** Raid.Earth follows the game's language (Spanish or English for now).
+
+**Surfaces:** every stage is labelled with its FIA surface: tarmac, gravel, snow or mixed. When you import a route, pick it in the form or leave it on *Automatic* (it is read from the names: "tierra", "gravel", "snow"...). On gravel tracks and paths the game has no road for, the stage line itself counts as the road, so nothing is placed on it.
