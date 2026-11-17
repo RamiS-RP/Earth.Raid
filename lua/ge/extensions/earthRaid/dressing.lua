@@ -44,6 +44,7 @@ M.SPECTATOR_MAX = 6
 M.TAPE_MAX = 80
 M.SIDE_PAD_M = 0.5         -- del radio de la carretera a los demás carteles (al final del asfalto)
 M.ARROW_MIN_DEG = 40
+M.BALES = 3                -- pacas de paja por curva peligrosa
 M.SHIFT_TRY = { 4, -4, 8, -8, 12, -12, 18, -18, 25, -25 }
 
 local function api() return rawget(_G, 'beamngEarth_api') end
@@ -78,7 +79,7 @@ local function twoWay(lat, lon)
     local x, y, z = props.ground(lat, lon)
     local n1, n2 = map.findClosestRoad(vec3(x, y, z))
     local m = map.getMap()
-    local l = n1 and n2 and m.nodes[n1] and m.nodes[n1].links and m.nodes[n1].links[n2]
+    local l = n1 and n2 and ((m.nodes[n1] and m.nodes[n1].links and m.nodes[n1].links[n2]) or (m.nodes[n2] and m.nodes[n2].links and m.nodes[n2].links[n1]))
     if not l then return nil end
     return not l.oneWay
   end)
@@ -215,7 +216,7 @@ local function beyond(t, extra, right)
 end
 
 -- ---- edificios: nada se pone si hay un edificio o un muro entre la carretera y su sitio --------------------------------
-M.AVOID = { fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
+M.AVOID = { hayBale = true, hayBale2 = true, fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
   specTarp = true, specTarp2 = true, specTarp3 = true, specTape = true, specGrid = true, gazebo3x3 = true, gazebo3x6 = true,
   gazebo3x6b = true, table = true, chair = true, cushion = true }
 M.PULL_IN = { start = true, finish = true, tc = true, tcEntry = true, finishEntry = true, stop = true, endArea = true,
@@ -247,7 +248,7 @@ end
 
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
-M.CLEAR_M = { cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
+M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
   cushion = 0.8, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
@@ -312,7 +313,7 @@ M.offRoad = offRoad
 -- ese sitio se comprueba otra vez cuando el jugador se acerca, y si cae en una calzada se saca fuera. Lo que ya se
 -- comprobó con la carretera cargada no se vuelve a mirar.
 M.RECHECK_M = 300
-M.SKIP_RECHECK = { line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
+M.SKIP_RECHECK = { plasticBarrier = true, barrel = true, line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)
   if M.dry or not plat then return 0 end
@@ -785,6 +786,16 @@ function M.arrows(t, notes, hw)
         if nt.grade == 'hairpin' or nt.deg > 120 then
           place(kind, t, math.min(t.total, along + 12), side, yaw, 0)
         end
+        -- en las curvas más peligrosas (horquillas, escuadras, 1 y 2), protección donde se saldría el coche: pacas de
+        -- paja a la salida, por fuera, como en los rallies del juego; nunca en la calzada (offRoad las aparta)
+        local danger = nt.grade == 'hairpin' or nt.grade == 'square' or (type(nt.grade) == 'number' and nt.grade <= 2)
+        if danger and M.protection ~= false then
+          for k = 0, M.BALES - 1 do
+            local a2 = math.min(t.total, along + 4 + k * 2.6)
+            local s2 = sideSign * (hwAt(t, a2) + 2.2)
+            place(k % 2 == 0 and 'hayBale' or 'hayBale2', t, a2, s2, 90, 0)
+          end
+        end
       end)
       n = n + 1
     end
@@ -878,7 +889,7 @@ function M.closures(t, from, to)
         local tdx, tdy = geo.dirAt(t, along)
         local fwdBest, fwdDot, backBest, backDot = nil, 0.5, nil, 0.5
         local fwdXY, backXY = nil, nil
-        for other in pairs(node.links or {}) do
+        for other in pairs(props.neighbors(name)) do
           local on = m.nodes[other]
           if on then
             local olat, olon = a.toGeo(on.pos.x, on.pos.y, on.pos.z)
@@ -892,7 +903,7 @@ function M.closures(t, from, to)
             end
           end
         end
-        for other in pairs(node.links or {}) do
+        for other in pairs(props.neighbors(name)) do
           if other == fwdBest or other == backBest then goto nextLink end
           local on = m.nodes[other]
           local key = name < other and (name .. '|' .. other) or (other .. '|' .. name)
@@ -934,6 +945,14 @@ function M.closures(t, from, to)
                     local lat0, lon0 = geo.toGeo(t, cx + px * half, cy + py * half)
                     -- props.add mide el giro desde (dx, dy): pasamos la perpendicular como dirección y giro 0
                     props.add(kind, lat0, lon0, px, py, 0, { noCollision = false })
+                    -- y detrás, el corte como en los rallies del juego: dos barreras de plástico rojas y un bidón
+                    if M.protection ~= false then
+                      for _, b in ipairs({ { -1.4, 'plasticBarrier' }, { 1.4, 'plasticBarrier' }, { 0, 'barrel' } }) do
+                        local bx, by = cx + ex * 2.2 + px * b[1], cy + ey * 2.2 + py * b[1]
+                        local bl, bo = geo.toGeo(t, bx, by)
+                        props.add(b[2], bl, bo, px, py, 0)
+                      end
+                    end
                     n, tapeCount, placed = n + 1, tapeCount + 1, true
                   end
                   d = d + 1.5

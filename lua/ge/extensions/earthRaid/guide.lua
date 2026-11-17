@@ -34,6 +34,10 @@ end
 -- al acabar se devuelve todo como estaba.
 M.RL_DELAY_S = 1.0          -- el planificador de rutas tarda un poco en tener la ruta nueva
 local rl = { on = false, wait = nil, saved = nil }
+local function rlAction(name, v)
+  local ext = rawget(_G, 'racingline')
+  if ext and ext.uiAction then pcall(ext.uiAction, name, v) end
+end
 
 function M.racingLineAvailable()
   return FS:fileExists('/lua/ge/extensions/racingline.lua') == true
@@ -80,6 +84,8 @@ function M.racingLine(on)
   if not (ext and ext.uiAction) then return false end
   rl.on, rl.wait = true, M.RL_DELAY_S
   rlAction('tg_navFollow', true)
+  -- la línea azul del GPS fuera mientras dure el tramo: el propio mod la oculta (17-nov: se veían las dos)
+  rlAction('tg_hideNav', true)
   blueLine(false)
   return true
 end
@@ -103,10 +109,6 @@ end
 -- Fuera del tramo (hacia el TC y del TC a la salida) solo la línea azul del GPS: el mod Racing Line sigue por su cuenta
 -- cualquier ruta del GPS ("seguir navegación"), así que mientras Raid.Earth tiene un tramo se le apaga eso y se borra
 -- su línea; al terminar con Raid.Earth se le devuelve.
-local function rlAction(name, v)
-  local ext = rawget(_G, 'racingline')
-  if ext and ext.uiAction then pcall(ext.uiAction, name, v) end
-end
 function M.hold()
   rl.held = true
   rlAction('tg_navFollow', false)
@@ -123,6 +125,7 @@ local function racingLineOff()
   if not rl.on then return end
   rl.on, rl.wait = false, nil
   rlAction('clear')
+  rlAction('tg_hideNav', false)
   if rl.held then rlAction('tg_navFollow', false) end
   blueLine(true)
 end

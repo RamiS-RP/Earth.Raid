@@ -1071,7 +1071,10 @@ function M.uiStartRally(eventId, fromRun)
         return (pl and dressing.pendingJobsNear(pl, po) or 0) + props.pump(loader.PUMP_MS)
       end,
       place = function()
-        if S.box then M.placeAt(S.box.lat, S.box.lon, S.box.faceLat, S.box.faceLon)
+        -- de cara al primer control horario (norma 17-nov: orientado hacia el siguiente TC)
+        local first = rs.it and rs.it.items and rs.it.items[1]
+        local tw = first and first.stage and first.stage.start
+        if S.box then M.placeAt(S.box.lat, S.box.lon, tw and tw[1] or S.box.faceLat, tw and tw[2] or S.box.faceLon)
         else M.placeOnRoad(start[1], start[2]) end
       end })
     M.toast((es and 'Rally completo: vas a la asistencia. Sales a las ' or 'Full rally: going to the service park. You leave at ')

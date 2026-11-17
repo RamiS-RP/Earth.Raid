@@ -39,6 +39,11 @@ M.SHAPES = {
   bigToolbox2 = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_02.dae',
   smallToolbox = '/art/shapes/garage_and_dealership/garage/s_small_toolbox_01.dae',
   tireRack = '/art/shapes/garage_and_dealership/garage/s_tire_rack.dae',
+  -- protecciones en curvas peligrosas y cortes de calles (lo que usan los rallies del juego)
+  hayBale = '/assets/meshes/props/race_event/equipment/s_haybaleround_large_01.dae',
+  hayBale2 = '/assets/meshes/props/race_event/equipment/s_haybaleround_alt_01.dae',
+  barrel = '/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae',
+  plasticBarrier = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE',
   workbench = '/art/shapes/garage_and_dealership/garage/s_garage_workbench_medium.dae',
   stool = '/art/shapes/garage_and_dealership/garage/s_metal_stool.dae',
 }
@@ -57,6 +62,12 @@ M.PREFABS = {
   gazebo3x6b = '/art/prefabs/p_rally_gazebo_mod_blastr_3x6.prefab.json',
   gazebo3x6r = '/art/prefabs/p_rally_gazebo_mod_rotopad_3x6.prefab.json',
   gazebo3x6d = '/art/prefabs/p_rally_gazebo_mod_dkblue_3x6.prefab.json',
+  -- las vallas publicitarias con su valla metálica detrás, como en los rallies del juego (17-nov: salían solo las lonas)
+  fenceNgrc = A .. 'p_metal_fence_branding_ngrc.prefab.json',
+  fenceBlastr = A .. 'p_metal_fence_branding_blastr.prefab.json',
+  fenceRotopad = A .. 'p_metal_fence_branding_rotopad.prefab.json',
+  fenceApm = '/art/earthRaid/prefabs/p_metal_fence_branding_apm.prefab.json',
+  fenceApmSpecial = '/art/earthRaid/prefabs/p_metal_fence_branding_apm_special.prefab.json',
 }
 
 local items = {}           -- { obj, kind, lat, lon, dx, dy, yaw, prefab }
@@ -160,7 +171,7 @@ local function register(o, kind)
   if scenetree.MissionGroup then scenetree.MissionGroup:addObject(o) end
 end
 
-M.SOLID = { table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
+M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
   tireRack = true, workbench = true, stool = true, gazeboFrame = true }
 function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
 
@@ -533,6 +544,35 @@ function M.roadsAt(x, y)
   local ix = M.roadIndex()
   if not ix then return nil end
   return ix.cells[math.floor(x / M.CELL_M) .. ':' .. math.floor(y / M.CELL_M)] or {}, ix
+end
+
+-- Vecinos de cada nodo del grafo en los dos sentidos: BeamNG.Earth guarda cada enlace en uno solo de sus extremos
+-- (17-nov: por eso la carretera de antes de la salida no se encontraba y el TC caía en un prado)
+local adj = { map = nil, n = -1 }
+function M.neighbors(id)
+  local m = map.getMap()
+  if not (m and m.nodes) then return {} end
+  local count = 0
+  if adj.map == m and os.clock() - (adj.t or 0) < 0.5 then
+    return adj.list[id] or {}
+  end
+  for _ in pairs(m.nodes) do count = count + 1 end
+  if adj.map ~= m or adj.n ~= count then
+    local list = {}
+    for a, nd in pairs(m.nodes) do
+      for b in pairs(nd.links or {}) do
+        if m.nodes[b] then
+          list[a] = list[a] or {}
+          list[b] = list[b] or {}
+          list[a][b] = true
+          list[b][a] = true
+        end
+      end
+    end
+    adj = { map = m, n = count, list = list }
+  end
+  adj.t = os.clock()
+  return adj.list[id] or {}
 end
 
 return M

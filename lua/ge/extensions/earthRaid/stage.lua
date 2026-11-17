@@ -182,7 +182,7 @@ local function walkRoads(f, f0)
     while L < M.AFTER_M do
       local node = m.nodes[cur]
       local best, bd = nil, -2
-      for nb in pairs(node.links or {}) do
+      for nb in pairs(props.neighbors(cur)) do
         if not seen[nb] and m.nodes[nb] then
           local q = m.nodes[nb].pos
           local vx, vy = q.x - node.pos.x, q.y - node.pos.y
@@ -192,6 +192,23 @@ local function walkRoads(f, f0)
             if dot > bd then best, bd = nb, dot end
           end
         end
+      end
+      if (not best or bd < 0.3) and L < 30 then
+        -- junto al extremo del tramo la carretera puede llegar girando (la salida en un cruce, en una T): vale
+        -- cualquier enlace que no vuelva por el propio tramo (17-nov: Asturias, el TC caía en un prado en recta)
+        local b2, d2 = nil, -0.6
+        for nb in pairs(props.neighbors(cur)) do
+          if not seen[nb] and m.nodes[nb] then
+            local q = m.nodes[nb].pos
+            local vx, vy = q.x - node.pos.x, q.y - node.pos.y
+            local vl = math.sqrt(vx * vx + vy * vy)
+            if vl > 0.1 then
+              local dot = (vx * hx + vy * hy) / vl
+              if dot > d2 then b2, d2 = nb, dot end
+            end
+          end
+        end
+        if b2 then best, bd = b2, 1 end
       end
       if not best or bd < 0.3 then
         -- el grafo de BeamNG.Earth se corta entre zonas: un nodo cercano que siga en el mismo sentido
