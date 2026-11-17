@@ -152,7 +152,7 @@
               <div class="set-label">{{ t("copilot") }}</div>
               <div class="selector">
                 <button @click="cycleVoice(-1)">‹</button>
-                <div class="sel-val"><b>{{ voice.name }} - {{ voice.style }}</b><small>{{ voice.dialect }}</small>
+                <div class="sel-val"><b>{{ voice.name }} - {{ voice.style }}</b><small>{{ voice.dialect }}<template v-if="voice.partial"> · {{ t("vpPartial") }}</template></small>
                   <div class="dots"><span v-for="v in voices" :key="v.id" :class="{ on: v.id === voice.id }"></span></div>
                 </div>
                 <button @click="cycleVoice(1)">›</button>
@@ -216,7 +216,10 @@
             </div>
           </div>
           <!-- con un tramo en marcha, en el sitio de Iniciar está Cancelar (no se puede iniciar otro a la vez) -->
-          <button v-if="mode === 'stage' && anyActive" class="go-btn bottom danger" @click="call('uiCancelStage')">{{ t("cancel") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+          <div v-if="mode === 'stage' && anyActive" class="go-row bottom">
+            <button class="go-btn" @click="call('uiRestartStage')">{{ t("restartStage") }}</button>
+            <button class="go-btn danger" @click="call('uiCancelStage')">{{ t("abandonStage") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+          </div>
           <button v-else-if="mode === 'stage'" class="go-btn bottom" :disabled="!pick || !s.pos" @click="startPick">{{ t("start") }}</button>
           <button v-else class="go-btn bottom" :disabled="!s.pos || !itinerary.length || rallyHere || anyActive" @click="startRally">{{ rallyHere ? t("rallyRunning", { l: s.rallyActive.label || '' }) : t("startRally") }}</button>
         </div>
@@ -673,4 +676,5 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .newimp { border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; }
 .newimp input[type=file] { color: inherit; font-size: 0.85em; }
 .go-btn.danger { background: #b3261e; }
+.rcol .go-row.bottom { display: flex; gap: 8px; margin: 12px 16px 0; flex: none; .go-btn { flex: 1; margin: 0; width: auto; font-size: 18px; } }
 </style>

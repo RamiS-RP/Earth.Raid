@@ -218,7 +218,7 @@ end
 -- ---- edificios: nada se pone si hay un edificio o un muro entre la carretera y su sitio --------------------------------
 M.AVOID = { hayBale = true, hayBale2 = true, fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
   specTarp = true, specTarp2 = true, specTarp3 = true, specTape = true, specGrid = true, gazebo3x3 = true, gazebo3x6 = true,
-  gazebo3x6b = true, table = true, chair = true, cushion = true }
+  gazebo3x6b = true, table = true, chair = true, cushion = true, ambulance = true }
 M.PULL_IN = { start = true, finish = true, tc = true, tcEntry = true, finishEntry = true, stop = true, endArea = true,
   medical = true, medicalWarn = true, radio = true, radioWarn = true, board1 = true, board2 = true, board3 = true,
   danger = true, sensor = true, tree = true }
@@ -249,7 +249,7 @@ end
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
 M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
-  cushion = 0.8, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
+  cushion = 0.8, ambulance = 1.6, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
   if c == false then return nil end
@@ -691,6 +691,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
   put('gazebo3x6b', hw + 5, D + 19, nil, (out > 0) and 180 or 0)
   put('lamp', hw + 5, D + 15, nil, 0, { dz = 2.6 })
   put('medical', -P, D + 8, 'out')
+  put('ambulance', -(P + 2.6), D + 16, 'out')
 
   -- según el sentido: el semáforo de salida (5,5 m dentro, a la derecha de quien sale, mirándole) o el reloj de meta
   -- (5,5 m fuera, a la derecha de quien llega); y los ánimos al llegar
@@ -735,6 +736,8 @@ function M.safety(t, hw, splitAt)
       place('medicalWarn', t, d - 100, -(hwAt(t, d - 100) + M.SIDE_PAD_M), M.SIGN_YAW)
       place('medical', t, d, -(hwAt(t, d) + M.SIDE_PAD_M), M.SIGN_YAW)
       place('medical', t, d, hwAt(t, d) + M.SIDE_PAD_M, M.SIGN_YAW + 180)
+      -- norma: ambulancia en cada punto médico, aparcada fuera de la calzada pasado el cartel
+      place('ambulance', t, d + 15, -(hwAt(t, d + 15) + 3.0), 0)
     end)
   end
 end
@@ -786,14 +789,15 @@ function M.arrows(t, notes, hw)
         if nt.grade == 'hairpin' or nt.deg > 120 then
           place(kind, t, math.min(t.total, along + 12), side, yaw, 0)
         end
-        -- en las curvas más peligrosas (horquillas, escuadras, 1 y 2), protección donde se saldría el coche: pacas de
-        -- paja a la salida, por fuera, como en los rallies del juego; nunca en la calzada (offRoad las aparta)
+        -- en las curvas más peligrosas (horquillas, escuadras, 1 y 2), protección donde se saldría el coche: colchones
+        -- a la salida, por fuera, como en los rallies del juego; nunca en la calzada (offRoad las aparta)
         local danger = nt.grade == 'hairpin' or nt.grade == 'square' or (type(nt.grade) == 'number' and nt.grade <= 2)
         if danger and M.protection ~= false then
           for k = 0, M.BALES - 1 do
             local a2 = math.min(t.total, along + 4 + k * 2.6)
             local s2 = sideSign * (hwAt(t, a2) + 2.2)
-            place(k % 2 == 0 and 'hayBale' or 'hayBale2', t, a2, s2, 90, 0)
+            -- colchones de seguridad del rally del juego (las pacas de paja salían sin textura: 18-nov)
+            place('cushion', t, a2, s2, 90, 0)
           end
         end
       end)

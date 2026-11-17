@@ -18,6 +18,8 @@ M.SHAPES = {
   tc = A .. 's_rally_signboard_time_control.dae', tcEntry = A .. 's_rally_signboard_time_control_entry.dae',
   radio = A .. 's_rally_signboard_radio_point.dae', radioWarn = A .. 's_rally_signboard_radio_point_warning.dae',
   medical = A .. 's_rally_signboard_medical_point.dae', medicalWarn = A .. 's_rally_signboard_medical_warning.dae',
+  -- ambulancia: solo existe como vehículo cerca del coche (phys.lua); de lejos, un marcador oculto
+  ambulance = A .. 's_rally_signboard_medical_point.dae',
   endArea = A .. 's_rally_signboard_end_of_area.dae',
   board1 = A .. 's_cooldown_board_01.dae', board2 = A .. 's_cooldown_board_02.dae', board3 = A .. 's_cooldown_board_03.dae',
   sensor = A .. 's_rally_start_sensor.dae', tree = A .. 's_rally_start_tree.dae',
@@ -213,6 +215,7 @@ local function create(kind, opts)
     if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
     else M.collisionDirty = true end
   end
+  if kind == 'ambulance' then pcall(function() o:setHidden(true) end) end
   register(o, kind)
   if prefab and o.load then pcall(function() o:load() end) end
   return o

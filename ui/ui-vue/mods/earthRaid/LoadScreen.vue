@@ -50,7 +50,7 @@ const STEPS = [
   { id: "roads", glyph: glyph("road", "roadStraight") },
   { id: "dress", glyph: glyph("mesh4Cells", "cube") },
   { id: "place", glyph: glyph("car", "carFront", "carStarter", "raceFlag") },
-  { id: "settle", glyph: glyph("raceFlag", "flag", "beamNG") },
+  { id: "settle", glyph: glyph("rallyHelmet", "raceFlag", "flag") },
 ]
 const iconRow = computed(() => {
   const st = (ld.value && ld.value.icons) || {}

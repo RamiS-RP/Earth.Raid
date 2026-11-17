@@ -22,10 +22,14 @@ M.MAP = {
   medical = { 'rallysigns', 'medical_point' }, medicalWarn = { 'rallysigns', 'medical_warning' },
   board1 = { 'rallysigns', 'cooldown_1' }, board2 = { 'rallysigns', 'cooldown_2' }, board3 = { 'rallysigns', 'cooldown_3' },
   cone = { 'cones', 'large' },
+  -- en cada punto médico, una ambulancia aparcada (la de tráfico simple: ligera, sin motor que simular)
+  ambulance = { 'simple_traffic', 'van_ambulance_parked' },
   tape = { 'rallytape', 'roadclosed_8m' }, tape6 = { 'rallytape', 'roadclosed_6m' }, tape10 = { 'rallytape', 'roadclosed_10m' },
 }
 -- giro extra (grados) entre la orientación del modelo estático y la del vehículo
-M.YAW_FIX = { rallysigns = 0, cones = 0, rallytape = 0 }
+M.YAW_FIX = { rallysigns = 0, cones = 0, rallytape = 0, simple_traffic = 0 }
+-- sin modelo estático visible: solo existen como vehículo
+M.PHYS_ONLY = { ambulance = true }
 
 local live = {}               -- item -> { vid }
 local count = 0
@@ -51,7 +55,7 @@ local function despawn(it)
     local v = be:getObjectByID(l.vid)
     if v then v:delete() end
   end)
-  hideStatic(it, false)
+  if not M.PHYS_ONLY[it.kind] then hideStatic(it, false) end
 end
 
 local function spawn(it)

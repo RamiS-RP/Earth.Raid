@@ -67,8 +67,11 @@ function M.voicepacks()
       local d = jsonReadFile(f) or {}
       local style = tostring(d.styleLabel or ''):match('styles%.(%w+)%.name') or d.styleLabel
       local dialect = tostring(d.dialect or ''):match('dialects%.([%w%-]+)%.name') or d.dialect
+      -- cuántas notas trae: un voicepack incompleto (Clover, de broma) se completa con la voz por defecto
+      local notes = 0
+      for _ in pairs(jsonReadFile(dir .. '/metadata.json') or {}) do notes = notes + 1 end
       out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
-        style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect }
+        style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes, partial = notes < 120 }
     end
   end
   table.sort(out, function(a, b) return a.id < b.id end)

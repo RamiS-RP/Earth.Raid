@@ -39,7 +39,7 @@ async function registerRoute() {
 // tramo en la tarjeta de la derecha. Ya no hay atajo Ctrl+Mayús+G (chocaba con el de las gráficas del juego).
 const TAB_ID = "earthRaid"
 const PAGES = [
-  { id: "earthRaid-events", page: "events", label: { es: "Eventos", en: "Events" }, icon: "raceFlag" },
+  { id: "earthRaid-events", page: "events", label: { es: "Eventos", en: "Events" }, icon: "rallyHelmet" },
   { id: "earthRaid-import", page: "import", label: { es: "Importar", en: "Import" }, icon: "import" },
   { id: "earthRaid-settings", page: "settings", label: { es: "Ajustes", en: "Settings" }, icon: "cogOutline" },
 ]
@@ -55,7 +55,7 @@ async function registerButton() {
     await pa.registerModTab({
       id: TAB_ID,
       label: "Raid.Earth",
-      icon: "raceFlag",
+      icon: "rallyHelmet",
       card2ComponentName: `${MOD_ROOT}/PausePage.vue`,
       card2Props: { page: "status" },
     })
@@ -89,13 +89,41 @@ async function mountLoadScreen() {
   }
 }
 
+// Con un tramo o un rally en marcha, al abrir el menú de pausa se abre la pestaña de Raid.Earth (abandonar, reiniciar)
+let pauseObserver = null
+let pauseSeen = false
+function watchPause() {
+  if (pauseObserver) return
+  let busy = false
+  pauseObserver = new MutationObserver(() => {
+    // como mucho cada 400 ms (la interfaz cambia muchas veces por segundo)
+    if (busy) return
+    busy = true
+    setTimeout(() => { busy = false; checkPause() }, 400)
+  })
+  pauseObserver.observe(document.body, { childList: true, subtree: true })
+}
+async function checkPause() {
+  {
+    const tab = [...document.querySelectorAll("span,div,button")].find(e => e.children.length < 3 && e.textContent.trim() === "Raid.Earth" && e.offsetParent)
+    if (!tab) { pauseSeen = false; return }
+    if (pauseSeen) return
+    pauseSeen = true
+    try {
+      if (await lua.earthRaid_main.uiIsActive()) (tab.closest("button,[role=tab],a,li,div") || tab).click()
+    } catch (e) { /* none */ }
+  }
+}
+
 export async function onLoad() {
   await registerRoute()
   await registerButton()
   await mountLoadScreen()
+  watchPause()
 }
 
 export async function onUnload() {
+  try { if (pauseObserver) { pauseObserver.disconnect(); pauseObserver = null } } catch (e) { /* none */ }
   try {
     if (loadApp) { loadApp.unmount(); loadApp = null }
     const el = document.getElementById(LOAD_ID)

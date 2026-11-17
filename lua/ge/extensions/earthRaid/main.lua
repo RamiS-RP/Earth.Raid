@@ -524,6 +524,7 @@ local function buildModel()
   local m = { earth = S.earth, reason = S.reason, version = M.VERSION, lang = spanish() and 'es' or 'en',
     units = S.opts.units == 'mi' and 'mi' or 'km', q = U.q, filters = U.filters, radiusKm = radiusM() / 1000,
     stageActive = st and { eventId = st.eventId, stageId = st.stageId, phase = st.phase, title = st.title } or nil,
+    rallyActive = rally.active() and (function() local R = rally.state() return { eventId = R.ev and R.ev.id, name = R.ev and R.ev.name, idx = R.idx } end)() or nil,
     rallyActive = rs and { eventId = rs.ev.id, phase = rs.phase, idx = rs.idx, count = #rs.it.items,
       label = rs.it.items[rs.idx] and rs.it.items[rs.idx].label or nil } or nil,
     pos = lat and { lat = lat, lon = lon } or nil, proposalId = S.proposal and S.proposal.event.id or nil,
@@ -631,6 +632,8 @@ function M.uiClose() U.open = false navigate('play') end
 function M.uiState() U.open = true M.publishState() end
 -- el idioma del juego para la interfaz ('es' o 'en')
 function M.uiLang() return spanish() and 'es' or 'en' end
+-- ¿tramo o rally en marcha? (el menú de pausa abre entonces la pestaña de Raid.Earth)
+function M.uiIsActive() return (stage.state() ~= nil) or rally.active() or loader.active() end
 -- el estado para la pestaña del menú de pausa (sin abrir el menú)
 function M.uiPeek() refresh() U.peek = true M.publishState() end
 function M.uiSearch(q) U.q = type(q) == 'string' and q:sub(1, 60) or '' M.publishState() end
@@ -966,6 +969,31 @@ function M.uiCancelStage()
   if loader.active() then pcall(loader.cancel) stage.holdJobs(false) end
   if rally.active() then rally.stop() else stage.stop() end
   M.publishState()
+end
+
+-- Reiniciar el tramo en marcha: otra vez desde 100 m antes del TC, con su pantalla de carga (como "reintentar" del juego)
+function M.uiRestartStage()
+  local st = stage.state()
+  if not st then return end
+  local ev, sid = st.eventId, tostring(st.stageId)
+  local base = sid:gsub('R$', '')
+  local rev = base ~= sid
+  M.uiCancelStage()
+  local keep = M.PLAY_TELEPORT_M
+  M.PLAY_TELEPORT_M = 0
+  pcall(M.uiPlay, ev, base, rev)
+  M.PLAY_TELEPORT_M = keep
+end
+
+-- Rally completo: reiniciar desde el último control horario (la pasada en curso) o desde el principio
+function M.uiRestartRally(fromLastTc)
+  local R = rally.state()
+  if not R then return end
+  local evId = R.ev and R.ev.id
+  local item = R.it and R.it.items and R.it.items[R.idx]
+  local run = fromLastTc and item and item.run or nil
+  M.uiCancelStage()
+  if evId then M.uiStartRally(evId, run) end
 end
 
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
