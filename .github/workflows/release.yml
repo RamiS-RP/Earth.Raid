@@ -1,11 +1,14 @@
 # Construye earth_raid.zip y lo publica como release de GitHub.
+# Dos canales:
+#   - estable: rama main -> release vX.Y.Z (la "latest": la que instalan los jugadores con Add-ons de BeamNG.Earth)
+#   - beta:    rama beta -> pre-release vX.Y.Z-beta.N (para desarrolladores y probadores; no sustituye a la estable)
 # El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiroRP/earth.raid) descarga ese .zip de la última release.
 # Se lanza: al subir a main un cambio de versión (M.VERSION en main.lua), al publicar una etiqueta v* o una release
 # desde la web, o a mano (Actions → release → Run workflow).
 name: release
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     tags: ["v*"]
   release:
     types: [published]
@@ -17,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.ver.outputs.skip }}
+      beta: ${{ steps.ver.outputs.beta }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,8 +31,10 @@ jobs:
           V=$(grep -oE "M.VERSION = '[0-9.]+'" lua/ge/extensions/earthRaid/main.lua | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
           if [ -n "${{ github.event.release.tag_name }}" ]; then TAG="${{ github.event.release.tag_name }}";
           elif [ "${{ github.ref_type }}" = "tag" ]; then TAG="${{ github.ref_name }}";
+          elif [ "${{ github.ref_name }}" = "beta" ]; then TAG="v$V-beta.${{ github.run_number }}";
           else TAG="v$V"; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          case "$TAG" in *-beta*) echo "beta=true" >> "$GITHUB_OUTPUT";; *) echo "beta=false" >> "$GITHUB_OUTPUT";; esac
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "branch" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - name: Package
@@ -45,15 +51,16 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: Raid.Earth ${{ steps.ver.outputs.tag }}
+          name: Raid.Earth ${{ steps.ver.outputs.tag }}${{ steps.ver.outputs.beta == 'true' && ' (beta)' || '' }}
           files: earth_raid.zip
           generate_release_notes: true
-          make_latest: true
+          prerelease: ${{ steps.ver.outputs.beta == 'true' }}
+          make_latest: ${{ steps.ver.outputs.beta == 'true' && 'false' || 'true' }}
   # Copiloto en español: voicepack generado con Piper (voz neuronal) a partir de tools/voicepack/es.json.
   # Se adjunta a la misma release como earth_raid_voice_es.zip (un mod aparte, opcional). Si falla, la release sigue.
   voice_es:
     needs: build
-    if: needs.build.outputs.skip != 'true'
+    if: needs.build.outputs.skip != 'true' && needs.build.outputs.beta != 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:

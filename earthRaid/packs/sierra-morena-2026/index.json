@@ -1,0 +1,122 @@
+{
+ "format": 1,
+ "events": [
+  {
+   "id": "sierra-morena-2026",
+   "file": "events/sierra-morena-2026.json",
+   "name": "43 Rally Sierra Morena 2026",
+   "type": "rally",
+   "surface": "asphalt",
+   "dates": "2026-04-17/2026-04-19",
+   "country": "es",
+   "centre": [
+    38.11765,
+    -4.89028
+   ],
+   "bbox": [
+    37.85355,
+    -5.15205,
+    38.38175,
+    -4.62851
+   ],
+   "radiusKm": 32.3,
+   "stageCount": 7,
+   "stageKm": 203.4,
+   "stages": [
+    {
+     "id": "ss01",
+     "title": "Córdoba (superespecial)",
+     "km": 0.92,
+     "start": [
+      37.880972,
+      -4.786306
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss02",
+     "title": "Obejo – Villanueva de Córdoba",
+     "km": 20.78,
+     "start": [
+      38.131839,
+      -4.8001
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss03",
+     "title": "Pozoblanco – Villaharta",
+     "km": 26.03,
+     "start": [
+      38.304861,
+      -4.867444
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss04",
+     "title": "Espiel",
+     "km": 4.74,
+     "start": [
+      38.194917,
+      -5.008306
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss08",
+     "title": "Obejo",
+     "km": 9.06,
+     "start": [
+      38.092778,
+      -4.84575
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss09",
+     "title": "Villaviciosa",
+     "km": 27.12,
+     "start": [
+      37.978167,
+      -4.853778
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "ss10",
+     "title": "Villanueva del Rey",
+     "km": 13.53,
+     "start": [
+      38.12125,
+      -5.093194
+     ],
+     "surface": "asphalt"
+    },
+    {
+     "id": "shakedown",
+     "title": "Los Villares (shakedown)",
+     "km": 6.37,
+     "start": [
+      37.939528,
+      -4.799694
+     ],
+     "surface": "asphalt"
+    }
+   ],
+   "short": "Rally Sierra Morena",
+   "city": "Córdoba",
+   "region": "Andalucía",
+   "championship": "ERC · S-CER",
+   "organizer": "Automóvil Club de Córdoba",
+   "surfacePct": {
+    "asphalt": 100
+   },
+   "logo": "logo_sierra-morena-2026.png",
+   "source": "KMZ oficial (rallysierramorena.com)",
+   "description": "Prueba inaugural del Campeonato de Europa de Rallyes 2026: 13 especiales de asfalto por la Sierra Morena cordobesa, con 203,80 km cronometrados entre Obejo, Pozoblanco, Espiel, Villaviciosa y Villanueva del Rey, y una superespecial urbana en Córdoba.",
+   "stageKmOfficial": 203.8,
+   "totalKmOfficial": 870.98
+  }
+ ]
+}

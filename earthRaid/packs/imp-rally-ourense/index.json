@@ -1,0 +1,61 @@
+{
+  "events":[
+    {
+      "bbox":[
+        42.37295,
+        -7.749,
+        42.40405,
+        -7.7278
+      ],
+      "centre":[
+        42.3885,
+        -7.7384
+      ],
+      "championship":"S-CER",
+      "city":"Ourense",
+      "country":"es",
+      "dates":"2026-06-12/2026-06-13",
+      "description":"Prueba del Súper Campeonato de España de Rallyes (S-CER), 60.ª edición del 18 al 20 de junio de 2027 en Ourense. El recorrido es el de la edición de 2026 (12 tramos a doble pasada: Amoeiro, San Amaro-Cenlle, Ribadavia-Arnoia, Taboadela, A Merca-Celanova y Cartelle-Toén, además del shakedown en Pereiro de Aguiar) hasta que se publique el de 2027.",
+      "file":"events/imp-rally-ourense.json",
+      "id":"imp-rally-ourense",
+      "liaisonKm":6.1,
+      "link":"https://www.rallyeourense.es/rallyes/59-rou/",
+      "logo":"logo.png",
+      "name":"Rally - Ourense – Rally of Spain",
+      "organizer":"Escuderia Ourense",
+      "radiusKm":1.9,
+      "region":"Galicia",
+      "short":"59 Rally Ourense - Recalvi 2026",
+      "source":"KMZ del organizador (recorrido 2026)",
+      "stageCount":0,
+      "stageKm":0,
+      "stages":[
+        {
+          "id":"test-luintra",
+          "kind":"shakedown",
+          "km":4.78,
+          "runs":{},
+          "start":[
+            42.375356,
+            -7.74748
+          ],
+          "title":"Test Luintra"
+        }
+      ],
+      "surface":"asphalt",
+      "type":"rally"
+    }
+  ],
+  "format":1,
+  "importKey":"rally-ourense",
+  "importSig":"Test Luintra.kmz:24593:1794851247|event.json:787:1794856368|plara-rou-59.png:1050597:1794855676",
+  "name":"import",
+  "report":{
+    "eventPoints":2,
+    "liaisons":2,
+    "lines":3,
+    "points":4,
+    "stages":1,
+    "warnings":{}
+  }
+}

@@ -31,6 +31,10 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 **Desde BeamNG.Earth (recomendado):** menú de pausa → BeamNG.Earth → **Add-ons** → *Add from GitHub* → `RamiroRP/earth.raid` → **Add**. Se instala el `earth_raid.zip` de la última release.
 
+**Versiones:** la **estable** (rama `main`, release normal) es la que instala Add-ons y la que se recomienda a los jugadores. La **beta** (rama `beta`, *pre-release* `vX.Y.Z-beta.N`) es para desarrolladores y probadores: descárgala a mano desde Releases.
+
+**Rallies incluidos:** 43 Rally Sierra Morena 2026, Rally Islas Canarias, Rally de Ourense y Rallye Cristian López 2026 (en `earthRaid/packs/`). Puedes añadir más desde el menú (⤓ Importar).
+
 **A mano:**
 1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiroRP/earth.raid/releases) (o créalo con `tools/package.sh`).
 2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
