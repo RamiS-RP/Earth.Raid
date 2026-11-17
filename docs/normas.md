@@ -26,3 +26,6 @@ El tramo de referencia es **Obejo** (43 Rally Sierra Morena 2026), comprobado en
 - **Teletransporte:** a la calzada, 100 m antes del TC y mirando hacia él.
 - **Notas del copiloto:** el grado sale del radio mínimo en 24 m. En marcha, las curvas se vuelven a medir sobre la carretera real del juego.
 - **Reloj LED:** la hora real y la cuenta atrás hasta la hora de salida fijada en el TC.
+
+## Banderas
+`earthRaid/flags/*.png` (30×20): banderas de países por código ISO 3166-1 alfa-2, para el menú. Las banderas nacionales son de dominio público.
