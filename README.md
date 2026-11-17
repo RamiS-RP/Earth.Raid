@@ -29,9 +29,13 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 ## Instalar
 
-1. Descarga el repositorio o ejecuta `tools/package.sh` para crear `raid-earth.zip`.
-2. Cópialo a `<carpeta de usuario de BeamNG>/mods/` (o descomprímelo en `mods/unpacked/earth_raid/`).
-3. Entra en BeamNG.Earth. **Ctrl+Mayús+G** abre el menú de Raid.Earth.
+**Desde BeamNG.Earth (recomendado):** menú de pausa → BeamNG.Earth → **Add-ons** → *Add from GitHub* → `RamiroRP/earth.raid` → **Add**. Se instala el `earth_raid.zip` de la última release.
+
+**A mano:**
+1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiroRP/earth.raid/releases) (o créalo con `tools/package.sh`).
+2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
+   - El zip debe tener `lua/`, `ui/`, `scripts/`… en su raíz. Un zip con una carpeta dentro (p. ej. `raid-earth/lua/…`, el que da *Code → Download ZIP* de GitHub) **no funciona**: el mod sale en la lista pero no aparece el menú.
+3. Entra en BeamNG.Earth. El menú está en el menú de pausa → pestaña **Mods** → **Raid.Earth**, o con **Ctrl+Mayús+G**.
 
 ## Añadir un rally
 
@@ -105,4 +109,4 @@ Las incidencias y las propuestas son bienvenidas en *Issues*. Para enviar códig
 - **Rally HUD:** a dedicated screen layout for stages.
 - **Route importer:** KMZ, KML, GPX, GeoJSON and OSM, with a logo, a source link and event details.
 
-Install it as a BeamNG mod (see above) and open it with **Ctrl+Shift+G** inside BeamNG.Earth. Contributors are welcome, especially for the worldwide automatic rally discovery from public data.
+Install it from BeamNG.Earth → Add-ons → Add from GitHub → `RamiroRP/earth.raid`, or copy `earth_raid.zip` from Releases (unzipped NO: as is) into `mods/`, and open it with **Ctrl+Shift+G** inside BeamNG.Earth. Contributors are welcome, especially for the worldwide automatic rally discovery from public data.

@@ -1,9 +1,12 @@
 # Al publicar una etiqueta v* (p. ej. v0.5.0): construye earth_raid.zip y lo adjunta a la release de GitHub.
 # El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiroRP/earth.raid) descarga ese .zip de la última release.
 name: release
+# También al publicar una release desde la web de GitHub (Releases → Draft a new release → etiqueta v0.5.0 → Publish).
 on:
   push:
     tags: ["v*"]
+  release:
+    types: [published]
 permissions:
   contents: write
 jobs:
@@ -20,5 +23,6 @@ jobs:
           unzip -l earth_raid.zip | grep -q " scripts/earth_raid/modScript.lua$"
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
           files: earth_raid.zip
           generate_release_notes: true
