@@ -39,10 +39,14 @@ async function registerRoute() {
 // tramo en la tarjeta de la derecha. Ya no hay atajo Ctrl+Mayús+G (chocaba con el de las gráficas del juego).
 const TAB_ID = "earthRaid"
 const PAGES = [
-  { id: "earthRaid-events", page: "events", label: "Eventos", icon: "raceFlag" },
-  { id: "earthRaid-import", page: "import", label: "Importar", icon: "import" },
-  { id: "earthRaid-settings", page: "settings", label: "Ajustes", icon: "cogOutline" },
+  { id: "earthRaid-events", page: "events", label: { es: "Eventos", en: "Events" }, icon: "raceFlag" },
+  { id: "earthRaid-import", page: "import", label: { es: "Importar", en: "Import" }, icon: "import" },
+  { id: "earthRaid-settings", page: "settings", label: { es: "Ajustes", en: "Settings" }, icon: "cogOutline" },
 ]
+// el idioma del juego (español o inglés)
+async function gameLang() {
+  try { const l = await lua.earthRaid_main.uiLang(); return l === "es" ? "es" : "en" } catch (e) { return "en" }
+}
 async function registerButton() {
   try {
     const pa = lua.extensions.ui_pause_actions
@@ -55,9 +59,10 @@ async function registerButton() {
       card2ComponentName: `${MOD_ROOT}/PausePage.vue`,
       card2Props: { page: "status" },
     })
+    const lang = await gameLang()
     for (const p of PAGES) {
       await pa.registerModButton({
-        id: p.id, tabId: TAB_ID, label: p.label, icon: p.icon,
+        id: p.id, tabId: TAB_ID, label: p.label[lang] || p.label.en, icon: p.icon,
         componentName: `${MOD_ROOT}/PausePage.vue`, props: { page: p.page },
       })
     }

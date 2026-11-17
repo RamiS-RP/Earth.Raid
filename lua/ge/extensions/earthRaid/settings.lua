@@ -13,6 +13,7 @@ M.DEFAULTS = {
   closures = true,               -- cintas en las calles que salen del tramo
   ambience = true,               -- público, vallas, carpas y parque de asistencia
   racingLine = true,             -- con el mod Racing Line instalado: su línea de carrera en vez de la azul del GPS
+  recModsAuto = true,            -- activar al cargar los mods recomendados que estén descargados
   sounds = false,                -- sonido de ambiente (público, generadores): apagado por defecto
   noTraffic = true,              -- sin tráfico en el tramo (vuelve al terminar)
   arrows = true,                 -- flechas antes de las curvas cerradas

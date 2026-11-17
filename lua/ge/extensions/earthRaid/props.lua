@@ -484,8 +484,48 @@ function M.roadIndex()
       end
     end
   end
-  roadIdx = { n = count, map = m, cells = cells, segs = segs, version = (roadIdx.version or 0) + 1, checked = now }
+  -- el trazado del tramo donde el juego no tiene carretera (pistas de tierra, caminos): también cuenta como calzada,
+  -- con la anchura de su superficie, para que nada se quede encima (17-nov: una ruta de tierra importada por un amigo
+  -- del usuario se montó mal porque el grafo no tenía ese camino)
+  local virt = 0
+  for _, sg in ipairs(M._virtual or {}) do
+    local mx, my = (sg.ax + sg.bx) / 2, (sg.ay + sg.by) / 2
+    local covered = false
+    for _, g in ipairs(cells[math.floor(mx / C) .. ':' .. math.floor(my / C)] or {}) do
+      local gx, gy = g.bx - g.ax, g.by - g.ay
+      local L2 = gx * gx + gy * gy
+      local u = L2 > 0.01 and math.max(0, math.min(1, ((mx - g.ax) * gx + (my - g.ay) * gy) / L2)) or 0
+      if (mx - g.ax - gx * u) ^ 2 + (my - g.ay - gy * u) ^ 2 < M.VIRTUAL_COVER_M ^ 2 then covered = true break end
+    end
+    if not covered then
+      virt = virt + 1
+      segs[#segs + 1] = sg
+      local pad = sg.ra + 4
+      for cx = math.floor((math.min(sg.ax, sg.bx) - pad) / C), math.floor((math.max(sg.ax, sg.bx) + pad) / C) do
+        for cy = math.floor((math.min(sg.ay, sg.by) - pad) / C), math.floor((math.max(sg.ay, sg.by) + pad) / C) do
+          local k = cx .. ':' .. cy
+          local l = cells[k]
+          if not l then l = {} cells[k] = l end
+          l[#l + 1] = sg
+        end
+      end
+    end
+  end
+  roadIdx = { n = count, map = m, cells = cells, segs = segs, version = (roadIdx.version or 0) + 1, checked = now, virtual = virt }
   return roadIdx
+end
+
+M.VIRTUAL_COVER_M = 15   -- solo donde no hay ninguna carretera del juego a menos de esto (el KMZ suele ir desplazado unos metros)
+-- trazados que cuentan como calzada aunque el grafo no los tenga: lista de puntos {x, y} del juego y media anchura
+function M.setVirtualRoad(pts, halfW)
+  local v = {}
+  for i = 2, #(pts or {}) do
+    local a, b = pts[i - 1], pts[i]
+    v[#v + 1] = { ax = a[1], ay = a[2], bx = b[1], by = b[2], ra = halfW, rb = halfW, virtual = true }
+  end
+  M._virtual = v
+  roadIdx.n = -1
+  roadIdx.checked = 0
 end
 
 -- los tramos de carretera cerca de (x, y)

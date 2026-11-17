@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.7.0'
+M.VERSION = '0.7.1'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -451,19 +451,67 @@ local function eventCard(ev, lat, lon)
     stages = ev.stages, source = ev.source, link = ev.link, pack = ev._pack, custom = ev._pack == 'import' and (ev.type == 'custom' or not ev.dates) }
 end
 
--- el mod recomendado "hotw" (pone un piloto al volante): si está instalado, el menú no lo recomienda
-function M.hasHotw()
-  if S.hotw == nil then
-    local ok, list = pcall(function() return core_modmanager.getModList() end)
-    S.hotw = false
-    if ok and type(list) == 'table' then
-      for name, m in pairs(list) do
-        local n = tostring(m.modname or name):lower()
-        if n:find('hotw', 1, true) and m.active ~= false then S.hotw = true break end
+-- Mods recomendados para una mejor experiencia (README). Si el jugador los tiene descargados pero desactivados, se
+-- activan al cargar Raid.Earth (petición del usuario, 17-nov), salvo que lo apague en Ajustes (recModsAuto).
+M.RECOMMENDED = {
+  { id = 'racingline', name = 'Racing Line Mod', match = { 'racingline', 'racing_line' },
+    url = 'https://www.beamng.com/resources/racing-line-mod.39806/' },
+  { id = 'hotw', name = 'Hands on the Wheel', match = { 'hotw', 'handsonthewheel', 'hands_on_the_wheel' },
+    url = 'https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/' },
+  { id = 'envyffb', name = 'EnvyFFB', match = { 'envyffb' },
+    url = 'https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/' },
+  { id = 'headlights', name = 'Realistic Headlights & Fogs V2', match = { 'realisticheadlights', 'realistic_headlights' },
+    url = 'https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/' },
+  { id = 'smokedust', name = 'Smoke Dust FX', match = { 'smokedustfx', 'smoke_dust', 'smokedust' },
+    url = 'https://www.beamng.com/resources/smoke-dust-fx.39628/' },
+}
+
+local function modsDb()
+  local ok, db = pcall(function() return core_modmanager.getMods() end)
+  return ok and type(db) == 'table' and db or {}
+end
+
+-- estado de cada recomendado: installed (descargado), active, modname
+function M.recommendedState()
+  local db = modsDb()
+  local out = {}
+  for _, r in ipairs(M.RECOMMENDED) do
+    local e = { id = r.id, name = r.name, url = r.url, installed = false, active = false }
+    for name, m in pairs(db) do
+      local n = (tostring(name) .. ' ' .. tostring(m.fullpath or '')):lower():gsub('[%s%-%.]', '')
+      for _, pat in ipairs(r.match) do
+        if n:find(pat, 1, true) then
+          e.installed = true
+          e.modname = e.modname or name
+          if m.active then e.active = true e.modname = name end
+        end
       end
     end
+    out[#out + 1] = e
   end
-  return S.hotw
+  return out
+end
+
+-- activa los recomendados que están descargados y desactivados
+function M.enableRecommended()
+  local done = {}
+  for _, e in ipairs(M.recommendedState()) do
+    if e.installed and not e.active and e.modname then
+      local ok = pcall(core_modmanager.activateMod, e.modname)
+      if ok then done[#done + 1] = e.name end
+    end
+  end
+  if #done > 0 then
+    log('I', TAG, 'recommended mods enabled: ' .. table.concat(done, ', '))
+    M.toast((spanish() and 'Raid.Earth activó los mods recomendados: ' or 'Raid.Earth enabled the recommended mods: ')
+      .. table.concat(done, ', '), 8)
+  end
+  return done
+end
+
+function M.hasHotw()
+  for _, e in ipairs(M.recommendedState()) do if e.id == 'hotw' then return e.active end end
+  return false
 end
 
 local function buildModel()
@@ -482,7 +530,7 @@ local function buildModel()
     target = S.target, events = {}, total = #S.index.events,
     facets = { country = {}, type = {}, category = {}, surface = {}, status = {} },
     settings = settings.get(), voicepacks = settings.voicepacks(), today = os.date('%Y-%m-%d'),
-    racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(),
+    racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(), recMods = M.recommendedState(),
     importDir = M.IMPORT_DIR, packDirs = M.PACK_DIRS, imports = U.importOpen and M.importsModel() or nil,
     importOpen = U.importOpen or false }
   local q = lower(U.q)
@@ -581,6 +629,8 @@ end
 function M.toggleMenu() if U.open then M.uiClose() else M.uiOpen() end end
 function M.uiClose() U.open = false navigate('play') end
 function M.uiState() U.open = true M.publishState() end
+-- el idioma del juego para la interfaz ('es' o 'en')
+function M.uiLang() return spanish() and 'es' or 'en' end
 -- el estado para la pestaña del menú de pausa (sin abrir el menú)
 function M.uiPeek() refresh() U.peek = true M.publishState() end
 function M.uiSearch(q) U.q = type(q) == 'string' and q:sub(1, 60) or '' M.publishState() end
@@ -1053,6 +1103,7 @@ function M.onExtensionLoaded()
   end)
   M.loadIndex()
   refresh()
+  if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) end
   log('I', TAG, 'Raid.Earth ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
 end
 
@@ -1110,6 +1161,31 @@ function M.placeOnRoad(lat, lon, atLat, atLon)
   local m = map.getMap()
   if not (n1 and n2 and d and d < 300 and m.nodes[n1] and m.nodes[n2]) then return false end
   local A, B = m.nodes[n1].pos, m.nodes[n2].pos
+  -- en un pueblo la carretera más cercana puede ser una calle que cruza: de las que pasan a pocos metros, la que va
+  -- hacia el control horario (17-nov: el coche aparecía de cara a una pared en Ourense)
+  pcall(function()
+    local tx, ty = a.toGame(lat, lon, 0)
+    if not tx then return end
+    local wx, wy = tx - p.x, ty - p.y
+    local wl = math.sqrt(wx * wx + wy * wy)
+    if wl < 1 then return end
+    wx, wy = wx / wl, wy / wl
+    local best, bscore = nil, -1
+    for _, sg in ipairs(props.roadsAt(p.x, p.y) or {}) do
+      if not sg.virtual then
+        local gx, gy = sg.bx - sg.ax, sg.by - sg.ay
+        local gl2 = gx * gx + gy * gy
+        if gl2 > 1 then
+          local u = math.max(0, math.min(1, ((p.x - sg.ax) * gx + (p.y - sg.ay) * gy) / gl2))
+          local dd = math.sqrt((p.x - sg.ax - gx * u) ^ 2 + (p.y - sg.ay - gy * u) ^ 2)
+          local al = math.abs((gx * wx + gy * wy) / math.sqrt(gl2))
+          local score = al - dd / 20
+          if dd < 12 and score > bscore then best, bscore = sg, score end
+        end
+      end
+    end
+    if best and bscore > 0.5 then A, B = vec3(best.ax, best.ay, A.z), vec3(best.bx, best.by, B.z) end
+  end)
   local sx, sy = B.x - A.x, B.y - A.y
   local L2 = sx * sx + sy * sy
   if L2 < 0.01 then return false end

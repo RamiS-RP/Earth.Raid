@@ -559,13 +559,31 @@ function M.build(sources, id, meta)
   local radius = 0
   for _, q in ipairs({ { la1, lo1 }, { la2, lo2 } }) do radius = max(radius, dist(centre, q)) end
   local name = meta.name and meta.name ~= '' and meta.name or docName or id
-  local surface = meta.surface and meta.surface ~= '' and meta.surface or 'asphalt'
+  -- Superficie (categorías FIA: asphalt, gravel, snow, mixed): la de la ficha; si no la dice, la que se deduzca de los
+  -- nombres (el tramo, su carpeta, el documento); si nada, asfalto
+  local function guessSurface(txt)
+    txt = tostring(txt or ''):lower()
+    if txt:find('mixto') or txt:find('mixed') or txt:find('mixte') then return 'mixed' end
+    if txt:find('nieve') or txt:find('snow') or txt:find('hielo') or txt:find('ice ') or txt:find('neige') then return 'snow' end
+    if txt:find('tierra') or txt:find('grava') or txt:find('gravel') or txt:find('terra') or txt:find('dirt')
+      or txt:find('pista') or txt:find('camino') or txt:find('off%-road') or txt:find('offroad') or txt:find('terre') then return 'gravel' end
+    if txt:find('asfalto') or txt:find('asphalt') or txt:find('tarmac') then return 'asphalt' end
+    return nil
+  end
+  local given = meta.surface and meta.surface ~= '' and meta.surface or nil
+  local surface = given or guessSurface((docName or '') .. ' ' .. tostring(meta.name or '') .. ' ' .. tostring(meta.description or '')) or 'asphalt'
   local ssKm, total = 0, 0
   local ssCount = 0
+  local kinds = {}
   for _, s in ipairs(stages) do
-    s.surface = s.surface or surface
+    s.surface = s.surface or guessSurface((s.title or '') .. ' ' .. tostring(s.name or '') .. ' ' .. tostring(s.folder or '')) or surface
+    kinds[s.surface] = true
     if s.kind == 'ss' then ssCount = ssCount + 1 ssKm = ssKm + s.lengthM * max(1, #s.runs) end
   end
+  -- tramos de varias superficies: el evento es mixto
+  local nk = 0
+  for _ in pairs(kinds) do nk = nk + 1 end
+  if not given and nk > 1 then surface = 'mixed' end
   for _, l in ipairs(liaisons) do total = total + l.lengthM end
   local year = tostring(name):match('(20%d%d)') or tostring(name):match('(19%d%d)')
   local ev = { format = 1, id = id, name = name, type = meta.type or 'rally', surface = surface,

@@ -44,23 +44,32 @@ M.SPECTATOR_MAX = 6
 M.TAPE_MAX = 80
 M.SIDE_PAD_M = 0.5         -- del radio de la carretera a los demás carteles (al final del asfalto)
 M.ARROW_MIN_DEG = 40
+M.SHIFT_TRY = { 4, -4, 8, -8, 12, -12, 18, -18, 25, -25 }
 
 local function api() return rawget(_G, 'beamngEarth_api') end
 
--- media anchura de la carretera en (lat, lon), del grafo de carreteras del juego (por defecto 3.5 m)
+-- Superficie del tramo (norma FIA: asfalto, tierra/grava, nieve/hielo o mixto). Cambia la anchura supuesta donde el
+-- juego no tiene la carretera: una pista de tierra es más estrecha que una carretera asfaltada.
+M.surface = 'asphalt'
+M.DEFAULT_HW = { asphalt = 3.5, tarmac = 3.5, gravel = 2.75, dirt = 2.75, snow = 3.0, ice = 3.0, mixed = 3.25 }
+function M.defaultHalfWidth() return M.DEFAULT_HW[M.surface] or 3.25 end
+
+-- media anchura de la carretera en (lat, lon): del grafo de carreteras del juego si la carretera está ahí mismo (a
+-- menos de SNAP_M); si no (un camino que el juego no tiene), la de la superficie del tramo
 local function halfWidth(lat, lon)
-  local a = api()
   local ok, hw = pcall(function()
     local x, y, z = props.ground(lat, lon)
-    local n1, n2 = map.findClosestRoad(vec3(x, y, z))
+    local n1, n2, d = map.findClosestRoad(vec3(x, y, z))
+    if not (d and d < M.SNAP_M) then return nil end
     local m = map.getMap()
     local r1 = n1 and m.nodes[n1] and m.nodes[n1].radius
     local r2 = n2 and m.nodes[n2] and m.nodes[n2].radius
     return math.max(r1 or 0, r2 or 0)
   end)
-  if not ok or not hw or hw <= 0 then return 3.5 end
+  if not ok or not hw or hw <= 0 then return M.defaultHalfWidth() end
   return math.max(2.5, math.min(8, hw))
 end
+M.halfWidth = halfWidth
 
 -- ¿Carretera de doble sentido en lat, lon? (grafo del juego; sin saberlo, sí)
 local function twoWay(lat, lon)
@@ -352,6 +361,23 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) then
     local from = opts and opts.from or 0
     local hit = freeTo(t, along, right, fwd, from)
+    if hit and M.AVOID[kind] then
+      -- en sitios estrechos (pueblos: casas, muros) se busca hueco unos metros antes o después, y si no, al otro lado,
+      -- antes de renunciar (17-nov: las salidas junto a zonas urbanas se quedaban sin carpas ni equipo)
+      local moved = false
+      for _, sh in ipairs(M.SHIFT_TRY) do
+        if not freeTo(t, along + sh, right, fwd, from) then along, hit, moved = along + sh, nil, true break end
+      end
+      if not moved and not (opts and opts.keepSide) then
+        for _, sh in ipairs({ 0, 5, -5, 10, -10 }) do
+          if not freeTo(t, along + sh, -right, fwd, from and -from) then
+            along, right, yaw, hit, moved = along + sh, -right, (yaw or 0) + 180, nil, true
+            break
+          end
+        end
+      end
+      if moved then M.shifted = (M.shifted or 0) + 1 end
+    end
     if hit then
       if M.AVOID[kind] then M.skipped = M.skipped + 1 return nil end
       -- un cartel, más cerca de la carretera (nunca dentro de ella)
@@ -963,8 +989,18 @@ function M.service(t, hw)
 end
 
 -- Todo el montaje. Devuelve el reloj de salida y el de meta.
+-- superficie a una de las categorías FIA (asphalt, gravel, snow, mixed)
+function M.normSurface(sf)
+  sf = tostring(sf or ''):lower()
+  if sf:find('mix') or sf:find('mixto') then return 'mixed' end
+  if sf:find('snow') or sf:find('nieve') or sf:find('ice') or sf:find('hielo') then return 'snow' end
+  if sf:find('grav') or sf:find('tierra') or sf:find('dirt') or sf:find('terra') or sf:find('off') or sf:find('track') then return 'gravel' end
+  return 'asphalt'
+end
+
 function M.build(t, notes, hazards, splitAt, opts)
   opts = opts or {}
+  M.surface = M.normSurface(opts.surface)
   M.reversed = opts.reversed == true
   M.sounds = opts.sounds == true
   local hw0 = halfWidth(t.lat0, t.lon0)

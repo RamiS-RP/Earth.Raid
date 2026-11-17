@@ -20,6 +20,10 @@ local phys = require('earthRaid/phys')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local M = {}
+local function spanishUI()
+  local ok, l = pcall(function() return Lua:getSelectedLanguage() end)
+  return ok and tostring(l):sub(1, 2) == 'es'
+end
 local TAG = 'earthRaid'
 
 M.STAGING_S = 60
@@ -144,7 +148,7 @@ local function vehicleName()
 end
 
 local function cleanupProps(keepTraffic, recycle)
-  if recycle then props.retire() else props.clear() end
+  if recycle then props.retire() else props.clear() props.setVirtualRoad(nil) end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
   post = nil
@@ -311,6 +315,8 @@ function M.start(ev, st, info)
   if props.spareCount() > 0 or dropped > 0 then
     log('I', TAG, ('recycling: %d objects kept from the previous stage, %d removed'):format(props.spareCount(), dropped))
   end
+  -- la línea del mod Racing Line, solo dentro del tramo
+  guide.hold()
   local splitAt = t.total > 1500 and math.floor(t.total / 2 / 100 + 0.5) * 100 or nil
   local hazards = hazardsOf(st, t)
   S = { eventId = ev.id, eventName = ev.name, stageId = st.id, title = st.title, runs = st.runs or {}, track = t,
@@ -406,8 +412,30 @@ function M.start(ev, st, info)
     end
   end
   S.startLater = startLater
+  -- el trazado (con sus accesos) cuenta como calzada donde el juego no tiene carretera: caminos de tierra, pistas
+  dressing.surface = dressing.normSurface(S.surface)
+  pcall(function()
+    local a = extensions.beamngEarth_api
+    local hw = dressing.defaultHalfWidth()
+    local pts = {}
+    local function add(tr, rev)
+      if not tr then return end
+      local n = #tr.pts
+      for k = 1, n do
+        local p = tr.pts[rev and (n - k + 1) or k]
+        local la, lo = geo.toGeo(tr, p[1], p[2])
+        local x, y = a.toGame(la, lo, 0)
+        if x then pts[#pts + 1] = { x, y } end
+      end
+    end
+    add(t.before, true)
+    add(t)
+    add(t.after)
+    props.setVirtualRoad(pts, hw)
+  end)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
     { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
+      surface = S.surface,
       reversed = st.reverse == true,
       onStartClock = function(obj) startclock.setClock(obj) M.refreshLine() end })
   S.dressT = 0
@@ -470,6 +498,7 @@ end
 
 -- Cancelar: todo fuera ya
 function M.stop(keepTraffic, recycle)
+  if not recycle then guide.release() end
   if S then
     S = nil
     clearScreen()
@@ -808,7 +837,9 @@ function M.update(dtSim, dtReal)
         S.startAt = math.ceil((now + M.TC_MARGIN_S) / 60) * 60
         S.stagingInit = S.startAt - now
         S.phase = 'approach'
+        -- del TC a la línea de salida, con la línea azul del GPS del juego
         guide.clear()
+        guide.toStart(t, (S.title or '') .. ' - ' .. (spanishUI() and 'Salida' or 'Start'))
         log('I', TAG, ('TC %s checked in, start at +%d s'):format(S.stageId, S.stagingInit))
       end
     else
@@ -887,6 +918,8 @@ function M.update(dtSim, dtReal)
     if S.along > t.total * 0.9 and past >= 0 and side < 15 then
       S.along = t.total
       S.phase = 'toStop'
+      -- la línea de carrera solo dentro del tramo: en la meta vuelve el GPS normal
+      guide.clear()
       S.newBest = saveResult()
       S.best = M.best(S.eventId, S.stageId)
       if S.session and S.session.onFinish then
@@ -912,7 +945,9 @@ function M.update(dtSim, dtReal)
   elseif S.phase == 'done' then
     S.doneLeft = S.doneLeft - dtReal
     if S.doneLeft <= 0 then
-      -- se acabó: pantalla limpia; el montaje sigue hasta alejarse
+      -- se acabó: pantalla limpia; el montaje sigue hasta alejarse. Fuera de un rally, el mod Racing Line vuelve a
+      -- seguir el GPS como siempre
+      if not S.session then guide.release() end
       local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
       -- en un rally, lo de este tramo puede servir al siguiente (se recicla al limpiar)
       post = { at = clock, lat = flat, lon = flon, recycle = S.session ~= nil }

@@ -70,6 +70,7 @@ const set = computed(() => (s.value && s.value.settings) || {})
 const toggles = computed(() => {
   const k = ["raceHud", "visualNotes", "voice", "noTraffic", "closures", "ambience", "sounds"]
   if (s.value && s.value.racingLineMod) k.push("racingLine")
+  k.push("recModsAuto")
   return k
 })
 
