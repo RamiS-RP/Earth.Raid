@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.6.2'
+M.VERSION = '0.7.0'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -296,11 +296,11 @@ local function proposalText(p)
   if spanish() then
     local t = ('Raid.Earth: %s en esta zona (%d tramos, %s cronometrados).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
     if st then t = t .. (' Tramo más cercano: %s (%s), salida a %s.'):format(st.title, km(st.km * 1000), km(p.stageM)) end
-    return t .. ' Ctrl+Mayús+G: abrir Raid.Earth.'
+    return t .. ' Esc → Raid.Earth para verlo.'
   end
   local t = ('Raid.Earth: %s is in this area (%d stages, %s timed).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
   if st then t = t .. (' Nearest stage: %s (%s), start %s away.'):format(st.title, km(st.km * 1000), km(p.stageM)) end
-  return t .. ' Ctrl+Shift+G: open Raid.Earth.'
+  return t .. ' Esc → Raid.Earth to see it.'
 end
 
 -- Un mensaje en pantalla con categoría propia (otro mensaje del juego no lo pisa) y el tiempo pedido
@@ -560,7 +560,7 @@ local function buildModel()
 end
 
 function M.publishState()
-  if not U.open then return end
+  if not (U.open or U.peek) then return end
   local ok, model = pcall(buildModel)
   if ok then guihooks.trigger('EarthRaidState', model) else log('W', TAG, 'model: ' .. tostring(model)) end
 end
@@ -581,6 +581,8 @@ end
 function M.toggleMenu() if U.open then M.uiClose() else M.uiOpen() end end
 function M.uiClose() U.open = false navigate('play') end
 function M.uiState() U.open = true M.publishState() end
+-- el estado para la pestaña del menú de pausa (sin abrir el menú)
+function M.uiPeek() refresh() U.peek = true M.publishState() end
 function M.uiSearch(q) U.q = type(q) == 'string' and q:sub(1, 60) or '' M.publishState() end
 function M.uiFilter(key, value)
   if U.filters[key] ~= nil then U.filters[key] = type(value) == 'string' and value or '' end
@@ -1224,8 +1226,8 @@ function M.onBeamNGEarthWorldReady()
   -- una vez por sesión: dónde está el menú (quien lo instala por primera vez no lo encuentra)
   if not S.hello then
     S.hello = true
-    M.toast(spanish() and 'Raid.Earth listo: menú de pausa → Mods → Raid.Earth, o Ctrl+Mayús+G.'
-      or 'Raid.Earth ready: pause menu → Mods → Raid.Earth, or Ctrl+Shift+G.', 8)
+    M.toast(spanish() and 'Raid.Earth listo: Esc → pestaña Raid.Earth.'
+      or 'Raid.Earth ready: Esc → Raid.Earth tab.', 8)
   end
 end
 -- en un mapa sin BeamNG.Earth: avisar de que hace falta (si no, parece que el mod no hace nada)

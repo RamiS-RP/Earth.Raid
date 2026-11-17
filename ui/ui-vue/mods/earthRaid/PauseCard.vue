@@ -4,7 +4,6 @@
     <h3>Raid.Earth</h3>
     <p class="muted">{{ t("sub") }}</p>
     <BngButton :accent="ACCENTS.main" @click="open">Raid.Earth</BngButton>
-    <p class="muted key">Ctrl+Shift+G</p>
   </div>
 </template>
 

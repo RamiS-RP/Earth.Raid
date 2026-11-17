@@ -8,6 +8,7 @@
 --   flechas de curva (cara en -X)   -60 en el lado derecho, -120 en el izquierdo
 --   cintas de corte (largo en -Y)   origen en un extremo, Y a lo ancho de la calle que se corta
 local M = {}
+local phys = require('earthRaid/phys')
 local TAG = 'earthRaid'
 local A = '/art/shapes/race/rally/rally_assets/'
 
@@ -82,8 +83,8 @@ function M.ground(lat, lon)
     z = th
     -- un poco por encima del terreno (la calzada); más arriba serían nuestras vallas o carpas: los objetos se
     -- quedaban subidos encima de ellas al recolocarlos (meta de Obejo, 16-nov)
-    local h = be:getSurfaceHeightBelow(vec3(x, y, th + 0.6))
-    if type(h) == 'number' and h > th - 1 and h < th + 0.6 then z = h end
+    local h = be:getSurfaceHeightBelow(vec3(x, y, th + 0.45))
+    if type(h) == 'number' and h > th - 1 and h < th + 0.45 then z = h end
   else
     local h = be:getSurfaceHeightBelow(vec3(x, y, 9000))
     ok = type(h) == 'number' and h > -1e5 and h ~= 0
@@ -159,6 +160,10 @@ local function register(o, kind)
   if scenetree.MissionGroup then scenetree.MissionGroup:addObject(o) end
 end
 
+M.SOLID = { table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
+  tireRack = true, workbench = true, stool = true, gazeboFrame = true }
+function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
+
 -- Coloca un objeto: kind (clave de SHAPES o PREFABS), lat, lon, dx, dy (dirección de marcha), yaw (grados, horario)
 local function create(kind, opts)
   local shape, prefab, snd = M.SHAPES[kind], M.PREFABS[kind], M.SOUNDS[kind]
@@ -191,14 +196,11 @@ local function create(kind, opts)
     o:setField('shapeName', 0, shape)
     o:setPosition(vec3(0, 0, 0))
     o.scale = vec3(1, 1, 1)
-    -- colisión con su propia malla visible: muchos modelos de rally no traen malla de colisión y el coche los
-    -- atravesaba (petición del usuario, 17-nov: los objetos deben tener colisión)
-    if opts and opts.noCollision then o:setField('collisionType', 0, 'None')
-    else
-      o:setField('collisionType', 0, 'Visible Mesh')
-      o:setField('decalType', 0, 'Visible Mesh')
-      M.collisionDirty = true
-    end
+    -- Colisión (17-nov): solo lo sólido (vallas, colchones, mesas, cajas de herramientas...) choca, con su propia
+    -- malla de colisión. Carteles, conos y cintas no: son papel en un palo o plástico, y cerca del coche se cambian
+    -- por su versión con física (phys.lua), que se cae o se rompe al tocarla.
+    if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
+    else M.collisionDirty = true end
   end
   register(o, kind)
   if prefab and o.load then pcall(function() o:load() end) end
@@ -262,6 +264,7 @@ end
 
 -- lo de este tramo pasa a ser de repuesto para el siguiente (las luces, sonidos y líneas pintadas no: se borran)
 function M.retire()
+  phys.clear()
   for _, it in ipairs(queue) do it.dead = true end
   queue = {}
   for _, it in ipairs(items) do
@@ -373,6 +376,7 @@ function M.reground(lat, lon, radiusM)
 end
 
 function M.clear()
+  phys.clear()
   M.flushSpare()
   for _, it in ipairs(queue) do it.dead = true end
   queue = {}
@@ -390,6 +394,7 @@ end
 -- quita un objeto de la escena sin romper la lista (offRoad no le encontró sitio fuera de la calzada)
 function M.hide(it)
   it.hidden = true
+  phys.forget(it)
   if it.obj then
     pcall(function() if it.obj.unload then it.obj:unload() end it.obj:delete() end)
     it.obj = nil

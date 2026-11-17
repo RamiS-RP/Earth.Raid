@@ -16,6 +16,7 @@ local audio = require('earthRaid/audio')
 local pacenotes = require('earthRaid/pacenotes')
 local relief = require('earthRaid/relief')
 local guide = require('earthRaid/guide')
+local phys = require('earthRaid/phys')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local M = {}
@@ -273,7 +274,7 @@ function M.start(ev, st, info)
   M.stop(true, true)
   -- lo del tramo anterior queda de repuesto: lo que coincida con este (ida y vuelta, salida en la meta) se reutiliza
   cleanupProps(true, true)
-  local orphans = props.purgeOrphans()
+  local orphans = props.purgeOrphans() + phys.purgeOrphans()
   if orphans > 0 then log('I', TAG, 'removed ' .. orphans .. ' leftover objects') end
   if not (st and st.path and #st.path >= 2) then return false, 'no path' end
   local opt = settings.get()
@@ -704,6 +705,15 @@ function M.update(dtSim, dtReal)
   clock = clock + (dtReal or dtSim)
   -- los objetos encolados, poco a poco; la colisión se rehace una vez cuando ya están todos (no tras cada tanda)
   guide.tick(dtReal or dtSim)
+  -- carteles, conos y cintas con física cerca del coche
+  if props.count() > 0 then
+    local v = be:getPlayerVehicle(0)
+    if v then
+      local p = v:getPosition()
+      local okP, errP = pcall(phys.update, dtReal or dtSim or 0, p.x, p.y, props.all())
+      if not okP then log('W', TAG, 'phys: ' .. tostring(errP)) end
+    end
+  end
   local left = props.pump()
   collT = collT + (dtReal or dtSim or 0)
   if left == 0 and props.collisionDirty and collT >= M.COLLISION_EVERY_S then

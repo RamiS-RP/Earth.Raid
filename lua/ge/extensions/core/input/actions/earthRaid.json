@@ -5,7 +5,7 @@
 "ctx": "tlua",
 "onDown": "if earthRaid_main then earthRaid_main.toggleMenu() end",
 "title": "Raid.Earth: open the events menu",
-"desc": "Opens the menu with the rallies and raids near you, their stages and a search box (Ctrl+Shift+G)."
+"desc": "Opens the menu with the rallies and raids near you, their stages and a search box (no default key: also in the pause menu, Raid.Earth tab)."
 },
 "earthRaid_skip": {
 "cat": "gameplay",

@@ -34,17 +34,35 @@ async function registerRoute() {
   }
 }
 
+// Raid.Earth en el menú de pausa (Esc) con su propia pestaña, como BeamNG.Earth y BeamMP (petición del usuario,
+// 17-nov: "que parezca una parte más del juego"): botones a la izquierda (Eventos, Importar, Ajustes) y el estado del
+// tramo en la tarjeta de la derecha. Ya no hay atajo Ctrl+Mayús+G (chocaba con el de las gráficas del juego).
+const TAB_ID = "earthRaid"
+const PAGES = [
+  { id: "earthRaid-events", page: "events", label: "Eventos", icon: "raceFlag" },
+  { id: "earthRaid-import", page: "import", label: "Importar", icon: "import" },
+  { id: "earthRaid-settings", page: "settings", label: "Ajustes", icon: "cogOutline" },
+]
 async function registerButton() {
   try {
-    await lua.extensions.ui_pause_actions.registerModButton({
-      id: BUTTON_ID,
-      tabId: "mods",
+    const pa = lua.extensions.ui_pause_actions
+    // el botón antiguo de la pestaña Mods
+    try { await pa.unregisterModButton(BUTTON_ID) } catch (e) { /* none */ }
+    await pa.registerModTab({
+      id: TAB_ID,
       label: "Raid.Earth",
       icon: "raceFlag",
-      componentName: `${MOD_ROOT}/PauseCard.vue`,
+      card2ComponentName: `${MOD_ROOT}/PausePage.vue`,
+      card2Props: { page: "status" },
     })
+    for (const p of PAGES) {
+      await pa.registerModButton({
+        id: p.id, tabId: TAB_ID, label: p.label, icon: p.icon,
+        componentName: `${MOD_ROOT}/PausePage.vue`, props: { page: p.page },
+      })
+    }
   } catch (e) {
-    console.error("Raid.Earth: pause menu button failed", e)
+    console.error("Raid.Earth: pause menu tab failed", e)
   }
 }
 
@@ -78,7 +96,7 @@ export async function onUnload() {
     const el = document.getElementById(LOAD_ID)
     if (el) el.remove()
   } catch (e) { /* none */ }
-  try { await lua.extensions.ui_pause_actions.unregisterModButton(BUTTON_ID) } catch (e) { /* none */ }
+  try { await lua.extensions.ui_pause_actions.unregisterModTab(TAB_ID) } catch (e) { /* none */ }
   try {
     if (window.bngRoutes) window.bngRoutes.remove([SOURCE])
     if (lua.extensions.ui_router_routeManager) {
