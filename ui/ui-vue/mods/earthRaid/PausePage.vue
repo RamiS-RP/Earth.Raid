@@ -28,7 +28,7 @@
           <div class="erp-evinfo">
             <b>{{ e.name }}</b>
             <div class="dim small">{{ [e.city, e.championship, e.dates].filter(Boolean).join(" · ") }}</div>
-            <div class="small">{{ e.stageCount || 0 }} {{ t("stagesShort") }} · {{ km((e.stageKm || 0) * 1000) }}<template v-if="e.boxM != null"> · {{ dist(e.boxM) }}</template></div>
+            <div class="small">{{ e.stageCount || 0 }} {{ t("stagesShort") }} · {{ km(e.stageKm || 0) }}<template v-if="e.boxM != null"> · {{ dist(e.boxM) }}</template></div>
           </div>
         </button>
       </div>
