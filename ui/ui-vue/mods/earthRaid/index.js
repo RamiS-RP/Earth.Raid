@@ -1,6 +1,7 @@
 // Raid.Earth: la página del menú como ruta propia ("earthRaid", la abre earthRaid_main.uiOpen con ui_router.navigate)
 // y un botón en la pestaña Mods del menú de pausa. Sigue ui/ui-vue/mods/README.md del juego.
 import { lua } from "@/bridge"
+import { createApp } from "vue"
 
 const MOD_ROOT = "/ui/ui-vue/mods/earthRaid"
 const SOURCE = "earthRaid.routes"
@@ -47,12 +48,36 @@ async function registerButton() {
   }
 }
 
+// la pantalla de carga de Raid.Earth: una capa propia sobre toda la interfaz (no depende de que la app del HUD esté
+// en el diseño de pantalla)
+const LOAD_ID = "earthRaid-loadscreen"
+let loadApp = null
+async function mountLoadScreen() {
+  try {
+    if (loadApp || document.getElementById(LOAD_ID)) return
+    const LoadScreen = (await import("./LoadScreen.vue")).default
+    const el = document.createElement("div")
+    el.id = LOAD_ID
+    document.body.appendChild(el)
+    loadApp = createApp(LoadScreen)
+    loadApp.mount(el)
+  } catch (e) {
+    console.error("Raid.Earth: load screen failed", e)
+  }
+}
+
 export async function onLoad() {
   await registerRoute()
   await registerButton()
+  await mountLoadScreen()
 }
 
 export async function onUnload() {
+  try {
+    if (loadApp) { loadApp.unmount(); loadApp = null }
+    const el = document.getElementById(LOAD_ID)
+    if (el) el.remove()
+  } catch (e) { /* none */ }
   try { await lua.extensions.ui_pause_actions.unregisterModButton(BUTTON_ID) } catch (e) { /* none */ }
   try {
     if (window.bngRoutes) window.bngRoutes.remove([SOURCE])

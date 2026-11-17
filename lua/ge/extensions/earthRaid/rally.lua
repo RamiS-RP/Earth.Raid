@@ -14,6 +14,7 @@ local guide = require('earthRaid/guide')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local M = {}
+local catalog = require('earthRaid/catalog')
 local TAG = 'earthRaid'
 
 M.PENALTY_PER_MIN = 10
@@ -49,7 +50,15 @@ function M.order(ev)
   local out, any = {}, false
   for _, s in ipairs(ev.stages or {}) do
     if s.kind == 'ss' then
-      for _, r in ipairs(s.runs or {}) do out[#out + 1] = { run = r, stage = s } any = true end
+      -- norma «SS 2/5»: la segunda pasada (y la cuarta...) es el mismo tramo en sentido contrario
+      local runs = {}
+      for _, r in ipairs(s.runs or {}) do runs[#runs + 1] = r end
+      table.sort(runs)
+      for i, r in ipairs(runs) do
+        local rev = i % 2 == 0
+        out[#out + 1] = { run = r, stage = rev and catalog.reversed(s, (function() local ok, l = pcall(function() return Lua:getSelectedLanguage() end) return ok and tostring(l):sub(1, 2) == 'es' end)()) or s, reverse = rev }
+        any = true
+      end
     end
   end
   if not any then

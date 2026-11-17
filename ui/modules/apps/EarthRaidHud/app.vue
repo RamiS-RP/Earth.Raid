@@ -1,16 +1,5 @@
 <template>
   <div class="erh-root" ref="root">
-  <!-- Carga al iniciar (como la pantalla de carga del juego): el coche está congelado mientras se carga la zona y se
-       monta el tramo -->
-  <div class="erh-load" v-if="ld && ld.on">
-    <div class="lbox">
-      <img v-if="ld.logo" :src="ld.logo" class="llogo" alt="" />
-      <div class="lev">{{ ld.event }}</div>
-      <div class="ltitle"><span class="lslash"></span>{{ ld.title }}</div>
-      <div class="lbar"><div class="lfill" :style="{ width: Math.round((ld.progress || 0) * 100) + '%' }"></div></div>
-      <div class="lstep">{{ loadStep }}</div>
-    </div>
-  </div>
   <!-- Rally completo: en la asistencia y los enlaces, como el panel de enlace del juego (reloj del evento, tu tiempo,
        instrucciones), la tarjeta del siguiente control y el carnet de ruta -->
   <div class="erh rally" v-if="r && r.active && r.phase !== 'stage'">

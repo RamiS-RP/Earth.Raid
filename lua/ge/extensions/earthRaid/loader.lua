@@ -15,13 +15,24 @@ M.PUMP_MS = 12               -- presupuesto para crear objetos por fotograma dur
 local L                      -- la carga en curso
 local function api() return rawget(_G, 'beamngEarth_api') end
 
+M.STEPS = { 'tp', 'roads', 'dress', 'place', 'settle' }
 local function send()
   if not L then guihooks.trigger('EarthRaidLoading', { on = false }) return end
-  local steps = { 'tp', 'roads', 'dress', 'place', 'settle' }
   local idx = 1
-  for i, s in ipairs(steps) do if s == L.step then idx = i end end
+  for i, s in ipairs(M.STEPS) do if s == L.step then idx = i end end
+  -- cada icono (como la pantalla de carga del juego): 100 lo hecho, el paso en curso según su avance
+  local icons = {}
+  for i, s in ipairs(M.STEPS) do icons[s] = i < idx and 100 or (i == idx and math.floor(math.min(1, L.frac or 0) * 100) or 0) end
   guihooks.trigger('EarthRaidLoading', { on = true, title = L.title, event = L.event, logo = L.logo, step = L.step,
-    progress = math.min(1, (idx - 1 + math.min(1, L.frac or 0)) / #steps), lang = L.lang, detail = L.detail })
+    progress = math.min(1, (idx - 1 + math.min(1, L.frac or 0)) / #M.STEPS), lang = L.lang, detail = L.detail,
+    description = L.description, icons = icons, history = L.hist or {} })
+end
+
+-- una línea del historial (las tres últimas se ven bajo la barra)
+local function note(es, en)
+  L.hist = L.hist or {}
+  L.hist[#L.hist + 1] = L.lang == 'es' and es or en
+  while #L.hist > 3 do table.remove(L.hist, 1) end
 end
 
 local function freeze(on)
@@ -58,7 +69,21 @@ end
 function M.active() return L ~= nil end
 function M.onTeleported() if L then L.teleported = true L.tpT = 0 end end
 
-local function nextStep(s) L.step, L.t, L.frac = s, 0, 0 send() end
+local function nextStep(s)
+  -- lo que deja hecho el paso que acaba
+  local ok = pcall(function()
+    if L.step == 'tp' then note('Mundo: BeamNG.Earth listo', 'World: BeamNG.Earth ready')
+    elseif L.step == 'roads' then
+      local ix = props.roadIndex()
+      local n = ix and #ix.segs or 0
+      note(('Carreteras: se han cargado %d tramos'):format(n), ('Roads: %d segments loaded'):format(n))
+    elseif L.step == 'dress' then
+      note(('Objetos: se han colocado %d'):format(props.count()), ('Objects: %d placed'):format(props.count()))
+    elseif L.step == 'place' then note('Coche: en la calzada, antes del control', 'Car: on the road, before the control') end
+  end)
+  L.step, L.t, L.frac = s, 0, 0
+  send()
+end
 
 local function finish(why)
   if not L then return end
@@ -72,11 +97,14 @@ local function finish(why)
   if done then pcall(done) end
 end
 
-function M.cancel() if L then finish('cancelled') end end
+function M.cancel() if L then L.done = nil finish('cancelled') end end
 
 function M.update(dt)
   if not L then return end
   L.t = L.t + (dt or 0)
+  L.sendT = (L.sendT or 0) + (dt or 0)
+  if L.sendT >= 0.2 then L.sendT = 0 send() end
+  if not L then return end
   local a = api()
   if L.step == 'tp' then
     -- el aviso del teletransporte y el mundo listo (BeamNG.Earth deja el coche en el suelo con algo de retraso)

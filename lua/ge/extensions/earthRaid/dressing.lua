@@ -248,34 +248,54 @@ local function clearOf(kind)
   return M.SIGN_SIDE_M
 end
 M.pushed = 0
--- Si (lat, lon) cae en una calzada (o a menos de su margen de la línea de borde), se lleva hacia fuera
+M.rejected = 0
+-- Si (lat, lon) cae en una calzada (o a menos de su margen de la línea de borde de cualquier carretera cargada), se
+-- lleva hacia fuera; si al sacarlo de una cae en otra (cruces), se repite; si no hay sitio, nil: no se pone.
+-- M._seen: había carreteras cargadas alrededor (la comprobación vale).
 local function offRoad(kind, lat, lon)
   local c = clearOf(kind)
   if not c or M.dry or not lat then return lat, lon end
   local a = api()
   local ok, la, lo = pcall(function()
     local x, y, z = props.ground(lat, lon)
-    if not x then return nil end
-    local n1, n2, dd = map.findClosestRoad(vec3(x, y, z))
-    local m = map.getMap()
-    if not (n1 and n2 and m.nodes[n1] and m.nodes[n2]) then return nil end
-    if dd and dd < 40 then M._seen = true end
-    local p1, p2 = m.nodes[n1].pos, m.nodes[n2].pos
-    local sx, sy = p2.x - p1.x, p2.y - p1.y
-    local L2 = sx * sx + sy * sy
-    if L2 < 0.01 then return nil end
-    local u = math.max(0, math.min(1, ((x - p1.x) * sx + (y - p1.y) * sy) / L2))
-    local cx, cy = p1.x + sx * u, p1.y + sy * u
-    local r = (m.nodes[n1].radius or 3) + ((m.nodes[n2].radius or 3) - (m.nodes[n1].radius or 3)) * u
-    local ex, ey = x - cx, y - cy
-    local d = math.sqrt(ex * ex + ey * ey)
-    local need = r + c
-    if d >= need - 0.05 or d < 0.05 then return nil end
-    local k = need / d
-    return a.toGeo(cx + ex * k, cy + ey * k, z)
+    if not x then return lat, lon end
+    local ox, oy = x, y
+    for _ = 1, 6 do
+      local segs = props.roadsAt(x, y)
+      if not segs then return lat, lon end
+      if #segs > 0 then M._seen = true end
+      local worst, wx, wy, wneed, wd = 0, nil, nil, nil, nil
+      for _, sg in ipairs(segs) do
+        local sx, sy = sg.bx - sg.ax, sg.by - sg.ay
+        local L2 = sx * sx + sy * sy
+        local u = L2 > 0.01 and math.max(0, math.min(1, ((x - sg.ax) * sx + (y - sg.ay) * sy) / L2)) or 0
+        local cx, cy = sg.ax + sx * u, sg.ay + sy * u
+        local need = sg.ra + (sg.rb - sg.ra) * u + c
+        local d = math.sqrt((x - cx) ^ 2 + (y - cy) ^ 2)
+        if need - d > worst + 0.05 then
+          worst, wx, wy, wneed, wd = need - d, cx, cy, need, d
+          if d < 0.05 then
+            -- justo en el eje: hacia la derecha del tramo
+            local L = math.sqrt(L2)
+            if L > 0.01 then wx, wy, wd = cx - sy / L * 0.05, cy + sx / L * 0.05, 0.05 end
+          end
+        end
+      end
+      if not wx then
+        if x == ox and y == oy then return lat, lon end
+        M.pushed = M.pushed + 1
+        return a.toGeo(x, y, z)
+      end
+      local ex, ey = x - wx, y - wy
+      if wd < 0.05 then ex, ey = ex / math.max(wd, 0.01), ey / math.max(wd, 0.01) wd = 1 end
+      local k = (wneed + 0.1) / wd
+      x, y = wx + ex * k, wy + ey * k
+    end
+    return false
   end)
-  if ok and la then M.pushed = M.pushed + 1 return la, lo end
-  return lat, lon
+  if not ok then return lat, lon end
+  if la == false then M.rejected = M.rejected + 1 return nil end
+  return la, lo
 end
 M.offRoad = offRoad
 
@@ -287,22 +307,32 @@ M.SKIP_RECHECK = { line = true, cone = true, lamp = true, tape = true, tape6 = t
   sndGenerator = true }
 function M.recheck(plat, plon)
   if M.dry or not plat then return 0 end
+  -- el grafo cambió (carreteras nuevas): todo se vuelve a comprobar
+  local ix = props.roadIndex()
+  if ix and ix.version ~= M._roadVersion then
+    M._roadVersion = ix.version
+    for _, it in ipairs(props.all()) do it.roadOk = nil it.checks = nil end
+  end
   local k = math.cos(math.rad(plat))
-  local moved = 0
+  local moved, hidden = 0, 0
   for _, it in ipairs(props.all()) do
-    if not it.roadOk and not M.SKIP_RECHECK[it.kind] and it.lat then
+    if not it.roadOk and not M.SKIP_RECHECK[it.kind] and it.lat and not it.hidden then
       local ex, ny = (it.lon - plon) * 111195 * k, (it.lat - plat) * 111195
       if ex * ex + ny * ny < M.RECHECK_M * M.RECHECK_M then
         M._seen = false
         local la, lo = offRoad(it.kind, it.lat, it.lon)
         it.checks = (it.checks or 0) + 1
-        -- con la carretera cargada, o tras 4 intentos (lejos de toda carretera: nada que comprobar)
         if M._seen or it.checks >= 4 then it.roadOk = true end
-        if la and (la ~= it.lat or lo ~= it.lon) then props.move(it, la, lo) moved = moved + 1 end
+        if not la then
+          -- no cabe fuera de la calzada: se quita
+          props.hide(it) hidden = hidden + 1
+        elseif la ~= it.lat or lo ~= it.lon then
+          props.move(it, la, lo) moved = moved + 1
+        end
       end
     end
   end
-  if moved > 0 then log('I', TAG, ('recheck: %d objects moved off the road'):format(moved)) end
+  if moved + hidden > 0 then log('I', TAG, ('recheck: %d objects moved off the road, %d removed'):format(moved, hidden)) end
   return moved
 end
 
@@ -335,6 +365,7 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   M._seen = false
   lat, lon = offRoad(kind, lat, lon)
   local seen = M._seen
+  if not lat then return nil end
   if M.dry then
     M.counts[kind] = (M.counts[kind] or 0) + 1
     return { kind = kind, lat = lat, lon = lon }
@@ -723,10 +754,10 @@ function M.arrows(t, notes, hw)
         local side = sideSign * (hwAt(t, along) + 1.5)
         -- cara del modelo en -X: hacia el coche que llega y un poco hacia la carretera
         local yaw = side > 0 and -60 or -120
-        place(kind, t, along, side, yaw, 0, { noCollision = true })
+        place(kind, t, along, side, yaw, 0)
         -- una segunda flecha más adelante en las horquillas
         if nt.grade == 'hairpin' or nt.deg > 120 then
-          place(kind, t, math.min(t.total, along + 12), side, yaw, 0, { noCollision = true })
+          place(kind, t, math.min(t.total, along + 12), side, yaw, 0)
         end
       end)
       n = n + 1

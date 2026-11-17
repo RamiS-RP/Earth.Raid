@@ -207,8 +207,10 @@
               </table>
             </div>
           </div>
-          <button v-if="mode === 'stage'" class="go-btn bottom" :disabled="!pick || !s.pos" @click="startPick">{{ isRunning(pick) ? t("running") : t("start") }}</button>
-          <button v-else class="go-btn bottom" :disabled="!s.pos || !itinerary.length || rallyHere" @click="startRally">{{ rallyHere ? t("rallyRunning", { l: s.rallyActive.label || '' }) : t("startRally") }}</button>
+          <!-- con un tramo en marcha, en el sitio de Iniciar está Cancelar (no se puede iniciar otro a la vez) -->
+          <button v-if="mode === 'stage' && anyActive" class="go-btn bottom danger" @click="call('uiCancelStage')">{{ t("cancel") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+          <button v-else-if="mode === 'stage'" class="go-btn bottom" :disabled="!pick || !s.pos" @click="startPick">{{ t("start") }}</button>
+          <button v-else class="go-btn bottom" :disabled="!s.pos || !itinerary.length || rallyHere || anyActive" @click="startRally">{{ rallyHere ? t("rallyRunning", { l: s.rallyActive.label || '' }) : t("startRally") }}</button>
         </div>
 
         <!-- tramos del rally -->
@@ -248,14 +250,12 @@
               </div>
             </button>
           </div>
-          <div class="modes" v-if="pick && pick.hasReverse">
+          <div class="modes" v-if="pick && pick.hasReverse && !anyActive">
             <button :class="{ on: !reverse }" @click="reverse = false">→ {{ t("dirNormal") }}</button>
             <button :class="{ on: reverse }" @click="reverse = true">← {{ t("dirReverse") }}</button>
           </div>
-          <div class="sactions" v-if="pick">
-            <button v-if="isRunning(pick)" class="btn danger" @click="call('uiCancelStage')">{{ t("cancel") }}</button>
+          <div class="sactions" v-if="pick && !anyActive">
             <button class="btn" :disabled="!s.pos" @click="call('uiGo', sel.id, pick.id, 'gps', reverse)">{{ t("gps") }}</button>
-            <button class="btn" :disabled="!s.pos" @click="call('uiGo', sel.id, pick.id, 'teleport', reverse)">{{ t("tp") }}</button>
           </div>
           </template>
         </div>
@@ -350,6 +350,7 @@ const focusId = ref(null)
 const pickId = ref(null)
 const tab = ref("info")
 const mode = ref("stage")
+const reverse = ref(false)
 const fromRun = ref(null)
 const radii = [10, 25, 50, 100, 250, 1000]
 let timer = null
@@ -481,13 +482,27 @@ function plate(st) {
 }
 function isRunning(st) {
   const a = s.value && s.value.stageActive
-  return !!(st && a && sel.value && a.eventId === sel.value.id && a.stageId === st.id)
+  return !!(st && a && sel.value && a.eventId === sel.value.id && (a.stageId === st.id || a.stageId === st.id + "R"))
 }
-const reverse = ref(false)
+// un tramo en marcha (de este evento o de otro): se preselecciona y no se puede iniciar otro
+const anyActive = computed(() => !!(s.value && s.value.stageActive))
+const activeLabel = computed(() => (s.value && s.value.stageActive && s.value.stageActive.title) || "")
+function selectActive() {
+  const a = s.value && s.value.stageActive
+  if (!a) return
+  if (!sel.value || sel.value.id !== a.eventId) { call("uiSelect", a.eventId); return }
+  const base = String(a.stageId).replace(/R$/, "")
+  if (stages.value.some(x => x.id === base)) {
+    mode.value = "stage"
+    pickId.value = base
+    reverse.value = String(a.stageId).endsWith("R") && base !== a.stageId
+  }
+}
+watch(() => [s.value && s.value.stageActive && s.value.stageActive.stageId, sel.value && sel.value.id], selectActive, { immediate: true })
 // sin tramo al revés en el rally, siempre en su sentido
-watch(() => pick.value && pick.value.id, () => { if (pick.value && !pick.value.hasReverse) reverse.value = false })
+watch(() => pick.value && pick.value.id, () => { if (pick.value && !pick.value.hasReverse && !isRunning(pick.value)) reverse.value = false })
 // Iniciar: si estás lejos, el tramo se carga y el coche aparece 100 m antes del control horario (pantalla de carga)
-function startPick() { if (pick.value) call("uiPlay", sel.value.id, pick.value.id, reverse.value) }
+function startPick() { if (pick.value && !anyActive.value) call("uiPlay", sel.value.id, pick.value.id, reverse.value) }
 </script>
 
 <style scoped lang="scss">
@@ -647,4 +662,5 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .recmod { margin: 2px 0 6px; font-size: 0.82em; opacity: 0.85; line-height: 1.35; }
 .newimp { border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; }
 .newimp input[type=file] { color: inherit; font-size: 0.85em; }
+.go-btn.danger { background: #b3261e; }
 </style>

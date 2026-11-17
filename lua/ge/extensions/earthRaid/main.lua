@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.5.0'
+M.VERSION = '0.6.0'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -273,7 +273,13 @@ function M.event(id)
   for _, e in ipairs(S.index and S.index.events or {}) do
     if e.id == id then
       local data = jsonReadFile((e._base or '/earthRaid/') .. e.file)
-      if type(data) == 'table' then S.loaded[id] = data end
+      if type(data) == 'table' then
+        -- la carpeta del paquete y el logo de la entrada del catálogo (para la pantalla de carga)
+        data._base = data._base or e._base or '/earthRaid/'
+        data.logo = data.logo or e.logo
+        data.description = data.description or e.description
+        S.loaded[id] = data
+      end
       return S.loaded[id]
     end
   end
@@ -469,7 +475,7 @@ local function buildModel()
   local rs = rally.state()
   local m = { earth = S.earth, reason = S.reason, version = M.VERSION, lang = spanish() and 'es' or 'en',
     units = S.opts.units == 'mi' and 'mi' or 'km', q = U.q, filters = U.filters, radiusKm = radiusM() / 1000,
-    stageActive = st and { eventId = st.eventId, stageId = st.stageId, phase = st.phase } or nil,
+    stageActive = st and { eventId = st.eventId, stageId = st.stageId, phase = st.phase, title = st.title } or nil,
     rallyActive = rs and { eventId = rs.ev.id, phase = rs.phase, idx = rs.idx, count = #rs.it.items,
       label = rs.it.items[rs.idx] and rs.it.items[rs.idx].label or nil } or nil,
     pos = lat and { lat = lat, lon = lon } or nil, proposalId = S.proposal and S.proposal.event.id or nil,
@@ -758,11 +764,14 @@ end
 
 -- Ir a la salida de un tramo: mode 'gps' | 'teleport'
 -- El tramo al revés: mismo trazado de la meta a la salida (id con R, sus propios tiempos)
-local revCache = {}
 -- ¿El rally corre este tramo también al revés? (otro tramo que empieza donde este acaba y acaba donde empieza, o
 -- una ida y vuelta como Ourense). Solo entonces se ofrece el sentido inverso.
 M.REVERSE_MATCH_M = 200
+-- Norma (17-nov): «SS 2/5» (una barra y dos números) son dos tramos en la misma carretera, cada uno en un sentido:
+-- la primera pasada en el sentido del archivo y la segunda al revés. Así que un tramo con dos o más pasadas tiene
+-- inverso, igual que uno cuyo trazado contrario está en el evento.
 function M.hasReverse(full, s)
+  if s.kind == 'ss' and #(s.runs or {}) >= 2 then return true end
   if not (s.start and s.finish) then return false end
   for _, o in ipairs(full.stages or {}) do
     if o ~= s and o.start and o.finish and catalog.dist(o.start[1], o.start[2], s.finish[1], s.finish[2]) < M.REVERSE_MATCH_M
@@ -771,19 +780,7 @@ function M.hasReverse(full, s)
   return false
 end
 
-function M.reversed(s)
-  if not s then return nil end
-  if revCache[s] then return revCache[s] end
-  local r = {}
-  for k, v in pairs(s) do if k ~= '_clean' and k ~= '_cleanRemovedM' then r[k] = v end end
-  local p = {}
-  for k = #s.path, 1, -1 do p[#p + 1] = s.path[k] end
-  r.path, r.start, r.finish = p, s.finish or p[1], s.start or p[#p]
-  r.id, r.reverse = s.id .. 'R', true
-  r.title = (s.title or s.id) .. (spanish() and ' (inverso)' or ' (reverse)')
-  revCache[s] = r
-  return r
-end
+function M.reversed(s) return catalog.reversed(s, spanish()) end
 local function stageOf(full, stageId, reverse)
   for _, s in ipairs(full.stages or {}) do
     if s.id == stageId or s.id .. 'R' == stageId then
@@ -914,6 +911,7 @@ function M.uiStart(eventId, stageId, reverse)
 end
 
 function M.uiCancelStage()
+  if loader.active() then pcall(loader.cancel) stage.holdJobs(false) end
   if rally.active() then rally.stop() else stage.stop() end
   M.publishState()
 end
@@ -921,8 +919,25 @@ end
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
 -- Iniciar con carga: el tramo se prepara, el coche va a la zona de salida congelado, se espera a las carreteras, se
 -- monta el TC y la salida, y se suelta en la calzada M.TP_BEFORE_TC_M antes del control (loader.lua)
+-- el texto de la pantalla de carga: la descripción del evento, y si no tiene, los datos del tramo
+function M.loadingText(full, s, es)
+  local d = full.description or full.desc
+  if type(d) == 'table' then d = d[es and 'es' or 'en'] or d.es or d.en end
+  if type(d) == 'string' and d ~= '' then return d:sub(1, 400) end
+  local parts = {}
+  if full.championship then parts[#parts + 1] = tostring(full.championship) end
+  if full.dates then parts[#parts + 1] = tostring(full.dates) end
+  if s and s.lengthM then parts[#parts + 1] = ('%.2f km'):format(s.lengthM / 1000) end
+  if s and (s.surface or full.surface) then parts[#parts + 1] = tostring(s.surface or full.surface) end
+  return #parts > 0 and table.concat(parts, ' · ') or nil
+end
 M.PLAY_TELEPORT_M = 1000     -- más lejos que esto de la salida: con teletransporte y carga; si no, se empieza ahí mismo
 function M.uiPlay(eventId, stageId, reverse)
+  -- un tramo cada vez: con uno en marcha hay que cancelarlo antes
+  if stage.state() or loader.active() then
+    M.toast(spanish() and 'Ya hay un tramo en marcha: cancélalo antes de iniciar otro.' or 'A stage is already running: cancel it first.', 5)
+    return
+  end
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   local s = stageOf(full, stageId, reverse)
@@ -944,6 +959,7 @@ function M.uiPlay(eventId, stageId, reverse)
   local ok, err = loader.begin({
     title = s.title, event = full.name, lang = es and 'es' or 'en',
     logo = full._base and full.logo and (full._base .. full.logo) or nil,
+    description = M.loadingText(full, s, es),
     tpLat = tlat, tpLon = tlon,
     -- (el TC aún es aproximado: se calcula por la carretera real al montar la salida)
     near = { { s.start[1], s.start[2] } },
@@ -989,6 +1005,7 @@ function M.uiStartRally(eventId, fromRun)
     -- al parque de asistencia con carga: el box se monta y el coche aparece en él, no en el monte
     loader.begin({ title = es and 'Parque de asistencia' or 'Service park', event = full.name, lang = es and 'es' or 'en',
       logo = full._base and full.logo and (full._base .. full.logo) or nil, tpLat = start[1], tpLon = start[2],
+      description = M.loadingText(full, nil, es),
       near = { { start[1], start[2], 150 } },
       dress = function()
         -- el box (carpa, herramientas) junto a la asistencia, una vez

@@ -36,6 +36,11 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
    - El zip debe tener `lua/`, `ui/`, `scripts/`… en su raíz. Un zip con una carpeta dentro (p. ej. `raid-earth/lua/…`, el que da *Code → Download ZIP* de GitHub) **no funciona**: el mod sale en la lista pero no aparece el menú.
 3. Entra en BeamNG.Earth. El menú está en el menú de pausa → pestaña **Mods** → **Raid.Earth**, o con **Ctrl+Mayús+G**.
+4. Ten **una sola copia**: si instalaste desde Add-ons (`earth_raid-1.zip`) y además a mano (`earth_raid.zip`), borra una. Dos copias a la vez se pisan.
+
+**Mods recomendados (opcionales):**
+- **Racing Line Mod** (`racingline`): en el tramo, su línea de carrera sustituye a la línea azul del GPS (se puede apagar en Ajustes).
+- **hotw** (`211443_hotw`): añade un piloto al coche.
 
 ## Añadir un rally
 

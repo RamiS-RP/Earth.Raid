@@ -191,8 +191,14 @@ local function create(kind, opts)
     o:setField('shapeName', 0, shape)
     o:setPosition(vec3(0, 0, 0))
     o.scale = vec3(1, 1, 1)
+    -- colisión con su propia malla visible: muchos modelos de rally no traen malla de colisión y el coche los
+    -- atravesaba (petición del usuario, 17-nov: los objetos deben tener colisión)
     if opts and opts.noCollision then o:setField('collisionType', 0, 'None')
-    else M.collisionDirty = true end
+    else
+      o:setField('collisionType', 0, 'Visible Mesh')
+      o:setField('decalType', 0, 'Visible Mesh')
+      M.collisionDirty = true
+    end
   end
   register(o, kind)
   if prefab and o.load then pcall(function() o:load() end) end
@@ -317,7 +323,7 @@ function M.pump(budgetMs)
   local i = 1
   while i <= #queue do
     local it = queue[i]
-    if not it.dead then
+    if not it.dead and not it.hidden then
       local ok, obj = pcall(create, it.kind, it.opts)
       if ok and obj then it.obj = obj pcall(apply, it) else log('W', TAG, 'props ' .. it.kind .. ': ' .. tostring(obj)) end
     end
@@ -381,6 +387,16 @@ function M.clear()
   items = {}
 end
 
+-- quita un objeto de la escena sin romper la lista (offRoad no le encontró sitio fuera de la calzada)
+function M.hide(it)
+  it.hidden = true
+  if it.obj then
+    pcall(function() if it.obj.unload then it.obj:unload() end it.obj:delete() end)
+    it.obj = nil
+    M.collisionDirty = true
+  end
+end
+
 function M.count() return #items end
 function M.find(kind) for _, it in ipairs(items) do if it.kind == kind then return it.obj end end end
 function M.all() return items end
@@ -419,6 +435,59 @@ function M.nearestRoad(x, y, z, maxD)
   end
   if b1 then return b1, b2, bd, bx, by end
   return nil
+end
+
+
+-- Índice de todas las carreteras cargadas (tramos entre nodos del grafo), en celdas de 32 m. Se rehace cuando el grafo
+-- cambia (BeamNG.Earth carga carreteras nuevas al moverse). Lo usa dressing.offRoad: un objeto no puede quedar en
+-- ninguna calzada, ni la del tramo ni las que cruzan.
+M.CELL_M = 32
+local roadIdx = { n = -1, cells = {}, segs = {}, t = -1e9 }
+function M.roadIndex()
+  local m = map.getMap()
+  if not (m and m.nodes) then return nil end
+  -- contar los nodos cuesta: como mucho cada medio segundo
+  local now = os.clock()
+  if roadIdx.map == m and now - (roadIdx.checked or 0) < 0.5 then return roadIdx end
+  local count = 0
+  for _ in pairs(m.nodes) do count = count + 1 end
+  roadIdx.checked = now
+  if count == roadIdx.n and roadIdx.map == m then return roadIdx end
+  local cells, segs, C = {}, {}, M.CELL_M
+  local seen = {}
+  for id, nd in pairs(m.nodes) do
+    for nb in pairs(nd.links or {}) do
+      local o = m.nodes[nb]
+      if o and not seen[tostring(nb) .. '|' .. tostring(id)] then
+        seen[tostring(id) .. '|' .. tostring(nb)] = true
+        local A, B = nd.pos, o.pos
+        local sg = { ax = A.x, ay = A.y, bx = B.x, by = B.y, ra = nd.radius or 3, rb = o.radius or 3 }
+        segs[#segs + 1] = sg
+        local pad = math.max(sg.ra, sg.rb) + 4
+        local x0, x1 = math.floor((math.min(A.x, B.x) - pad) / C), math.floor((math.max(A.x, B.x) + pad) / C)
+        local y0, y1 = math.floor((math.min(A.y, B.y) - pad) / C), math.floor((math.max(A.y, B.y) + pad) / C)
+        if (x1 - x0 + 1) * (y1 - y0 + 1) <= 400 then
+          for cx = x0, x1 do
+            for cy = y0, y1 do
+              local k = cx .. ':' .. cy
+              local l = cells[k]
+              if not l then l = {} cells[k] = l end
+              l[#l + 1] = sg
+            end
+          end
+        end
+      end
+    end
+  end
+  roadIdx = { n = count, map = m, cells = cells, segs = segs, version = (roadIdx.version or 0) + 1, checked = now }
+  return roadIdx
+end
+
+-- los tramos de carretera cerca de (x, y)
+function M.roadsAt(x, y)
+  local ix = M.roadIndex()
+  if not ix then return nil end
+  return ix.cells[math.floor(x / M.CELL_M) .. ':' .. math.floor(y / M.CELL_M)] or {}, ix
 end
 
 return M

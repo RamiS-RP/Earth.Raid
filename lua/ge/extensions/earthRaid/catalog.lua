@@ -53,4 +53,38 @@ function M.nearby(index, lat, lon, radiusM)
   return out
 end
 
+-- El mismo tramo en sentido contrario (trazado al revés, salida y meta cambiadas, id + 'R')
+local revCache = setmetatable({}, { __mode = 'k' })
+function M.reversed(s, es)
+  if not s then return nil end
+  if revCache[s] then return revCache[s] end
+  local r = {}
+  for k, v in pairs(s) do if k ~= '_clean' and k ~= '_cleanRemovedM' then r[k] = v end end
+  local p = {}
+  for k = #s.path, 1, -1 do p[#p + 1] = s.path[k] end
+  r.path, r.start, r.finish = p, s.finish or p[1], s.start or p[#p]
+  r.id, r.reverse = s.id .. 'R', true
+  -- avisos y radios: su distancia se cuenta ahora desde la otra punta
+  local total = s.lengthM or s.length or (s.km and s.km * 1000)
+  local function flip(list)
+    if type(list) ~= 'table' or not total then return list end
+    local out = {}
+    for i = #list, 1, -1 do
+      local h = list[i]
+      if type(h) == 'number' then out[#out + 1] = math.max(0, total - h)
+      elseif type(h) == 'table' then
+        local c = {} for k, v in pairs(h) do c[k] = v end
+        if h.atM then c.atM = math.max(0, total - h.atM) end
+        if h.at then c.at = math.max(0, total - h.at) end
+        out[#out + 1] = c
+      end
+    end
+    return out
+  end
+  r.hazards, r.radios = flip(s.hazards), flip(s.radios)
+  r.title = (s.title or s.id) .. (es and ' (inverso)' or ' (reverse)')
+  revCache[s] = r
+  return r
+end
+
 return M
