@@ -1,7 +1,10 @@
 #!/usr/bin/env sh
-# Empaqueta el mod para BeamNG.drive: raid-earth.zip con la raíz del mod (sin docs/ ni tools/).
+# Empaqueta el mod para BeamNG.drive: earth_raid.zip con las carpetas del mod EN LA RAÍZ del zip
+# (lua/, ui/, art/, scripts/, settings/, earthRaid/). BeamNG no carga un zip con una carpeta dentro
+# (p. ej. earth_raid/lua/...): el mod aparece en la lista pero no hace nada.
 set -e
 cd "$(dirname "$0")/.."
-rm -f raid-earth.zip
-zip -r raid-earth.zip art earthRaid lua scripts settings ui beamngEarth_addon.json -x '*.DS_Store'
-echo "raid-earth.zip listo: cópialo a <carpeta de usuario de BeamNG>/mods/"
+OUT="${1:-earth_raid.zip}"
+rm -f "$OUT"
+zip -r -q "$OUT" art earthRaid lua scripts settings ui beamngEarth_addon.json LICENSE -x '*.DS_Store' -x 'earthRaid/events/*'
+echo "$OUT listo: cópialo tal cual (sin descomprimir) a <carpeta de usuario de BeamNG>/current/mods/"

@@ -1,0 +1,24 @@
+# Al publicar una etiqueta v* (p. ej. v0.5.0): construye earth_raid.zip y lo adjunta a la release de GitHub.
+# El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiroRP/earth.raid) descarga ese .zip de la última release.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package
+        run: sh tools/package.sh earth_raid.zip
+      - name: Check layout (mod folders at the zip root)
+        run: |
+          unzip -l earth_raid.zip | grep -q " lua/ge/extensions/earthRaid/main.lua$"
+          unzip -l earth_raid.zip | grep -q " ui/ui-vue/mods/earthRaid/index.js$"
+          unzip -l earth_raid.zip | grep -q " scripts/earth_raid/modScript.lua$"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: earth_raid.zip
+          generate_release_notes: true
