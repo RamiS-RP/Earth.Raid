@@ -1,12 +1,15 @@
-# Al publicar una etiqueta v* (p. ej. v0.5.0): construye earth_raid.zip y lo adjunta a la release de GitHub.
+# Construye earth_raid.zip y lo publica como release de GitHub.
 # El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiroRP/earth.raid) descarga ese .zip de la última release.
+# Se lanza: al subir a main un cambio de versión (M.VERSION en main.lua), al publicar una etiqueta v* o una release
+# desde la web, o a mano (Actions → release → Run workflow).
 name: release
-# También al publicar una release desde la web de GitHub (Releases → Draft a new release → etiqueta v0.5.0 → Publish).
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   release:
     types: [published]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -14,15 +17,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Version
+        id: ver
+        run: |
+          V=$(grep -oE "M.VERSION = '[0-9.]+'" lua/ge/extensions/earthRaid/main.lua | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          if [ -n "${{ github.event.release.tag_name }}" ]; then TAG="${{ github.event.release.tag_name }}";
+          elif [ "${{ github.ref_type }}" = "tag" ]; then TAG="${{ github.ref_name }}";
+          else TAG="v$V"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "branch" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - name: Package
+        if: steps.ver.outputs.skip != 'true'
         run: sh tools/package.sh earth_raid.zip
       - name: Check layout (mod folders at the zip root)
+        if: steps.ver.outputs.skip != 'true'
         run: |
           unzip -l earth_raid.zip | grep -q " lua/ge/extensions/earthRaid/main.lua$"
           unzip -l earth_raid.zip | grep -q " ui/ui-vue/mods/earthRaid/index.js$"
           unzip -l earth_raid.zip | grep -q " scripts/earth_raid/modScript.lua$"
       - uses: softprops/action-gh-release@v2
+        if: steps.ver.outputs.skip != 'true'
         with:
-          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Raid.Earth ${{ steps.ver.outputs.tag }}
           files: earth_raid.zip
           generate_release_notes: true
+          make_latest: true
