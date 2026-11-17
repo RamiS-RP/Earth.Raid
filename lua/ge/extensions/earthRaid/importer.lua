@@ -265,7 +265,9 @@ function M.lineKind(name, where)
     return 'liaison'
   end
   -- de un control a otro (Ourense: "Llegada - Asistencia", "Asistencia-Salida"): enlace, salvo que diga que es tramo
+  -- "Tc1/Tc3 Hotel Rey Silo" (en España, TC también es "tramo cronometrado"): con su número de pasada es un tramo
   local stageWord = n:match('^%s*s?ss%s*%d') or n:match('^%s*tramo') or n:match('^%s*stage') or has(n, 'special stage', 'shakedown', 'test')
+    or n:match('^%s*tc%s*%d+%s*/') or n:match('^%s*ss%s*%d+%s*/') or has(ctx, 'tramo')
   if not stageWord and has(n, 'asistencia', 'service', 'llegada', 'arrival', 'salida a ', 'regroup', 'reagrup', 'parque',
     'parc ', 'repostaje', 'refuel', 'hotel', 'ceremon') then
     return 'liaison'
@@ -299,7 +301,8 @@ end
 
 -- "SS 2/5 Valleseco Artenara" -> { 2, 5 }, "Valleseco Artenara", superespecial?
 function M.runsOf(text)
-  local t = tostring(text or '')
+  -- "Tc1/Tc3", "SS1/SS3": el prefijo repetido tras la barra
+  local t = tostring(text or ''):gsub('/%s*[TtSs][CcSs][Ss]?%s*(%d)', '/%1')
   local sss, nums, rest = t:match('^%s*([Ss][Ss][Ss]?)%s*([%d][%d%s/,%-y&]*)(.*)$')
   if not sss then
     nums, rest = t:match('^%s*[Tt][Cc]%s*([%d][%d%s/,%-]*)(.*)$')
@@ -315,7 +318,9 @@ function M.runsOf(text)
 end
 
 local function prettyTitle(s)
-  s = tostring(s or ''):gsub('%.[Kk][Mm][LlZz]$', ''):gsub('%.[Gg][Pp][Xx]$', ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
+  -- 'TC 1/3 "Hotel Rey Silo" | Viernes, 30 OCT' -> 'Hotel Rey Silo' (sin la fecha ni las comillas)
+  s = tostring(s or ''):gsub('%s*|%s*[^|]*%d[^|]*$', ''):gsub('^%s*["«“](.-)["»”]%s*$', '%1')
+  s = s:gsub('%.[Kk][Mm][LlZz]$', ''):gsub('%.[Gg][Pp][Xx]$', ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
   return (s:gsub('^%s+', ''):gsub('%s+$', ''))
 end
 
@@ -554,6 +559,8 @@ function M.build(sources, id, meta)
   -- 5. identificadores: ssNN por su primera pasada (o por orden), shakedown / test por su nombre
   local used = {}
   local nextFree = 1
+  local anyRuns = false
+  for _, st in ipairs(stages) do if st.kind == 'ss' and #st.runs > 0 then anyRuns = true end end
   table.sort(stages, function(a, b)
     local ra, rb = a.runs[1] or (1000 + a.order), b.runs[1] or (1000 + b.order)
     if (a.kind == 'ss') ~= (b.kind == 'ss') then return a.kind ~= 'ss' end
@@ -566,6 +573,13 @@ function M.build(sources, id, meta)
       local id1, k = id0, 2
       while used[id1] do id1, k = id0 .. '-' .. k, k + 1 end
       st.id = id1
+    elseif #st.runs == 0 and anyRuns then
+      -- sin número en un rally que numera sus tramos (el tramo urbano, la superespecial de exhibición): aparte, sin
+      -- ocupar el número de otro tramo
+      local id0 = 'sss-' .. slug(st.title)
+      local id1, k = id0, 2
+      while used[id1] do id1, k = id0 .. '-' .. k, k + 1 end
+      st.id, st.super = id1, true
     else
       if #st.runs == 0 then
         while used[('ss%02d'):format(nextFree)] do nextFree = nextFree + 1 end
