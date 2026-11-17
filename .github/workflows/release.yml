@@ -15,6 +15,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.ver.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,3 +49,38 @@ jobs:
           files: earth_raid.zip
           generate_release_notes: true
           make_latest: true
+  # Copiloto en español: voicepack generado con Piper (voz neuronal) a partir de tools/voicepack/es.json.
+  # Se adjunta a la misma release como earth_raid_voice_es.zip (un mod aparte, opcional). Si falla, la release sigue.
+  voice_es:
+    needs: build
+    if: needs.build.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: ver
+        run: |
+          V=$(grep -oE "M.VERSION = '[0-9.]+'" lua/ge/extensions/earthRaid/main.lua | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          TAG="${{ github.event.release.tag_name }}"; [ -z "$TAG" ] && [ "${{ github.ref_type }}" = "tag" ] && TAG="${{ github.ref_name }}"; [ -z "$TAG" ] && TAG="v$V"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Tools
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg
+          pip install piper-tts
+      - name: Voice model (Piper es_ES-davefx-medium)
+        run: |
+          B=https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium
+          curl -fsSL -o es.onnx "$B/es_ES-davefx-medium.onnx"
+          curl -fsSL -o es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
+          curl -fsSL -o MODEL_CARD.txt "$B/MODEL_CARD" || true
+      - name: Build voicepack
+        run: |
+          python tools/voicepack/make_voicepack.py --phrases tools/voicepack/es.json --engine piper --model es.onnx \
+            --id raidearth_es_davefx --persona "Copiloto Raid.Earth" --dialect es-ES --out build_voice \
+            --zip earth_raid_voice_es.zip
+          cp MODEL_CARD.txt build_voice/ 2>/dev/null || true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          files: earth_raid_voice_es.zip

@@ -42,6 +42,8 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 - **Racing Line Mod** (`racingline`): en el tramo, su línea de carrera sustituye a la línea azul del GPS (se puede apagar en Ajustes).
 - **hotw** (`211443_hotw`): añade un piloto al coche.
 
+**Copiloto en español:** cada release trae también `earth_raid_voice_es.zip` (voz generada con Piper a partir de `tools/voicepack/es.json`). Cópialo a `mods/` como el otro y elige el copiloto en Ajustes. Para otros idiomas o voces: traduce `es.json` y ejecuta `tools/voicepack/make_voicepack.py` (Piper, voces de Windows o espeak-ng); cualquier voicepack con el formato del juego aparece en Ajustes → Copiloto.
+
 ## Añadir un rally
 
 Menú → **⤓ Importar** → **Abrir la carpeta**. Crea una carpeta por evento dentro de `settings/earthRaid/import/`:
