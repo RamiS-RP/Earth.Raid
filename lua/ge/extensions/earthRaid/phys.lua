@@ -8,10 +8,16 @@
 local M = {}
 local TAG = 'earthRaid'
 
-M.ON_M = 220
-M.OFF_M = 320
-M.MAX = 36                    -- como mucho a la vez
-M.SPAWN_EVERY_S = 0.12        -- uno cada tanto (crear un vehículo cuesta unos milisegundos)
+M.ON_M = 180
+M.OFF_M = 280
+M.MAX = 24                    -- como mucho a la vez
+M.SPAWN_EVERY_S = 0.45        -- uno cada tanto: crear un vehículo cuesta de 100 a 800 ms (18-nov, medido: era la causa
+                              -- de los tirones; en la pantalla de carga se crean los de la salida de golpe)
+M.SCAN_EVERY_S = 0.25         -- la búsqueda del más cercano, no en cada fotograma
+-- con física solo lo que el coche puede tocar de verdad: conos en la calzada, cintas, lo del puesto de control y la
+-- meta (zona lenta) y la ambulancia; el resto de carteles del tramo queda estático (18-nov, rendimiento)
+M.PHYS_KINDS = { cone = true, tape = true, tape6 = true, tape10 = true, ambulance = true, start = true, finish = true,
+  stop = true, tc = true, tcEntry = true, finishEntry = true, endArea = true }
 M.enabled = true
 
 -- tipo de props.lua -> modelo y configuración del juego
@@ -35,7 +41,7 @@ local live = {}               -- item -> { vid }
 local count = 0
 local spawnT = 0
 
-function M.handles(kind) return M.enabled and M.MAP[kind] ~= nil end
+function M.handles(kind) return M.enabled and M.MAP[kind] ~= nil and M.PHYS_KINDS[kind] == true end
 
 local function exists(kind)
   local m = M.MAP[kind]
@@ -86,9 +92,13 @@ local function spawn(it)
 end
 
 -- cada fotograma: x, y del coche (coordenadas del juego); items = props.all()
+local scanT = 0
 function M.update(dt, px, py, items, burst)
   if not M.enabled then return end
   spawnT = spawnT + (dt or 0)
+  scanT = scanT + (dt or 0)
+  if scanT < M.SCAN_EVERY_S and not burst then return end
+  scanT = 0
   -- fuera lo que queda lejos (o cuyo objeto ya no existe)
   for it in pairs(live) do
     local gone = not it.obj or it.hidden or it.dead
@@ -102,7 +112,7 @@ function M.update(dt, px, py, items, burst)
   -- el más cercano sin física
   local best, bd = nil, M.ON_M * M.ON_M
   for _, it in ipairs(items) do
-    if it.obj and not live[it] and not it.noPhys and not it.hidden and M.MAP[it.kind] then
+    if it.obj and not live[it] and not it.noPhys and not it.hidden and M.MAP[it.kind] and M.PHYS_KINDS[it.kind] then
       local p = it.obj:getPosition()
       local d = (p.x - px) ^ 2 + (p.y - py) ^ 2
       if d < bd then best, bd = it, d end

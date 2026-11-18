@@ -46,8 +46,11 @@ M.SHAPES = {
   smallToolbox = '/art/shapes/garage_and_dealership/garage/s_small_toolbox_01.dae',
   tireRack = '/art/shapes/garage_and_dealership/garage/s_tire_rack.dae',
   -- protecciones en curvas peligrosas y cortes de calles (lo que usan los rallies del juego)
-  hayBale = '/assets/meshes/props/race_event/equipment/s_haybaleround_large_01.dae',
-  hayBale2 = '/assets/meshes/props/race_event/equipment/s_haybaleround_alt_01.dae',
+  -- pacas del juego (las de carga de vehículos; sus materiales se cargan aparte, ver create): redondas (un grupo de
+  -- 4,4 m de ancho en X) y cuadradas (1,8 x 2,5 m)
+  hayBale = '/vehicles/common/loads/haybale/haybale_round.dae',
+  hayBale2 = '/vehicles/common/loads/haybale/haybale.dae',
+  meshBarricade = '/art/shapes/race/ut_race_mesh_barricade_.DAE',   -- malla naranja de 10 m (Utah), larga en Y
   barrel = '/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae',
   plasticBarrier = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE',
   plasticBarrierW = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier.DAE',
@@ -183,8 +186,14 @@ M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, plasticBarri
 function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
 
 -- Coloca un objeto: kind (clave de SHAPES o PREFABS), lat, lon, dx, dy (dirección de marcha), yaw (grados, horario)
+local baleMats = false
 local function create(kind, opts)
   local shape, prefab, snd = M.SHAPES[kind], M.PREFABS[kind], M.SOUNDS[kind]
+  if (kind == 'hayBale' or kind == 'hayBale2') and not baleMats then
+    -- los materiales de las pacas solo existen como carga de vehículo: se cargan a mano (18-nov: salían naranjas)
+    baleMats = true
+    pcall(loadJsonMaterialsFile, '/vehicles/common/loads/haybale/main.materials.json')
+  end
   local o
   if kind == 'lamp' then
     -- luz cálida bajo las carpas (se ve de noche)

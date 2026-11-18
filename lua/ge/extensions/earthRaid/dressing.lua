@@ -290,8 +290,8 @@ end
 
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
-M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
-  cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTapeBigA = 1.5, specTapeBigB = 1.5, specTapeBigCenter = 1.5, specTarpAngle = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
+M.CLEAR_M = { hayBale = 2.3, hayBale2 = 1.4, meshBarricade = 0.5, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
+  cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTapeBigA = 1.5, specTapeBigB = 1.5, specTapeBigCenter = 1.5, specTarpAngle = 1.5, meshBarricade = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
   if c == false then return nil end
@@ -432,9 +432,15 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   end
   local lat, lon, dx, dy = at(t, along, right, fwd)
   M._seen = false
+  local lat0, lon0 = lat, lon
   lat, lon = offRoad(kind, lat, lon)
   local seen = M._seen
   if not lat then return nil end
+  -- piezas de un perímetro (mallas, barreras en fila): si no caben donde toca, no se ponen desplazadas (18-nov, Salas:
+  -- junto a un cruce las mallas se iban monte abajo)
+  if opts and opts.noPush and lat0 and math.abs(lat - lat0) * 111195 + math.abs(lon - lon0) * 111195 * math.cos(math.rad(lat)) > 0.7 then
+    return nil
+  end
   if M.dry then
     M.counts[kind] = (M.counts[kind] or 0) + 1
     return { kind = kind, lat = lat, lon = lon }
@@ -607,7 +613,7 @@ end
 local function tarpLine(t, along, side, n, fwd)
   local kinds = { 'specTarp', 'specTarp2', 'specTarp3' }
   local from = side > 0 and side - 2.5 or side + 2.5
-  for i = 0, n - 1 do place(kinds[i % 3 + 1], t, along, side, 0, (fwd or 0) - i * 4, { noCollision = true, from = from }) end
+  for i = 0, n - 1 do place(kinds[i % 3 + 1], t, along, side, 0, (fwd or 0) - i * 4, { noCollision = true, from = from, noPush = true }) end
 end
 
 -- Conos en la calzada: solo en el eje y solo si es de doble sentido (dividen los dos carriles)
@@ -800,7 +806,7 @@ function M.perimeter(t, from, to, side, kind)
   from, to = math.max(0, from), math.min(t.total, to)
   if to - from < 2 then return end
   local mid = (from + to) / 2
-  local opts = { noCollision = true }
+  local opts = { noCollision = true, noPush = true }
   local n = 0
   if to - from >= 4 then
     place(P.center, t, mid, side, 0, 0, opts) n = n + 1
@@ -860,7 +866,7 @@ local function barrierChain(t, from, to, sideSign)
     local dx, dy = geo.dirAt(t, a2)
     local px, py = x + dy * r, y - dx * r
     if not lx or (px - lx) ^ 2 + (py - ly) ^ 2 >= (M.BARRIER_LEN_M + 0.08) ^ 2 then
-      if place(n % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', t, a2, r, 90, 0) then
+      if place(n % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', t, a2, r, 90, 0, { noPush = true }) then
         lx, ly, n = px, py, n + 1
       end
     end
@@ -883,6 +889,12 @@ function M.barriers(t, notes)
           local cliff = dropOutside(t, mid, sideSign * (hw + 6)) > M.CLIFF_DROP_M
           if byStraight or (cliff and (slow or fast)) then
             barrierChain(t, nt.at - 4, (nt.endAt or nt.at) + 8, sideSign)
+            -- y detrás, el perímetro blando: la malla naranja de 10 m del juego siguiendo el borde (una pieza cada
+            -- 10 m, centrada; si no cabe sin moverla, no se pone)
+            local from, to = nt.at - 4, (nt.endAt or nt.at) + 8
+            for a3 = from + 5, to - 5, 10 do
+              place('meshBarricade', t, a3, sideSign * (hwAt(t, a3) + 3.0), 0, 0, { noCollision = true, noPush = true })
+            end
           end
         end)
       end
@@ -1067,6 +1079,30 @@ function M.closures(t, from, to)
                     local ax, ay = nx + bx2 / bl2 * rw2, ny + by2 / bl2 * rw2
                     local al, ao = offRoad('cornerR', geo.toGeo(t, ax, ay))
                     if al then props.add(right and 'cornerR' or 'cornerL', al, ao, ix, iy, -90) end
+                    -- zona de escape (18-nov, Salas: curva muy cerrada tras un salto y el coche acababa por la calle
+                    -- que sigue recto): pacas redondas y cuadradas cruzando la boca de esa calle y detrás una fila
+                    -- de barreras de plástico rojas y blancas
+                    if turn < 0.55 then
+                      local ux, uy = sx / sl, sy / sl
+                      local qx, qy = -uy, ux
+                      local w = (on.radius or 3)
+                      local d0 = (node.radius or 3) + 5
+                      local kinds = { { 'hayBale', -w + 0.3, 0 }, { 'hayBale2', w - 1.2, 0 }, { 'hayBale2', w - 1.2, 1.3 } }
+                      for _, k in ipairs(kinds) do
+                        local bx, by = nx + ux * (d0 + k[3]) + qx * k[2], ny + uy * (d0 + k[3]) + qy * k[2]
+                        local bl, bo = geo.toGeo(t, bx, by)
+                        local it3 = props.add(k[1], bl, bo, ux, uy, 90)
+                        if it3 then it3.roadOk = true it3.closure = true end
+                      end
+                      local nB = 0
+                      for off = -w + 0.8, w - 0.8, 1.58 do
+                        local bx, by = nx + ux * (d0 + 3.2) + qx * off, ny + uy * (d0 + 3.2) + qy * off
+                        local bl, bo = geo.toGeo(t, bx, by)
+                        local it3 = props.add(nB % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', bl, bo, ux, uy, 90)
+                        if it3 then it3.roadOk = true it3.closure = true end
+                        nB = nB + 1
+                      end
+                    end
                     break
                   end
                 end

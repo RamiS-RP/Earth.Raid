@@ -869,7 +869,7 @@ function M.update(dtSim, dtReal)
     local v = be:getPlayerVehicle(0)
     if v then
       local p = v:getPosition()
-      local okP, errP = pcall(phys.update, dtReal or dtSim or 0, p.x, p.y, props.all())
+      local okP, errP = pcall(phys.update, dtReal or dtSim or 0, p.x, p.y, props.all(), require('earthRaid/loader').active())
       if not okP then log('W', TAG, 'phys: ' .. tostring(errP)) end
     end
   end
@@ -887,7 +887,7 @@ function M.update(dtSim, dtReal)
       local a = api()
       local plat, plon
       if a and a.position then plat, plon = a.position() end
-      local n = plat and dressing.runJobsNear(plat, plon, S.loading and 4 or 1) or 0
+      local n = plat and dressing.runJobsNear(plat, plon, require('earthRaid/loader').active() and 4 or 1) or 0
       -- el repuesto de esta zona que no se ha reutilizado, fuera (ya está montada)
       if plat and props.spareCount() > 0 and dressing.pendingJobsNear(plat, plon) == 0 then
         local k = math.cos(math.rad(plat))

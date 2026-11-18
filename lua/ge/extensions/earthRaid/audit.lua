@@ -13,8 +13,11 @@ M.FILE = '/settings/earthRaid/audit.json'
 M.LINE_OK_M = 1.6            -- el centro de una línea, a menos de esto del eje de la carretera
 M.ALIGN_OK = 0.85            -- coseno entre la línea y la carretera
 M.SETTLE_S = 30              -- espera tras un viaje para que carguen carreteras y terreno
-M.JOBS_S = 45                -- espera máxima a que se monte la zona
-M.LINE_KINDS = { tc = true, start = true, finish = true, stop = true }
+M.JOBS_S = 45                -- espera máxima a que se monte la zona (tras soltar los trabajos retenidos)
+M.BUILD_S = 12               -- y un momento más para que se creen los objetos
+M.LINE_KINDS = { line = true }
+M.BOARD_KINDS = { tc = true, start = true, finish = true, stop = true }   -- carteles: junto a la calzada
+M.BOARD_OK_M = 3.0           -- un cartel, a menos de esto del borde de la calzada
 M.ROAD_OK = { cone = true, line = true, sensor = true, tc = true, start = true, finish = true, stop = true,
   finishEntry = true, tcEntry = true, sndCrowd = true, sndCheer = true, sndGenerator = true, lamp = true }
 
@@ -60,9 +63,8 @@ local function measure(cx, cy, radius)
         if it.hidden then hidden = hidden + 1
         else
           local d, r, align = roadRel(it.obj)
-          if M.LINE_KINDS[it.kind] then
-            -- las líneas van de borde a borde: su eje X cruza la carretera, el Y va con ella (giro aparte)
-            lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = align, x = math.floor(q.x), y = math.floor(q.y) }
+          if M.LINE_KINDS[it.kind] or M.BOARD_KINDS[it.kind] then
+            lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = align, x = math.floor(q.x), y = math.floor(q.y), board = M.BOARD_KINDS[it.kind] }
           elseif d and r and d < r + 0.3 and not M.ROAD_OK[it.kind] then
             onRoad[#onRoad + 1] = { kind = it.kind, d = d, r = r, x = math.floor(q.x), y = math.floor(q.y) }
           end
@@ -75,6 +77,10 @@ end
 
 local function lineOk(l)
   if not l.d then return false, 'no road' end
+  if l.board then
+    if l.d > (l.r or 3) + M.BOARD_OK_M then return false, ('%.1f m from the road edge'):format(l.d - (l.r or 3)) end
+    return true
+  end
   if l.d > M.LINE_OK_M then return false, ('%.1f m off the axis'):format(l.d) end
   return true
 end
@@ -175,15 +181,18 @@ function M.update(dt)
     local lines, onRoad = measure(tx, ty, 400)
     A.res.cut = (t.cutStart or 0)
     local seen = {}
+    local sx, sy = a.toGame(S.line.lat, S.line.lon, 0)
     for _, l in ipairs(lines) do
-      if l.kind == 'tc' or l.kind == 'start' then
-        seen[l.kind] = true
+      local nearStart = sx and (l.x - sx) ^ 2 + (l.y - sy) ^ 2 < 30 * 30
+      if l.kind == 'tc' or l.kind == 'start' or (l.kind == 'line' and nearStart) then
+        local name = l.kind == 'line' and 'start' or l.kind
+        seen[name] = true
         local ok, why = lineOk(l)
-        if not ok then A.res.problems[#A.res.problems + 1] = ('%s line %s at %d,%d'):format(l.kind, why, l.x, l.y) end
-        if l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(l.kind, l.align) end
+        if not ok then A.res.problems[#A.res.problems + 1] = ('%s %s %s at %d,%d'):format(name, l.board and 'board' or 'line', why, l.x, l.y) end
+        if not l.board and l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(name, l.align) end
       end
     end
-    for _, k in ipairs({ 'tc', 'start' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k .. ' line' end end
+    for _, k in ipairs({ 'tc', 'start' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
     if not gazeboNear(tx, ty) then A.res.problems[#A.res.problems + 1] = 'no gazebo at the time control' end
     if #onRoad > 0 then
       local k = {}
@@ -196,6 +205,7 @@ function M.update(dt)
     local fx, fy = geo.at(t, math.max(0, t.total - 250))
     local fla, flo = geo.toGeo(t, fx, fy)
     A.finishLL = { fla, flo }
+    st.holdJobs(true)
     if not teleport(fla, flo) then A.res.problems[#A.res.problems + 1] = 'could not travel to the finish' finishStage(A.res) return end
     A.step, A.t = 'finishSettle', 0
   elseif A.step == 'finishSettle' then
@@ -204,10 +214,14 @@ function M.update(dt)
       teleport(A.finishLL[1], A.finishLL[2])
     end
     if A.t < M.SETTLE_S then return end
+    if st.jobsHeld then st.holdJobs(false) end
     local a = api()
     local pl, po = a.position()
     local left = pl and dressing.pendingJobsNear(pl, po) or 0
     if left > 0 and A.t < M.SETTLE_S + M.JOBS_S then return end
+    if not A.built then A.built = A.t end
+    if A.t < A.built + M.BUILD_S then return end
+    A.built = nil
     local S = st.state()
     if not S then A.res.problems[#A.res.problems + 1] = 'stage lost on the way to the finish' finishStage(A.res) return end
     local t = S.track
@@ -217,14 +231,16 @@ function M.update(dt)
     local lines, onRoad = measure(gx, gy, 450)
     local seen = {}
     for _, l in ipairs(lines) do
-      if l.kind == 'finish' or l.kind == 'stop' then
-        seen[l.kind] = true
+      local nearFinish = gx and (l.x - gx) ^ 2 + (l.y - gy) ^ 2 < 30 * 30
+      if l.kind == 'finish' or l.kind == 'stop' or (l.kind == 'line' and nearFinish) then
+        local name = l.kind == 'line' and 'finish' or l.kind
+        seen[name] = true
         local ok, why = lineOk(l)
-        if not ok then A.res.problems[#A.res.problems + 1] = ('%s line %s at %d,%d'):format(l.kind, why, l.x, l.y) end
-        if l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(l.kind, l.align) end
+        if not ok then A.res.problems[#A.res.problems + 1] = ('%s %s %s at %d,%d'):format(name, l.board and 'board' or 'line', why, l.x, l.y) end
+        if not l.board and l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(name, l.align) end
       end
     end
-    for _, k in ipairs({ 'finish', 'stop' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k .. ' line' end end
+    for _, k in ipairs({ 'finish', 'stop' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
     if #onRoad > 0 then
       local k = {}
       for i = 1, math.min(6, #onRoad) do k[#k + 1] = ('%s@%d,%d'):format(onRoad[i].kind, onRoad[i].x, onRoad[i].y) end
