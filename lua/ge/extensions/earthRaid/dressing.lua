@@ -41,7 +41,7 @@ M.TREE_SIDE_M = 1.2        -- ... fuera del borde derecho...
 M.TREE_YAW = 15            -- ... con el reloj hacia el coche, un poco abierto hacia la carretera
 M.RADIO_EVERY_M = 5000
 M.SPECTATOR_MAX = 6
-M.TAPE_MAX = 80
+M.TAPE_MAX = 120
 M.SIDE_PAD_M = 0.5         -- del radio de la carretera a los demás carteles (al final del asfalto)
 M.ARROW_MIN_DEG = 40
 M.BALES = 3                -- pacas de paja por curva peligrosa
@@ -1021,7 +1021,6 @@ function M.closures(t, from, to)
   from, to = from or 0, to or t.total
   local done, n = doneKeys, 0
   for name, node in pairs(m.nodes) do
-    if tapeCount >= M.TAPE_MAX then break end
     local nlat, nlon = a.toGeo(node.pos.x, node.pos.y, node.pos.z)
     if nlat then
       local nx, ny = geo.toLocal(t, nlat, nlon)
@@ -1125,6 +1124,8 @@ function M.closures(t, from, to)
             end
           end
         end
+        -- (los cortes con cinta tienen un tope por tramo; las flechas y zonas de escape de arriba, no)
+        if tapeCount >= M.TAPE_MAX then goto nextNode end
         for other in pairs(props.neighbors(name)) do
           if other == fwdBest or other == backBest then goto nextLink end
           local on = m.nodes[other]
