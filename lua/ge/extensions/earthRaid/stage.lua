@@ -317,6 +317,7 @@ local function validateStart(t, hasBefore, graphReady)
   local fr = onRoadFrac(t, 0, M.START_CHECK_M)
   -- nil: ninguna carretera del juego cerca. Si el grafo de la zona ya está cargado (viaje con carga), es que no la
   -- hay: se busca más adelante
+  t.startInfo = { frac = fr, hasBefore = hasBefore == true, graphReady = graphReady == true }
   if fr == nil then
     if not graphReady then return 0, nil end
     fr = 0
@@ -526,12 +527,35 @@ function M.start(ev, st, info)
       t.after = nil   -- pullFinishBack: el STOP en la calzada del tramo
     end
   end
+  -- Norma de oro en la meta (18-nov, Ingenio, Cristian López, Canarias ss01): si los últimos 120 m del trazado no van
+  -- por carretera del juego (el KMZ sigue por donde el mapa no tiene carretera, o va desplazado), la meta retrocede
+  -- hasta el último tramo que sí va por carretera. En tramos de tierra no se aplica (el camino puede no estar en el
+  -- mapa y cuenta la calzada virtual). Devuelve 'unknown' si el grafo no está cargado por ahí.
+  local function checkFinish()
+    if t.finishCut or t.finishMoved then return end
+    if dressing.normSurface(S.surface) == 'gravel' then return end
+    local fr = onRoadFrac(t, t.total - 120, t.total)
+    if fr == nil then return 'unknown' end
+    if fr >= 0.8 then return end
+    for a0 = t.total - 20, 700, -20 do
+      local f2 = onRoadFrac(t, a0 - 120, a0)
+      if f2 and f2 >= 0.8 then
+        local moved = t.total - a0
+        geo.truncate(t, a0)
+        t.after, t._snapT, t.afterOff, t.finishMoved = nil, nil, nil, moved
+        log('W', TAG, ('finish: the last %.0f m are not on a road (%.0f%%): finish moved %.0f m back'):format(120, fr * 100, moved))
+        return
+      end
+    end
+  end
   local finishLater
   finishLater = function()
     pcall(trimFinishToRoad)
+    local okF, vF = pcall(checkFinish)
+    if not okF then log('W', TAG, 'checkFinish: ' .. tostring(vF)) end
     if not t.finishCut then findAfter() end
     local okC, verdict = pcall(checkAfter)
-    if okC and verdict == 'unknown' then
+    if (okC and verdict == 'unknown') or (okF and vF == 'unknown') then
       -- las carreteras tras la meta aún no están cargadas: la meta se monta cuando lo estén (si el coche no está ya
       -- encima), hasta 90 s (18-nov: el STOP de Rey Silo se montaba en el monte por montarse antes de tiempo)
       S.finishWait = (S.finishWait or 0) + 1
@@ -548,6 +572,22 @@ function M.start(ev, st, info)
       if far and S.finishWait < 60 then
         dressing.later(t.total, finishLater, t, 1.5)
         return
+      end
+      -- el grafo nunca llegó: por ahí no hay carretera del juego. La meta, atrás hasta donde sí la hay
+      if okF and vF == 'unknown' and dressing.normSurface(S.surface) ~= 'gravel' then
+        pcall(function()
+          for a0 = t.total - 20, 700, -20 do
+            local f2 = onRoadFrac(t, a0 - 120, a0)
+            if f2 and f2 >= 0.8 then
+              local moved = t.total - a0
+              geo.truncate(t, a0)
+              t.after, t._snapT, t.afterOff, t.finishMoved = nil, nil, nil, moved
+              log('W', TAG, ('finish: no road near the finish: finish moved %.0f m back'):format(moved))
+              findAfter()
+              break
+            end
+          end
+        end)
       end
     end
     pcall(pullFinishBack)

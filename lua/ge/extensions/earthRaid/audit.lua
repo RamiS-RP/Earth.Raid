@@ -226,6 +226,7 @@ function M.update(dt)
     local tx, ty = a.toGame(S.tcLat, S.tcLon, 0)
     local lines, onRoad = measure(tx, ty, 400)
     A.res.cut = (t.cutStart or 0)
+    A.res.startInfo = t.startInfo
     local seen = {}
     local sx, sy = a.toGame(S.line.lat, S.line.lon, 0)
     for _, l in ipairs(lines) do
