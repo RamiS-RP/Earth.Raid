@@ -6,6 +6,7 @@
 -- una ruta propia (cada línea es un tramo; "Enlace" / "->" / "Liaison" = enlace; "Asistencia" / "Service" = parque).
 -- Puro (sin juego): texto -> datos. M.build(sources, meta) -> evento, entrada del índice | nil, error.
 local M = {}
+M.MIN_STAGE_M = 300
 
 local R = 6371008.8
 local rad, sin, cos, asin, sqrt, min, max, floor, abs = math.rad, math.sin, math.cos, math.asin, math.sqrt, math.min,
@@ -85,6 +86,13 @@ function M.readKml(text)
         local where = {}
         for i, f in ipairs(stack) do where[i] = f.name or '' end
         local nm = unescape(body:match('<name>(.-)</name>'))
+        -- capas exportadas de un SIG (Junta de Andalucía, IGN...): el nombre va en los datos del elemento
+        if not nm or nm == '' then
+          for _, k in ipairs({ 'nombre', 'name', 'Name', 'NOMBRE', 'NAME', 'title', 'titulo', 'denominacion' }) do
+            local v = body:match('<SimpleData name="' .. k .. '">(.-)</SimpleData>') or body:match('<Data name="' .. k .. '">%s*<value>(.-)</value>')
+            if v and v ~= '' then nm = unescape(v) break end
+          end
+        end
         local desc = unescape(body:match('<description>(.-)</description>'))
         local any = false
         for coords in body:gmatch('<LineString.->.-<coordinates>(.-)</coordinates>') do
@@ -257,7 +265,9 @@ function M.lineKind(name, where)
     return 'liaison'
   end
   -- de un control a otro (Ourense: "Llegada - Asistencia", "Asistencia-Salida"): enlace, salvo que diga que es tramo
+  -- "Tc1/Tc3 Hotel Rey Silo" (en España, TC también es "tramo cronometrado"): con su número de pasada es un tramo
   local stageWord = n:match('^%s*s?ss%s*%d') or n:match('^%s*tramo') or n:match('^%s*stage') or has(n, 'special stage', 'shakedown', 'test')
+    or n:match('^%s*tc%s*%d+%s*/') or n:match('^%s*ss%s*%d+%s*/') or has(ctx, 'tramo')
   if not stageWord and has(n, 'asistencia', 'service', 'llegada', 'arrival', 'salida a ', 'regroup', 'reagrup', 'parque',
     'parc ', 'repostaje', 'refuel', 'hotel', 'ceremon') then
     return 'liaison'
@@ -291,7 +301,8 @@ end
 
 -- "SS 2/5 Valleseco Artenara" -> { 2, 5 }, "Valleseco Artenara", superespecial?
 function M.runsOf(text)
-  local t = tostring(text or '')
+  -- "Tc1/Tc3", "SS1/SS3": el prefijo repetido tras la barra
+  local t = tostring(text or ''):gsub('/%s*[TtSs][CcSs][Ss]?%s*(%d)', '/%1')
   local sss, nums, rest = t:match('^%s*([Ss][Ss][Ss]?)%s*([%d][%d%s/,%-y&]*)(.*)$')
   if not sss then
     nums, rest = t:match('^%s*[Tt][Cc]%s*([%d][%d%s/,%-]*)(.*)$')
@@ -307,7 +318,9 @@ function M.runsOf(text)
 end
 
 local function prettyTitle(s)
-  s = tostring(s or ''):gsub('%.[Kk][Mm][LlZz]$', ''):gsub('%.[Gg][Pp][Xx]$', ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
+  -- 'TC 1/3 "Hotel Rey Silo" | Viernes, 30 OCT' -> 'Hotel Rey Silo' (sin la fecha ni las comillas)
+  s = tostring(s or ''):gsub('%s*|%s*[^|]*%d[^|]*$', ''):gsub('^%s*["«“](.-)["»”]%s*$', '%1')
+  s = s:gsub('%.[Kk][Mm][LlZz]$', ''):gsub('%.[Gg][Pp][Xx]$', ''):gsub('%s+%-%s*', ' – '):gsub('%s*%-%s+', ' – '):gsub('%s+', ' ')
   return (s:gsub('^%s+', ''):gsub('%s+$', ''))
 end
 
@@ -476,6 +489,7 @@ function M.build(sources, id, meta)
     end
     st.runs = runs or {}
     st.title = prettyTitle(title)
+    if not st.title or st.title == '' then st.title = 'Tramo ' .. i end
     st.super = (superF or superL) and true or nil
     -- avisos (saltos, chicanes, no cortar) y radios, con su distancia desde la salida
     local cum = cumulative(st.path)
@@ -495,6 +509,29 @@ function M.build(sources, id, meta)
     table.sort(st.hazards, function(a, b) return a.atM < b.atM end)
     table.sort(st.radios)
     st.order = i
+  end
+
+  -- varios tramos con el mismo nombre (una ruta larga partida en trozos): se numeran
+  do
+    local seen = {}
+    for _, st in ipairs(stages) do if st.title then seen[st.title] = (seen[st.title] or 0) + 1 end end
+    local n = {}
+    for _, st in ipairs(stages) do
+      if st.title and seen[st.title] > 1 and (st.lengthM or 0) >= M.MIN_STAGE_M then
+        n[st.title] = (n[st.title] or 0) + 1
+        st.title = st.title .. ' · ' .. n[st.title]
+      end
+    end
+  end
+
+  -- trozos de menos de 300 m (cortes del dibujo, una línea de 0 m): no son tramos
+  do
+    local keep = {}
+    for _, st in ipairs(stages) do
+      if (st.lengthM or 0) >= M.MIN_STAGE_M or st.super then keep[#keep + 1] = st
+      else report.warnings[#report.warnings + 1] = (st.title or st.name or '?') .. ': descartado (menos de 300 m)' end
+    end
+    stages = keep
   end
 
   -- 4. el mismo tramo dibujado dos veces (una por pasada): uno solo con las dos pasadas
@@ -522,6 +559,8 @@ function M.build(sources, id, meta)
   -- 5. identificadores: ssNN por su primera pasada (o por orden), shakedown / test por su nombre
   local used = {}
   local nextFree = 1
+  local anyRuns = false
+  for _, st in ipairs(stages) do if st.kind == 'ss' and #st.runs > 0 then anyRuns = true end end
   table.sort(stages, function(a, b)
     local ra, rb = a.runs[1] or (1000 + a.order), b.runs[1] or (1000 + b.order)
     if (a.kind == 'ss') ~= (b.kind == 'ss') then return a.kind ~= 'ss' end
@@ -534,6 +573,13 @@ function M.build(sources, id, meta)
       local id1, k = id0, 2
       while used[id1] do id1, k = id0 .. '-' .. k, k + 1 end
       st.id = id1
+    elseif #st.runs == 0 and anyRuns then
+      -- sin número en un rally que numera sus tramos (el tramo urbano, la superespecial de exhibición): aparte, sin
+      -- ocupar el número de otro tramo
+      local id0 = 'sss-' .. slug(st.title)
+      local id1, k = id0, 2
+      while used[id1] do id1, k = id0 .. '-' .. k, k + 1 end
+      st.id, st.super = id1, true
     else
       if #st.runs == 0 then
         while used[('ss%02d'):format(nextFree)] do nextFree = nextFree + 1 end
@@ -559,13 +605,31 @@ function M.build(sources, id, meta)
   local radius = 0
   for _, q in ipairs({ { la1, lo1 }, { la2, lo2 } }) do radius = max(radius, dist(centre, q)) end
   local name = meta.name and meta.name ~= '' and meta.name or docName or id
-  local surface = meta.surface and meta.surface ~= '' and meta.surface or 'asphalt'
+  -- Superficie (categorías FIA: asphalt, gravel, snow, mixed): la de la ficha; si no la dice, la que se deduzca de los
+  -- nombres (el tramo, su carpeta, el documento); si nada, asfalto
+  local function guessSurface(txt)
+    txt = tostring(txt or ''):lower()
+    if txt:find('mixto') or txt:find('mixed') or txt:find('mixte') then return 'mixed' end
+    if txt:find('nieve') or txt:find('snow') or txt:find('hielo') or txt:find('ice ') or txt:find('neige') then return 'snow' end
+    if txt:find('tierra') or txt:find('grava') or txt:find('gravel') or txt:find('terra') or txt:find('dirt')
+      or txt:find('pista') or txt:find('camino') or txt:find('off%-road') or txt:find('offroad') or txt:find('terre') then return 'gravel' end
+    if txt:find('asfalto') or txt:find('asphalt') or txt:find('tarmac') then return 'asphalt' end
+    return nil
+  end
+  local given = meta.surface and meta.surface ~= '' and meta.surface or nil
+  local surface = given or guessSurface((docName or '') .. ' ' .. tostring(meta.name or '') .. ' ' .. tostring(meta.description or '')) or 'asphalt'
   local ssKm, total = 0, 0
   local ssCount = 0
+  local kinds = {}
   for _, s in ipairs(stages) do
-    s.surface = s.surface or surface
+    s.surface = s.surface or guessSurface((s.title or '') .. ' ' .. tostring(s.name or '') .. ' ' .. tostring(s.folder or '')) or surface
+    kinds[s.surface] = true
     if s.kind == 'ss' then ssCount = ssCount + 1 ssKm = ssKm + s.lengthM * max(1, #s.runs) end
   end
+  -- tramos de varias superficies: el evento es mixto
+  local nk = 0
+  for _ in pairs(kinds) do nk = nk + 1 end
+  if not given and nk > 1 then surface = 'mixed' end
   for _, l in ipairs(liaisons) do total = total + l.lengthM end
   local year = tostring(name):match('(20%d%d)') or tostring(name):match('(19%d%d)')
   local ev = { format = 1, id = id, name = name, type = meta.type or 'rally', surface = surface,

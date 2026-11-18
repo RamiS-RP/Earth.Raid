@@ -20,6 +20,10 @@ local phys = require('earthRaid/phys')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local M = {}
+local function spanishUI()
+  local ok, l = pcall(function() return Lua:getSelectedLanguage() end)
+  return ok and tostring(l):sub(1, 2) == 'es'
+end
 local TAG = 'earthRaid'
 
 M.STAGING_S = 60
@@ -144,7 +148,7 @@ local function vehicleName()
 end
 
 local function cleanupProps(keepTraffic, recycle)
-  if recycle then props.retire() else props.clear() end
+  if recycle then props.retire() else props.clear() props.setVirtualRoad(nil) end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
   post = nil
@@ -178,7 +182,7 @@ local function walkRoads(f, f0)
     while L < M.AFTER_M do
       local node = m.nodes[cur]
       local best, bd = nil, -2
-      for nb in pairs(node.links or {}) do
+      for nb in pairs(props.neighbors(cur)) do
         if not seen[nb] and m.nodes[nb] then
           local q = m.nodes[nb].pos
           local vx, vy = q.x - node.pos.x, q.y - node.pos.y
@@ -188,6 +192,23 @@ local function walkRoads(f, f0)
             if dot > bd then best, bd = nb, dot end
           end
         end
+      end
+      if (not best or bd < 0.3) and L < 30 then
+        -- junto al extremo del tramo la carretera puede llegar girando (la salida en un cruce, en una T): vale
+        -- cualquier enlace que no vuelva por el propio tramo (17-nov: Asturias, el TC caía en un prado en recta)
+        local b2, d2 = nil, -0.6
+        for nb in pairs(props.neighbors(cur)) do
+          if not seen[nb] and m.nodes[nb] then
+            local q = m.nodes[nb].pos
+            local vx, vy = q.x - node.pos.x, q.y - node.pos.y
+            local vl = math.sqrt(vx * vx + vy * vy)
+            if vl > 0.1 then
+              local dot = (vx * hx + vy * hy) / vl
+              if dot > d2 then b2, d2 = nb, dot end
+            end
+          end
+        end
+        if b2 then best, bd = b2, 1 end
       end
       if not best or bd < 0.3 then
         -- el grafo de BeamNG.Earth se corta entre zonas: un nodo cercano que siga en el mismo sentido
@@ -265,6 +286,7 @@ local function endRoad(ev, path, atEnd)
   if out then return out, 'roads' end
   return nil
 end
+M.AFTER_ROAD_M = 9        -- tras la meta, a más de esto de una carretera del juego no se cuenta como carretera
 local function afterPath(ev, path) return endRoad(ev, path, true) end
 local function beforePath(ev, path) return endRoad(ev, path, false) end
 
@@ -311,6 +333,8 @@ function M.start(ev, st, info)
   if props.spareCount() > 0 or dropped > 0 then
     log('I', TAG, ('recycling: %d objects kept from the previous stage, %d removed'):format(props.spareCount(), dropped))
   end
+  -- la línea del mod Racing Line, solo dentro del tramo
+  guide.hold()
   local splitAt = t.total > 1500 and math.floor(t.total / 2 / 100 + 0.5) * 100 or nil
   local hazards = hazardsOf(st, t)
   S = { eventId = ev.id, eventName = ev.name, stageId = st.id, title = st.title, runs = st.runs or {}, track = t,
@@ -387,9 +411,69 @@ function M.start(ev, st, info)
     end
   end
   M._trimFinish = trimFinishToRoad
+  -- Sin carretera después de la meta (la ruta acaba en un fondo de saco, en el monte, o el grafo no sigue): la meta se
+  -- adelanta por el propio trazado para que el STOP quede en la calzada del tramo, a la distancia de frenada de la
+  -- meta (norma 18-nov: nunca un control fuera de la calzada; Rey Silo dejaba el STOP en mitad del monte)
+  local function pullFinishBack()
+    if t.after and t.after.total >= 60 then return end
+    local want = math.min(dressing.STOP_AFTER_M, math.max(60, t.total * 0.12))
+    if t.total - want < 500 then want = math.max(60, t.total - 500) end
+    if want < 60 then return end
+    local newTotal = t.total - want
+    local pts = {}
+    local x0, y0 = geo.at(t, newTotal)
+    pts[1] = { geo.toGeo(t, x0, y0) }
+    for i = 1, #t.pts do
+      if t.cum[i] > newTotal + 0.5 then pts[#pts + 1] = { geo.toGeo(t, t.pts[i][1], t.pts[i][2]) } end
+    end
+    if #pts < 2 then return end
+    geo.truncate(t, newTotal)
+    t.after, t._snapT, t.afterOff = geo.track(pts), nil, nil
+    t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, t.after.total - 5))
+    t.finishCut = true
+    log('W', TAG, ('no road after the finish: finish moved %.0f m back, STOP on the stage road'):format(want))
+  end
+  -- ¿va de verdad por carretera? Los enlaces del organizador suelen estar dibujados a mano (rectas por el monte): cada
+  -- 15 m hasta pasado el STOP, la carretera del juego debe estar a menos de AFTER_ROAD_M. nil: no hay grafo cargado aquí
+  local function onRoadFrac(tr, upTo)
+    local n, ok, any = 0, 0, false
+    for d = 10, math.min(tr.total, upTo), 15 do
+      local x, y = geo.at(tr, d)
+      local la, lo = geo.toGeo(tr, x, y)
+      local gx, gy, gz = props.ground(la, lo)
+      if gx then
+        local n1, _, dd = props.nearestRoad(gx, gy, gz, 60)
+        n = n + 1
+        if n1 then any = true end
+        if dd and dd <= M.AFTER_ROAD_M then ok = ok + 1 end
+      end
+    end
+    if n == 0 or not any then return nil end
+    return ok / n
+  end
+  local function checkAfter()
+    if t.finishCut or not t.after then return end
+    local need = (t.stopAt or dressing.STOP_AFTER_M) + 20
+    local fr = onRoadFrac(t.after, need)
+    if fr == nil or fr >= 0.8 then return end
+    log('W', TAG, ('after the finish: only %.0f%% on a road, looking for the real road'):format(fr * 100))
+    local f, f0 = cpath[#cpath], refPoint(cpath, true, 15)
+    local wr = walkRoads(f, f0)
+    local nt = wr and geo.track(wr)
+    if nt and nt.total >= 60 and (onRoadFrac(nt, need) or 0) >= 0.8 then
+      t.after, t._snapT, t.afterOff = nt, nil, nil
+      t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, nt.total - 5))
+      log('I', TAG, ('after the finish: roads, %.0f m, STOP at %.0f m'):format(nt.total, t.stopAt))
+    else
+      t.after = nil   -- pullFinishBack: el STOP en la calzada del tramo
+    end
+  end
   local finishLater = function()
     pcall(trimFinishToRoad)
     if not t.finishCut then findAfter() end
+    pcall(checkAfter)
+    pcall(pullFinishBack)
+    pcall(S.setVirtual)
     local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
     dressing.finishLine(t, dressing.hwAt(t, t.total))
     log('I', TAG, ('finish dressed (%s)'):format(flat and 'ok' or '?'))
@@ -406,8 +490,31 @@ function M.start(ev, st, info)
     end
   end
   S.startLater = startLater
+  -- el trazado (con sus accesos) cuenta como calzada donde el juego no tiene carretera: caminos de tierra, pistas
+  dressing.surface = dressing.normSurface(S.surface)
+  S.setVirtual = function()
+    local a = extensions.beamngEarth_api
+    local hw = dressing.defaultHalfWidth()
+    local pts = {}
+    local function add(tr, rev)
+      if not tr then return end
+      local n = #tr.pts
+      for k = 1, n do
+        local p = tr.pts[rev and (n - k + 1) or k]
+        local la, lo = geo.toGeo(tr, p[1], p[2])
+        local x, y = a.toGame(la, lo, 0)
+        if x then pts[#pts + 1] = { x, y } end
+      end
+    end
+    add(t.before, true)
+    add(t)
+    add(t.after)
+    props.setVirtualRoad(pts, hw)
+  end
+  pcall(S.setVirtual)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
     { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
+      surface = S.surface,
       reversed = st.reverse == true,
       onStartClock = function(obj) startclock.setClock(obj) M.refreshLine() end })
   S.dressT = 0
@@ -470,6 +577,7 @@ end
 
 -- Cancelar: todo fuera ya
 function M.stop(keepTraffic, recycle)
+  if not recycle then guide.release() end
   if S then
     S = nil
     clearScreen()
@@ -808,7 +916,9 @@ function M.update(dtSim, dtReal)
         S.startAt = math.ceil((now + M.TC_MARGIN_S) / 60) * 60
         S.stagingInit = S.startAt - now
         S.phase = 'approach'
+        -- del TC a la línea de salida, con la línea azul del GPS del juego
         guide.clear()
+        guide.toStart(t, (S.title or '') .. ' - ' .. (spanishUI() and 'Salida' or 'Start'))
         log('I', TAG, ('TC %s checked in, start at +%d s'):format(S.stageId, S.stagingInit))
       end
     else
@@ -887,6 +997,8 @@ function M.update(dtSim, dtReal)
     if S.along > t.total * 0.9 and past >= 0 and side < 15 then
       S.along = t.total
       S.phase = 'toStop'
+      -- la línea de carrera solo dentro del tramo: en la meta vuelve el GPS normal
+      guide.clear()
       S.newBest = saveResult()
       S.best = M.best(S.eventId, S.stageId)
       if S.session and S.session.onFinish then
@@ -912,7 +1024,9 @@ function M.update(dtSim, dtReal)
   elseif S.phase == 'done' then
     S.doneLeft = S.doneLeft - dtReal
     if S.doneLeft <= 0 then
-      -- se acabó: pantalla limpia; el montaje sigue hasta alejarse
+      -- se acabó: pantalla limpia; el montaje sigue hasta alejarse. Fuera de un rally, el mod Racing Line vuelve a
+      -- seguir el GPS como siempre
+      if not S.session then guide.release() end
       local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
       -- en un rally, lo de este tramo puede servir al siguiente (se recicla al limpiar)
       post = { at = clock, lat = flat, lon = flon, recycle = S.session ~= nil }

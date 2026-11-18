@@ -233,6 +233,7 @@ local function penalise(label, s, why)
 end
 
 function M.stop()
+  pcall(guide.release)
   if not R then return end
   if stage.active() then stage.stop() end
   stage.trafficBack()

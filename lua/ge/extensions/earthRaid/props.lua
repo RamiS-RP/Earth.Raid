@@ -18,11 +18,16 @@ M.SHAPES = {
   tc = A .. 's_rally_signboard_time_control.dae', tcEntry = A .. 's_rally_signboard_time_control_entry.dae',
   radio = A .. 's_rally_signboard_radio_point.dae', radioWarn = A .. 's_rally_signboard_radio_point_warning.dae',
   medical = A .. 's_rally_signboard_medical_point.dae', medicalWarn = A .. 's_rally_signboard_medical_warning.dae',
+  -- ambulancia: solo existe como vehículo cerca del coche (phys.lua); de lejos, un marcador oculto
+  ambulance = A .. 's_rally_signboard_medical_point.dae',
   endArea = A .. 's_rally_signboard_end_of_area.dae',
   board1 = A .. 's_cooldown_board_01.dae', board2 = A .. 's_cooldown_board_02.dae', board3 = A .. 's_cooldown_board_03.dae',
   sensor = A .. 's_rally_start_sensor.dae', tree = A .. 's_rally_start_tree.dae',
   gazeboFrame = A .. 's_rally_gazebo_mod_frame_3x3.dae', gazeboCover = A .. 's_rally_gazebo_mod_cover_ngrc_3x3.dae',
-  table = A .. 's_rally_fold_table_01.dae', chair = A .. 's_rally_fold_chair_01.dae', cone = '/art/shapes/race/cone.dae',
+  table = A .. 's_rally_fold_table_01.dae',
+  -- el puesto de control vanilla (NGRC Rally Utah): portátil en la mesa y dos extintores
+  laptop = '/art/shapes/garage_and_dealership/garage/s_laptop.dae',
+  extinguisher = '/art/shapes/garage_and_dealership/Clutter/clutter_workshop_fire_extinguisher.dae', chair = A .. 's_rally_fold_chair_01.dae', cone = '/art/shapes/race/cone.dae',
   cornerR = A .. 's_corner_dir_right.dae', cornerL = A .. 's_corner_dir_left.dae',
   corner45R = A .. 's_corner_dir45_right.dae', corner45L = A .. 's_corner_dir45_left.dae',
   hairpinR = A .. 's_corner_dir135_right.dae', hairpinL = A .. 's_corner_dir225_left.dae',
@@ -32,13 +37,19 @@ M.SHAPES = {
   fenceRotopad = A .. 's_metal_fence_branding_rotopad.dae', cushion = A .. 's_safety_cushion_01.dae',
   fenceApm = A .. 's_metal_fence_branding_apm.dae', fenceApmSpecial = A .. 's_metal_fence_branding_apm_special.dae',
   specTarp = A .. 's_spectator_tarp_4m.dae', specTarp2 = A .. 's_spectator_tarp_4m_02.dae', specTarp3 = A .. 's_spectator_tarp_4m_03.dae',
-  specGridA = A .. 's_spectator_grid_a_2m.dae', cornerMarker = A .. 's_corner_marker.dae',
+  specGridA = A .. 's_spectator_grid_a_2m.dae', specGridB = A .. 's_spectator_grid_b_2m.dae', cornerMarker = A .. 's_corner_marker.dae',
   danger = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_other_danger.dae',
   -- el box del parque de asistencia
   bigToolbox = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_01.dae',
   bigToolbox2 = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_02.dae',
   smallToolbox = '/art/shapes/garage_and_dealership/garage/s_small_toolbox_01.dae',
   tireRack = '/art/shapes/garage_and_dealership/garage/s_tire_rack.dae',
+  -- protecciones en curvas peligrosas y cortes de calles (lo que usan los rallies del juego)
+  hayBale = '/assets/meshes/props/race_event/equipment/s_haybaleround_large_01.dae',
+  hayBale2 = '/assets/meshes/props/race_event/equipment/s_haybaleround_alt_01.dae',
+  barrel = '/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae',
+  plasticBarrier = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE',
+  plasticBarrierW = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier.DAE',
   workbench = '/art/shapes/garage_and_dealership/garage/s_garage_workbench_medium.dae',
   stool = '/art/shapes/garage_and_dealership/garage/s_metal_stool.dae',
 }
@@ -57,6 +68,12 @@ M.PREFABS = {
   gazebo3x6b = '/art/prefabs/p_rally_gazebo_mod_blastr_3x6.prefab.json',
   gazebo3x6r = '/art/prefabs/p_rally_gazebo_mod_rotopad_3x6.prefab.json',
   gazebo3x6d = '/art/prefabs/p_rally_gazebo_mod_dkblue_3x6.prefab.json',
+  -- las vallas publicitarias con su valla metálica detrás, como en los rallies del juego (17-nov: salían solo las lonas)
+  fenceNgrc = A .. 'p_metal_fence_branding_ngrc.prefab.json',
+  fenceBlastr = A .. 'p_metal_fence_branding_blastr.prefab.json',
+  fenceRotopad = A .. 'p_metal_fence_branding_rotopad.prefab.json',
+  fenceApm = '/art/earthRaid/prefabs/p_metal_fence_branding_apm.prefab.json',
+  fenceApmSpecial = '/art/earthRaid/prefabs/p_metal_fence_branding_apm_special.prefab.json',
 }
 
 local items = {}           -- { obj, kind, lat, lon, dx, dy, yaw, prefab }
@@ -160,7 +177,7 @@ local function register(o, kind)
   if scenetree.MissionGroup then scenetree.MissionGroup:addObject(o) end
 end
 
-M.SOLID = { table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
+M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, plasticBarrierW = true, table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
   tireRack = true, workbench = true, stool = true, gazeboFrame = true }
 function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
 
@@ -202,6 +219,7 @@ local function create(kind, opts)
     if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
     else M.collisionDirty = true end
   end
+  if kind == 'ambulance' then pcall(function() o:setHidden(true) end) end
   register(o, kind)
   if prefab and o.load then pcall(function() o:load() end) end
   return o
@@ -484,8 +502,48 @@ function M.roadIndex()
       end
     end
   end
-  roadIdx = { n = count, map = m, cells = cells, segs = segs, version = (roadIdx.version or 0) + 1, checked = now }
+  -- el trazado del tramo donde el juego no tiene carretera (pistas de tierra, caminos): también cuenta como calzada,
+  -- con la anchura de su superficie, para que nada se quede encima (17-nov: una ruta de tierra importada por un amigo
+  -- del usuario se montó mal porque el grafo no tenía ese camino)
+  local virt = 0
+  for _, sg in ipairs(M._virtual or {}) do
+    local mx, my = (sg.ax + sg.bx) / 2, (sg.ay + sg.by) / 2
+    local covered = false
+    for _, g in ipairs(cells[math.floor(mx / C) .. ':' .. math.floor(my / C)] or {}) do
+      local gx, gy = g.bx - g.ax, g.by - g.ay
+      local L2 = gx * gx + gy * gy
+      local u = L2 > 0.01 and math.max(0, math.min(1, ((mx - g.ax) * gx + (my - g.ay) * gy) / L2)) or 0
+      if (mx - g.ax - gx * u) ^ 2 + (my - g.ay - gy * u) ^ 2 < M.VIRTUAL_COVER_M ^ 2 then covered = true break end
+    end
+    if not covered then
+      virt = virt + 1
+      segs[#segs + 1] = sg
+      local pad = sg.ra + 4
+      for cx = math.floor((math.min(sg.ax, sg.bx) - pad) / C), math.floor((math.max(sg.ax, sg.bx) + pad) / C) do
+        for cy = math.floor((math.min(sg.ay, sg.by) - pad) / C), math.floor((math.max(sg.ay, sg.by) + pad) / C) do
+          local k = cx .. ':' .. cy
+          local l = cells[k]
+          if not l then l = {} cells[k] = l end
+          l[#l + 1] = sg
+        end
+      end
+    end
+  end
+  roadIdx = { n = count, map = m, cells = cells, segs = segs, version = (roadIdx.version or 0) + 1, checked = now, virtual = virt }
   return roadIdx
+end
+
+M.VIRTUAL_COVER_M = 15   -- solo donde no hay ninguna carretera del juego a menos de esto (el KMZ suele ir desplazado unos metros)
+-- trazados que cuentan como calzada aunque el grafo no los tenga: lista de puntos {x, y} del juego y media anchura
+function M.setVirtualRoad(pts, halfW)
+  local v = {}
+  for i = 2, #(pts or {}) do
+    local a, b = pts[i - 1], pts[i]
+    v[#v + 1] = { ax = a[1], ay = a[2], bx = b[1], by = b[2], ra = halfW, rb = halfW, virtual = true }
+  end
+  M._virtual = v
+  roadIdx.n = -1
+  roadIdx.checked = 0
 end
 
 -- los tramos de carretera cerca de (x, y)
@@ -493,6 +551,35 @@ function M.roadsAt(x, y)
   local ix = M.roadIndex()
   if not ix then return nil end
   return ix.cells[math.floor(x / M.CELL_M) .. ':' .. math.floor(y / M.CELL_M)] or {}, ix
+end
+
+-- Vecinos de cada nodo del grafo en los dos sentidos: BeamNG.Earth guarda cada enlace en uno solo de sus extremos
+-- (17-nov: por eso la carretera de antes de la salida no se encontraba y el TC caía en un prado)
+local adj = { map = nil, n = -1 }
+function M.neighbors(id)
+  local m = map.getMap()
+  if not (m and m.nodes) then return {} end
+  local count = 0
+  if adj.map == m and os.clock() - (adj.t or 0) < 0.5 then
+    return adj.list[id] or {}
+  end
+  for _ in pairs(m.nodes) do count = count + 1 end
+  if adj.map ~= m or adj.n ~= count then
+    local list = {}
+    for a, nd in pairs(m.nodes) do
+      for b in pairs(nd.links or {}) do
+        if m.nodes[b] then
+          list[a] = list[a] or {}
+          list[b] = list[b] or {}
+          list[a][b] = true
+          list[b][a] = true
+        end
+      end
+    end
+    adj = { map = m, n = count, list = list }
+  end
+  adj.t = os.clock()
+  return adj.list[id] or {}
 end
 
 return M

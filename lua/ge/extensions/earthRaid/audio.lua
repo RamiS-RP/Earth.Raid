@@ -18,15 +18,31 @@ end
 
 function M.setPack(dir) M.PACK = dir meta = nil end
 
--- Un fichero del voicepack por su nombre base ('hairpin_left', 'system_countdown3_1')
-function M.file(base)
-  local m = loadMeta()
+-- Si el voicepack elegido no tiene una nota (Clover, el gato del juego, solo trae 12), se dice con la voz completa por
+-- defecto: el copiloto nunca se queda callado (18-nov)
+M.FALLBACK = '/lua/ge/extensions/gameplay/rally/compositors/voicepacks/ak_2026-04-16'
+local fbMeta = nil
+local function find(pack, m, base)
   local name = 'pacenote_' .. base .. '.ogg'
-  if m[name] then return M.PACK .. '/audio/' .. name, m[name].audioLen or 1 end
+  if m[name] then return pack .. '/audio/' .. name, m[name].audioLen or 1 end
   -- variantes numeradas: _1, _2...
   for i = 1, 8 do
     local n2 = 'pacenote_' .. base .. '_' .. i .. '.ogg'
-    if m[n2] then return M.PACK .. '/audio/' .. n2, m[n2].audioLen or 1 end
+    if m[n2] then return pack .. '/audio/' .. n2, m[n2].audioLen or 1 end
+  end
+  return nil
+end
+
+-- Un fichero del voicepack por su nombre base ('hairpin_left', 'system_countdown3_1')
+function M.file(base)
+  local f, len = find(M.PACK, loadMeta(), base)
+  if f then return f, len end
+  -- un pack de voz real incompleto (Xpectro99: 52 grabaciones) no se mezcla con otra voz: lo que no tiene, no se dice
+  local vp = jsonReadFile(tostring(M.PACK) .. '/voicepack.json') or {}
+  if vp.raidEarthNoFallback then return nil end
+  if M.PACK ~= M.FALLBACK then
+    fbMeta = fbMeta or jsonReadFile(M.FALLBACK .. '/metadata.json') or {}
+    return find(M.FALLBACK, fbMeta, base)
   end
   return nil
 end

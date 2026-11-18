@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.7.0'
+M.VERSION = '0.7.1'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -451,19 +451,67 @@ local function eventCard(ev, lat, lon)
     stages = ev.stages, source = ev.source, link = ev.link, pack = ev._pack, custom = ev._pack == 'import' and (ev.type == 'custom' or not ev.dates) }
 end
 
--- el mod recomendado "hotw" (pone un piloto al volante): si está instalado, el menú no lo recomienda
-function M.hasHotw()
-  if S.hotw == nil then
-    local ok, list = pcall(function() return core_modmanager.getModList() end)
-    S.hotw = false
-    if ok and type(list) == 'table' then
-      for name, m in pairs(list) do
-        local n = tostring(m.modname or name):lower()
-        if n:find('hotw', 1, true) and m.active ~= false then S.hotw = true break end
+-- Mods recomendados para una mejor experiencia (README). Si el jugador los tiene descargados pero desactivados, se
+-- activan al cargar Raid.Earth (petición del usuario, 17-nov), salvo que lo apague en Ajustes (recModsAuto).
+M.RECOMMENDED = {
+  { id = 'racingline', name = 'Racing Line Mod', match = { 'racingline', 'racing_line' },
+    url = 'https://www.beamng.com/resources/racing-line-mod.39806/' },
+  { id = 'hotw', name = 'Hands on the Wheel', match = { 'hotw', 'handsonthewheel', 'hands_on_the_wheel' },
+    url = 'https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/' },
+  { id = 'envyffb', name = 'EnvyFFB', match = { 'envyffb' },
+    url = 'https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/' },
+  { id = 'headlights', name = 'Realistic Headlights & Fogs V2', match = { 'realisticheadlights', 'realistic_headlights' },
+    url = 'https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/' },
+  { id = 'smokedust', name = 'Smoke Dust FX', match = { 'smokedustfx', 'smoke_dust', 'smokedust' },
+    url = 'https://www.beamng.com/resources/smoke-dust-fx.39628/' },
+}
+
+local function modsDb()
+  local ok, db = pcall(function() return core_modmanager.getMods() end)
+  return ok and type(db) == 'table' and db or {}
+end
+
+-- estado de cada recomendado: installed (descargado), active, modname
+function M.recommendedState()
+  local db = modsDb()
+  local out = {}
+  for _, r in ipairs(M.RECOMMENDED) do
+    local e = { id = r.id, name = r.name, url = r.url, installed = false, active = false }
+    for name, m in pairs(db) do
+      local n = (tostring(name) .. ' ' .. tostring(m.fullpath or '')):lower():gsub('[%s%-%.]', '')
+      for _, pat in ipairs(r.match) do
+        if n:find(pat, 1, true) then
+          e.installed = true
+          e.modname = e.modname or name
+          if m.active then e.active = true e.modname = name end
+        end
       end
     end
+    out[#out + 1] = e
   end
-  return S.hotw
+  return out
+end
+
+-- activa los recomendados que están descargados y desactivados
+function M.enableRecommended()
+  local done = {}
+  for _, e in ipairs(M.recommendedState()) do
+    if e.installed and not e.active and e.modname then
+      local ok = pcall(core_modmanager.activateMod, e.modname)
+      if ok then done[#done + 1] = e.name end
+    end
+  end
+  if #done > 0 then
+    log('I', TAG, 'recommended mods enabled: ' .. table.concat(done, ', '))
+    M.toast((spanish() and 'Raid.Earth activó los mods recomendados: ' or 'Raid.Earth enabled the recommended mods: ')
+      .. table.concat(done, ', '), 8)
+  end
+  return done
+end
+
+function M.hasHotw()
+  for _, e in ipairs(M.recommendedState()) do if e.id == 'hotw' then return e.active end end
+  return false
 end
 
 local function buildModel()
@@ -476,13 +524,14 @@ local function buildModel()
   local m = { earth = S.earth, reason = S.reason, version = M.VERSION, lang = spanish() and 'es' or 'en',
     units = S.opts.units == 'mi' and 'mi' or 'km', q = U.q, filters = U.filters, radiusKm = radiusM() / 1000,
     stageActive = st and { eventId = st.eventId, stageId = st.stageId, phase = st.phase, title = st.title } or nil,
+    rallyActive = rally.active() and (function() local R = rally.state() return { eventId = R.ev and R.ev.id, name = R.ev and R.ev.name, idx = R.idx } end)() or nil,
     rallyActive = rs and { eventId = rs.ev.id, phase = rs.phase, idx = rs.idx, count = #rs.it.items,
       label = rs.it.items[rs.idx] and rs.it.items[rs.idx].label or nil } or nil,
     pos = lat and { lat = lat, lon = lon } or nil, proposalId = S.proposal and S.proposal.event.id or nil,
     target = S.target, events = {}, total = #S.index.events,
     facets = { country = {}, type = {}, category = {}, surface = {}, status = {} },
     settings = settings.get(), voicepacks = settings.voicepacks(), today = os.date('%Y-%m-%d'),
-    racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(),
+    racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(), recMods = M.recommendedState(),
     importDir = M.IMPORT_DIR, packDirs = M.PACK_DIRS, imports = U.importOpen and M.importsModel() or nil,
     importOpen = U.importOpen or false }
   local q = lower(U.q)
@@ -581,6 +630,10 @@ end
 function M.toggleMenu() if U.open then M.uiClose() else M.uiOpen() end end
 function M.uiClose() U.open = false navigate('play') end
 function M.uiState() U.open = true M.publishState() end
+-- el idioma del juego para la interfaz ('es' o 'en')
+function M.uiLang() return spanish() and 'es' or 'en' end
+-- ¿tramo o rally en marcha? (el menú de pausa abre entonces la pestaña de Raid.Earth)
+function M.uiIsActive() return (stage.state() ~= nil) or rally.active() or loader.active() end
 -- el estado para la pestaña del menú de pausa (sin abrir el menú)
 function M.uiPeek() refresh() U.peek = true M.publishState() end
 function M.uiSearch(q) U.q = type(q) == 'string' and q:sub(1, 60) or '' M.publishState() end
@@ -903,7 +956,6 @@ function M.uiStart(eventId, stageId, reverse)
       local ok, err = stage.start(full, s, { number = number, count = count })
       if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
       stage.setLang(spanish() and 'es' or 'en')
-      ensureHud()
       S.target = { eventId = eventId, stageId = s.id }
       M.toast((spanish() and 'Tramo preparado: ' or 'Stage ready: ') .. s.title, 6)
       M.uiClose()
@@ -916,6 +968,31 @@ function M.uiCancelStage()
   if loader.active() then pcall(loader.cancel) stage.holdJobs(false) end
   if rally.active() then rally.stop() else stage.stop() end
   M.publishState()
+end
+
+-- Reiniciar el tramo en marcha: otra vez desde 100 m antes del TC, con su pantalla de carga (como "reintentar" del juego)
+function M.uiRestartStage()
+  local st = stage.state()
+  if not st then return end
+  local ev, sid = st.eventId, tostring(st.stageId)
+  local base = sid:gsub('R$', '')
+  local rev = base ~= sid
+  M.uiCancelStage()
+  local keep = M.PLAY_TELEPORT_M
+  M.PLAY_TELEPORT_M = 0
+  pcall(M.uiPlay, ev, base, rev)
+  M.PLAY_TELEPORT_M = keep
+end
+
+-- Rally completo: reiniciar desde el último control horario (la pasada en curso) o desde el principio
+function M.uiRestartRally(fromLastTc)
+  local R = rally.state()
+  if not R then return end
+  local evId = R.ev and R.ev.id
+  local item = R.it and R.it.items and R.it.items[R.idx]
+  local run = fromLastTc and item and item.run or nil
+  M.uiCancelStage()
+  if evId then M.uiStartRally(evId, run) end
 end
 
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
@@ -997,7 +1074,7 @@ function M.uiStartRally(eventId, fromRun)
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
-  ensureHud()
+  -- (18-nov) ya no se añaden apps a las disposiciones del jugador: las del juego van en earthRaidLoop/earthRaidStage
   S.target = { eventId = eventId }
   local rs = rally.state()
   local start = rs.it.start
@@ -1021,7 +1098,10 @@ function M.uiStartRally(eventId, fromRun)
         return (pl and dressing.pendingJobsNear(pl, po) or 0) + props.pump(loader.PUMP_MS)
       end,
       place = function()
-        if S.box then M.placeAt(S.box.lat, S.box.lon, S.box.faceLat, S.box.faceLon)
+        -- de cara al primer control horario (norma 17-nov: orientado hacia el siguiente TC)
+        local first = rs.it and rs.it.items and rs.it.items[1]
+        local tw = first and first.stage and first.stage.start
+        if S.box then M.placeAt(S.box.lat, S.box.lon, tw and tw[1] or S.box.faceLat, tw and tw[2] or S.box.faceLon)
         else M.placeOnRoad(start[1], start[2]) end
       end })
     M.toast((es and 'Rally completo: vas a la asistencia. Sales a las ' or 'Full rally: going to the service park. You leave at ')
@@ -1045,6 +1125,29 @@ function M.sendHud() stage.sendHud() rally.sendHud() end
 -- ---- hooks del juego y de BeamNG.Earth -----------------------------------------------------------------------------
 
 
+-- Versiones anteriores metían nuestra app (EarthRaidHud) y las notas visuales en las disposiciones de apps del jugador
+-- (la de BeamNG.Earth, la radial...): se quitan, para no tocar el juego base
+local function cleanLayouts()
+  local L = rawget(_G, 'ui_appLayouts')
+  if not (L and L.getAvailableLayouts and L.removeApp) then return end
+  local ok, list = pcall(L.getAvailableLayouts)
+  if not ok or type(list) ~= 'table' then return end
+  local n = 0
+  for _, lay in pairs(list) do
+    local fn = type(lay) == 'table' and lay.filename
+    if fn and not fn:find('earthRaid', 1, true) then
+      for i = #(lay.apps or {}), 1, -1 do
+        local a = lay.apps[i]
+        if a.appName == M.HUD_APP or (a.appName == M.NATIVE_VISUAL and a.placement and a.placement.top == M.NOTES_TOP) then
+          if pcall(L.removeApp, fn, i - 1) then n = n + 1 end
+        end
+      end
+    end
+  end
+  if n > 0 then log('I', TAG, ('removed %d Raid.Earth apps from the player layouts'):format(n)) end
+end
+M.cleanLayouts = cleanLayouts
+
 function M.onExtensionLoaded()
   pcall(guide.restoreBlueLine)
   pcall(function()
@@ -1052,7 +1155,10 @@ function M.onExtensionLoaded()
     if n > 0 then log('I', TAG, 'removed ' .. n .. ' leftover objects') end
   end)
   M.loadIndex()
+  pcall(cleanLayouts)
   refresh()
+  if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) end
+  S.earthLevel = M.isEarthLevel()
   log('I', TAG, 'Raid.Earth ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
 end
 
@@ -1110,6 +1216,31 @@ function M.placeOnRoad(lat, lon, atLat, atLon)
   local m = map.getMap()
   if not (n1 and n2 and d and d < 300 and m.nodes[n1] and m.nodes[n2]) then return false end
   local A, B = m.nodes[n1].pos, m.nodes[n2].pos
+  -- en un pueblo la carretera más cercana puede ser una calle que cruza: de las que pasan a pocos metros, la que va
+  -- hacia el control horario (17-nov: el coche aparecía de cara a una pared en Ourense)
+  pcall(function()
+    local tx, ty = a.toGame(lat, lon, 0)
+    if not tx then return end
+    local wx, wy = tx - p.x, ty - p.y
+    local wl = math.sqrt(wx * wx + wy * wy)
+    if wl < 1 then return end
+    wx, wy = wx / wl, wy / wl
+    local best, bscore = nil, -1
+    for _, sg in ipairs(props.roadsAt(p.x, p.y) or {}) do
+      if not sg.virtual then
+        local gx, gy = sg.bx - sg.ax, sg.by - sg.ay
+        local gl2 = gx * gx + gy * gy
+        if gl2 > 1 then
+          local u = math.max(0, math.min(1, ((p.x - sg.ax) * gx + (p.y - sg.ay) * gy) / gl2))
+          local dd = math.sqrt((p.x - sg.ax - gx * u) ^ 2 + (p.y - sg.ay - gy * u) ^ 2)
+          local al = math.abs((gx * wx + gy * wy) / math.sqrt(gl2))
+          local score = al - dd / 20
+          if dd < 12 and score > bscore then best, bscore = sg, score end
+        end
+      end
+    end
+    if best and bscore > 0.5 then A, B = vec3(best.ax, best.ay, A.z), vec3(best.bx, best.by, B.z) end
+  end)
   local sx, sy = B.x - A.x, B.y - A.y
   local L2 = sx * sx + sy * sy
   if L2 < 0.01 then return false end
@@ -1172,7 +1303,11 @@ end
 
 -- El diseño de apps de rally mientras hay un tramo o un rally en marcha (como el juego en sus rallies): cronómetro y
 -- notas, volante, pedales, fuerzas g, cuentakilómetros, daños; sin minimapa (manda el copiloto). Al terminar, el de antes.
+-- las disposiciones de apps del rally del juego (rallyModeStage y rallyModeLoop) con los créditos del mapa
 M.RACE_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidStage.uilayout.json'
+M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
+local vhud = require('earthRaid/vhud')
+local guard = require('earthRaid/guard')
 local layoutT = 0
 local function raceLayout(dt)
   layoutT = layoutT + (dt or 0)
@@ -1183,22 +1318,33 @@ local function raceLayout(dt)
   local on = (stage.active() or rally.active()) and settings.get().raceHud
   local cur = L.getCurrentLayout()
   local curName = type(cur) == 'table' and cur.filename or nil
+  local want = vhud.wantsStageLayout(stage) and M.RACE_LAYOUT or M.LOOP_LAYOUT
   if on then
-    if curName ~= M.RACE_LAYOUT then
-      if not S.prevLayout then S.prevLayout = curName end
-      if not L.setCurrentLayout(M.RACE_LAYOUT) then
-        log('W', TAG, 'race layout not found: ' .. M.RACE_LAYOUT)
+    if curName ~= want then
+      if not S.prevLayout or S.prevLayout == M.RACE_LAYOUT or S.prevLayout == M.LOOP_LAYOUT then
+        if curName ~= M.RACE_LAYOUT and curName ~= M.LOOP_LAYOUT then S.prevLayout = curName end
+      end
+      if not L.setCurrentLayout(want) then
+        log('W', TAG, 'race layout not found: ' .. want)
         S.layoutFailed = true
       end
     end
   elseif S.prevLayout then
-    if curName == M.RACE_LAYOUT then pcall(L.setCurrentLayout, S.prevLayout) end
+    if curName == M.RACE_LAYOUT or curName == M.LOOP_LAYOUT then pcall(L.setCurrentLayout, S.prevLayout) end
     S.prevLayout = nil
   end
 end
 
 function M.onUpdate(dtReal, dtSim)
+  if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
+  if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
+  if not loader.active() then
+    pcall(guard.update, stage, rally, function()
+      M.toast(spanish() and 'Cambio de vehículo durante el tramo: tramo anulado.' or 'Vehicle changed during the stage: stage cancelled.', 8)
+      pcall(M.uiCancelStage)
+    end)
+  end
   if loader.active() then
     local okLd, errLd = pcall(loader.update, dtReal or 0)
     if not okLd then log('W', TAG, 'loader: ' .. tostring(errLd)) loader.cancel() end
@@ -1221,6 +1367,18 @@ function M.onUpdate(dtReal, dtSim)
   end
 end
 
+-- las apps del rally del juego (vhud.lua): el stream 'rallyLoop' con nuestros datos, después de gameplay_rallyLoop
+function M.onGuiUpdate()
+  if not S.earthLevel then return end
+  local ok, err = pcall(vhud.update, stage, rally, api())
+  if not ok and not S.vhudErr then S.vhudErr = true log('W', TAG, 'vhud: ' .. tostring(err)) end
+end
+-- el botón de "interactuar" del juego (el icono del volante de las apps del rally): saltar la espera del control
+function M.onGameplayInteract()
+  if not S.earthLevel then return end
+  pcall(M.skipWait)
+end
+
 function M.onBeamNGEarthWorldReady()
   S.timer = M.CHECK_S
   -- una vez por sesión: dónde está el menú (quien lo instala por primera vez no lo encuentra)
@@ -1231,12 +1389,25 @@ function M.onBeamNGEarthWorldReady()
   end
 end
 -- en un mapa sin BeamNG.Earth: avisar de que hace falta (si no, parece que el mod no hace nada)
+-- En un mapa que no es de BeamNG.Earth (los rallies vanilla de Utah, Italia...) el mod queda dormido: sin avisos, sin
+-- cambiar las apps de la pantalla ni el mod Racing Line, nada por fotograma (no debe tocar el juego base)
+function M.isEarthLevel()
+  local f = (getMissionFilename and getMissionFilename() or ''):lower()
+  return f:find('beamng_earth', 1, true) ~= nil
+end
 function M.onClientPostStartMission()
-  local ok, why = M.checkEarth()
-  if not ok then
-    M.toast((spanish() and 'Raid.Earth necesita BeamNG.Earth (y su mapa): ' or 'Raid.Earth needs BeamNG.Earth (and its map): ') .. tostring(why), 10)
+  S.earthLevel = M.isEarthLevel()
+  if not S.earthLevel then
+    pcall(M.uiCancelStage)
+    pcall(guide.restoreAll)
+    if S.prevLayout then
+      local L = rawget(_G, 'ui_appLayouts')
+      if L and L.setCurrentLayout then pcall(L.setCurrentLayout, S.prevLayout) end
+      S.prevLayout = nil
+    end
   end
 end
+function M.onClientEndMission() S.earthLevel = false pcall(guard.release) end
 function M.onBeamNGEarthTeleported()
   S.timer = M.CHECK_S
   if S.afterTp then S.afterTp.t = 0 end
@@ -1244,8 +1415,9 @@ function M.onBeamNGEarthTeleported()
 end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
-function M.onExtensionUnloaded() rally.stop() stage.stop() end
+function M.onExtensionUnloaded() pcall(guard.release) rally.stop() stage.stop() end
 function M.onVehicleResetted(vid)
+  if not S.earthLevel then return end
   local v = getPlayerVehicle(0)
   if v and v:getID() == vid then stage.onReset() end
 end

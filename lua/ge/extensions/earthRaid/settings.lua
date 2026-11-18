@@ -13,6 +13,7 @@ M.DEFAULTS = {
   closures = true,               -- cintas en las calles que salen del tramo
   ambience = true,               -- público, vallas, carpas y parque de asistencia
   racingLine = true,             -- con el mod Racing Line instalado: su línea de carrera en vez de la azul del GPS
+  recModsAuto = true,            -- activar al cargar los mods recomendados que estén descargados
   sounds = false,                -- sonido de ambiente (público, generadores): apagado por defecto
   noTraffic = true,              -- sin tráfico en el tramo (vuelve al terminar)
   arrows = true,                 -- flechas antes de las curvas cerradas
@@ -66,8 +67,16 @@ function M.voicepacks()
       local d = jsonReadFile(f) or {}
       local style = tostring(d.styleLabel or ''):match('styles%.(%w+)%.name') or d.styleLabel
       local dialect = tostring(d.dialect or ''):match('dialects%.([%w%-]+)%.name') or d.dialect
-      out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
-        style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect }
+      -- cuántas notas trae: un voicepack incompleto (Clover, de broma) se completa con la voz por defecto
+      local notes = 0
+      for _ in pairs(jsonReadFile(dir .. '/metadata.json') or {}) do notes = notes + 1 end
+      -- fuera del selector los de broma (Clover, el gato del 1 de abril: idioma "Feline", 12 maullidos) y los incompletos
+      local joke = d.enableAnimalCodrivers ~= nil and not tostring(d.language or ''):find('languages', 1, true)
+      if not joke and (notes >= 120 or d.raidEarthPartialOk) then
+        out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
+          style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes,
+          language = tostring(d.language or ''):match('languages%.(%w+)%.name') or d.language }
+      end
     end
   end
   table.sort(out, function(a, b) return a.id < b.id end)
@@ -75,9 +84,11 @@ function M.voicepacks()
 end
 
 function M.voiceDir()
-  local id = M.get().voicepack
-  local dir = M.VOICE_DIR .. tostring(id)
-  if FS:fileExists(dir .. '/metadata.json') then return dir end
+  local id = tostring(M.get().voicepack)
+  local dir = M.VOICE_DIR .. id
+  local listed = false
+  for _, v in ipairs(M.voicepacks()) do if v.id == id then listed = true end end
+  if listed and FS:fileExists(dir .. '/metadata.json') then return dir end
   return M.VOICE_DIR .. M.DEFAULTS.voicepack
 end
 

@@ -5,16 +5,29 @@
     <!-- tramo en marcha (tarjeta de la derecha) -->
     <template v-if="page === 'status'">
       <h3 class="erp-h"><span class="slash"></span>Raid.Earth</h3>
-      <template v-if="active">
+      <!-- rally completo: abandonar o reiniciar (desde el último TC o desde el principio) -->
+      <template v-if="rallyOn">
+        <div class="erp-run">
+          <div class="dim small">{{ t("rallyRunning") }}</div>
+          <b>{{ rallyOn.name }}</b>
+          <div class="dim small" v-if="active">{{ active.title }}</div>
+        </div>
+        <BngButton :accent="ACCENTS.main" @click="call('uiRestartRally', true)">{{ t("restartFromTc") }}</BngButton>
+        <BngButton :accent="ACCENTS.secondary" @click="call('uiRestartRally', false)">{{ t("restartRally") }}</BngButton>
+        <BngButton :accent="ACCENTS.attention" @click="call('uiCancelStage'); refresh()">{{ t("abandonRally") }}</BngButton>
+      </template>
+      <!-- tramo suelto: reiniciar o abandonar -->
+      <template v-else-if="active">
         <div class="erp-run">
           <div class="dim small">{{ t("running") }}</div>
           <b>{{ active.title || active.stageId }}</b>
           <div class="dim small" v-if="activeEvent">{{ activeEvent.name }}</div>
         </div>
-        <BngButton :accent="ACCENTS.attention" @click="call('uiCancelStage'); refresh()">{{ t("cancel") }}</BngButton>
+        <BngButton :accent="ACCENTS.main" @click="call('uiRestartStage')">{{ t("restartStage") }}</BngButton>
+        <BngButton :accent="ACCENTS.attention" @click="call('uiCancelStage'); refresh()">{{ t("abandonStage") }}</BngButton>
       </template>
       <p v-else class="dim">{{ t("pauseIdle") }}</p>
-      <BngButton :accent="ACCENTS.main" @click="open()">{{ t("pauseOpen") }}</BngButton>
+      <BngButton v-if="!active && !rallyOn" :accent="ACCENTS.main" @click="open()">{{ t("pauseOpen") }}</BngButton>
     </template>
 
     <!-- eventos -->
@@ -65,11 +78,13 @@ useEvents().on("EarthRaidState", m => onState(m))
 const s = state
 const events = computed(() => list(s.value && s.value.events))
 const active = computed(() => s.value && s.value.stageActive)
+const rallyOn = computed(() => s.value && s.value.rallyActive)
 const activeEvent = computed(() => active.value && events.value.find(e => e.id === active.value.eventId))
 const set = computed(() => (s.value && s.value.settings) || {})
 const toggles = computed(() => {
   const k = ["raceHud", "visualNotes", "voice", "noTraffic", "closures", "ambience", "sounds"]
   if (s.value && s.value.racingLineMod) k.push("racingLine")
+  k.push("recModsAuto")
   return k
 })
 

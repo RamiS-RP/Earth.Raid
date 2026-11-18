@@ -152,7 +152,7 @@
               <div class="set-label">{{ t("copilot") }}</div>
               <div class="selector">
                 <button @click="cycleVoice(-1)">‹</button>
-                <div class="sel-val"><b>{{ voice.name }} - {{ voice.style }}</b><small>{{ voice.dialect }}</small>
+                <div class="sel-val"><b>{{ voice.name }} - {{ voice.style }}</b><small>{{ voice.dialect }}<template v-if="voice.partial"> · {{ t("vpPartial") }}</template></small>
                   <div class="dots"><span v-for="v in voices" :key="v.id" :class="{ on: v.id === voice.id }"></span></div>
                 </div>
                 <button @click="cycleVoice(1)">›</button>
@@ -182,8 +182,16 @@
                 <span class="toggle" :class="{ on: set.racingLine }"><span class="knob"></span></span>
               </div>
               <div class="set-label">{{ t("recMods") }}</div>
-              <p class="recmod"><b>Racing Line Mod</b> — {{ s && s.racingLineMod ? t("installed") : t("recRacing") }}</p>
-              <p class="recmod"><b>hotw</b> (211443_hotw) — {{ s && s.hotwMod ? t("installed") : t("recHotw") }}</p>
+              <p class="recmod dim">{{ t("recModsHelp") }}</p>
+              <p v-for="r in (s && s.recMods) || []" :key="r.id" class="recmod">
+                <b>{{ r.name }}</b> — {{ t("rec_" + r.id) }}
+                <span :class="r.active ? 'ok' : 'warn'">· {{ r.active ? t("recActive") : r.installed ? t("recInactive") : t("recMissing") }}</span>
+                <a v-if="!r.installed" href="#" @click.prevent="call('uiOpenLink', r.url)">{{ t("recDownload") }}</a>
+              </p>
+              <div class="toggle-row" @click="toggle('recModsAuto')">
+                <span>{{ t("recModsAuto") }}</span>
+                <span class="toggle" :class="{ on: set.recModsAuto !== false }"><span class="knob"></span></span>
+              </div>
             </div>
           </div>
 
@@ -208,7 +216,10 @@
             </div>
           </div>
           <!-- con un tramo en marcha, en el sitio de Iniciar está Cancelar (no se puede iniciar otro a la vez) -->
-          <button v-if="mode === 'stage' && anyActive" class="go-btn bottom danger" @click="call('uiCancelStage')">{{ t("cancel") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+          <div v-if="mode === 'stage' && anyActive" class="go-row bottom">
+            <button class="go-btn" @click="call('uiRestartStage')">{{ t("restartStage") }}</button>
+            <button class="go-btn danger" @click="call('uiCancelStage')">{{ t("abandonStage") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+          </div>
           <button v-else-if="mode === 'stage'" class="go-btn bottom" :disabled="!pick || !s.pos" @click="startPick">{{ t("start") }}</button>
           <button v-else class="go-btn bottom" :disabled="!s.pos || !itinerary.length || rallyHere || anyActive" @click="startRally">{{ rallyHere ? t("rallyRunning", { l: s.rallyActive.label || '' }) : t("startRally") }}</button>
         </div>
@@ -285,6 +296,8 @@
             <input type="file" multiple accept=".kmz,.kml,.gpx,.geojson,.osm" @change="e => (up.routes = Array.from(e.target.files || []))" /></div>
           <div class="frow"><label>{{ t("upLogo") }}</label>
             <input type="file" accept=".png,.jpg,.jpeg,.webp" @change="e => (up.logo = (e.target.files || [])[0] || null)" /></div>
+          <div class="frow"><label>{{ t("surface") }}</label>
+            <select v-model="up.surface"><option value="">{{ t("surfAuto") }}</option><option v-for="o in ['asphalt', 'gravel', 'snow', 'mixed']" :key="o" :value="o">{{ t(o) }}</option></select></div>
           <div class="frow"><label>{{ t("m_description") }}</label>
             <textarea v-model="up.description" rows="2" @keydown.stop @focus="typing(true)" @blur="typing(false)"></textarea></div>
           <div class="frow"><label>{{ t("m_link") }}</label>
@@ -404,7 +417,7 @@ const form = ref({})
 
 // ---- subir un evento: los archivos se leen aquí y van a Lua en trozos (Lua valida y escribe en la carpeta de import)
 const CHUNK = 48000
-const up = ref({ name: "", routes: [], logo: null, description: "", link: "", busy: false, msg: "", key: null })
+const up = ref({ name: "", routes: [], logo: null, description: "", link: "", surface: "", busy: false, msg: "", key: null })
 let upResolve = null
 events_.on("EarthRaidUpload", d => {
   if (!d) return
@@ -448,11 +461,11 @@ async function startUpload() {
       if (!u.busy || (r && r.phase === "error")) return
     }
     const fin = waitUpload(60000)
-    call("uiUploadFinish", key, JSON.stringify({ name: u.name, description: u.description, link: u.link }))
+    call("uiUploadFinish", key, JSON.stringify({ name: u.name, description: u.description, link: u.link, surface: u.surface }))
     const end = await fin
     if (end && end.phase === "error") return
     u.msg = "✓ " + t("upDone"); impKey.value = key
-    Object.assign(u, { name: "", routes: [], logo: null, description: "", link: "" })
+    Object.assign(u, { name: "", routes: [], logo: null, description: "", link: "", surface: "" })
   } catch (e) {
     u.msg = "⚠ " + (e && e.message ? e.message : e)
   } finally { u.busy = false }
@@ -659,8 +672,9 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .foot { margin-top: 18px; }
 .sectx { font-style: normal; font-weight: 400; }
-.recmod { margin: 2px 0 6px; font-size: 0.82em; opacity: 0.85; line-height: 1.35; }
+.recmod { margin: 2px 0 6px; font-size: 0.82em; opacity: 0.85; line-height: 1.35; .ok { color: #7bd88f; } .warn { color: #ffb347; } a { color: #ff8a3d; margin-left: 4px; } }
 .newimp { border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; }
 .newimp input[type=file] { color: inherit; font-size: 0.85em; }
 .go-btn.danger { background: #b3261e; }
+.rcol .go-row.bottom { display: flex; gap: 8px; margin: 12px 16px 0; flex: none; .go-btn { flex: 1; margin: 0; width: auto; font-size: 18px; } }
 </style>

@@ -33,7 +33,12 @@ end
 -- del GPS. Sigue la ruta del GPS (el trazado), así que se oculta la azul del suelo y se le pide su línea de velocidad;
 -- al acabar se devuelve todo como estaba.
 M.RL_DELAY_S = 1.0          -- el planificador de rutas tarda un poco en tener la ruta nueva
+local racingLineOffForce
 local rl = { on = false, wait = nil, saved = nil }
+local function rlAction(name, v)
+  local ext = rawget(_G, 'racingline')
+  if ext and ext.uiAction then pcall(ext.uiAction, name, v) end
+end
 
 function M.racingLineAvailable()
   return FS:fileExists('/lua/ge/extensions/racingline.lua') == true
@@ -79,6 +84,9 @@ function M.racingLine(on)
   local ext = rlExt()
   if not (ext and ext.uiAction) then return false end
   rl.on, rl.wait = true, M.RL_DELAY_S
+  rlAction('tg_navFollow', true)
+  -- la línea azul del GPS fuera mientras dure el tramo: el propio mod la oculta (17-nov: se veían las dos)
+  rlAction('tg_hideNav', true)
   blueLine(false)
   return true
 end
@@ -99,11 +107,36 @@ function M.restoreBlueLine()
   if FS:fileExists(M.RL_FILE) then blueLine(true) end
 end
 
+-- Fuera del tramo (hacia el TC y del TC a la salida) solo la línea azul del GPS: el mod Racing Line sigue por su cuenta
+-- cualquier ruta del GPS ("seguir navegación"), así que mientras Raid.Earth tiene un tramo se le apaga eso y se borra
+-- su línea; al terminar con Raid.Earth se le devuelve.
+function M.hold()
+  rl.held = true
+  rlAction('tg_navFollow', false)
+  rlAction('clear')
+  rlAction('tg_navFollow', false)
+end
+-- en un mapa normal (rally vanilla, etc.): el mod Racing Line, tal como estaba sin Raid.Earth
+function M.restoreAll()
+  rl.held = true
+  M.release()
+  pcall(racingLineOffForce)
+end
+function M.release()
+  if not rl.held then return end
+  rl.held = false
+  rlAction('tg_navFollow', true)
+end
+
 local function racingLineOff()
   if not rl.on then return end
+  racingLineOffForce()
+end
+racingLineOffForce = function()
   rl.on, rl.wait = false, nil
-  local ext = rawget(_G, 'racingline')
-  if ext and ext.uiAction then pcall(ext.uiAction, 'clear') end
+  rlAction('clear')
+  rlAction('tg_hideNav', false)
+  if rl.held then rlAction('tg_navFollow', false) end
   blueLine(true)
 end
 
