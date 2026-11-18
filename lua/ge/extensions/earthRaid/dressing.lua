@@ -455,9 +455,9 @@ end
 local jobs = {}
 M.JOB_RADIUS_M = 450       -- se monta cuando el jugador está a menos de esto (el grafo de carreteras ya está cargado)
 -- t: el tramo (para saber dónde cae el trabajo); atM: metros del tramo (negativo: antes de la salida)
-function M.later(atM, fn, t)
+function M.later(atM, fn, t, delayS)
   t = t or M._t
-  local j = { at = atM, fn = fn }
+  local j = { at = atM, fn = fn, notBefore = delayS and (os.clockhp() + delayS) or nil }
   if t then
     local d = math.max(0, math.min(t.total, atM))
     local x, y = geo.at(t, d)
@@ -475,6 +475,7 @@ function M.runJobsNear(lat, lon, maxJobs)
   while jobs[i] and (not maxJobs or n < maxJobs) do
     local j = jobs[i]
     local near = not j.lat or ((j.lon - lon) * 111195 * k) ^ 2 + ((j.lat - lat) * 111195) ^ 2 < M.JOB_RADIUS_M ^ 2
+    if near and j.notBefore and os.clockhp() < j.notBefore then near = false end
     if near then
       table.remove(jobs, i)
       local ok, err = pcall(j.fn)

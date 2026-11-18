@@ -18,7 +18,7 @@ M.BUILD_S = 12               -- y un momento más para que se creen los objetos
 M.LINE_KINDS = { line = true }
 M.BOARD_KINDS = { tc = true, start = true, finish = true, stop = true }   -- carteles: junto a la calzada
 M.BOARD_OK_M = 3.0           -- un cartel, a menos de esto del borde de la calzada
-M.ROAD_OK = { cone = true, line = true, sensor = true, tc = true, start = true, finish = true, stop = true,
+M.ROAD_OK = { cone = true, line = true, laptop = true, sensor = true, tc = true, start = true, finish = true, stop = true,
   finishEntry = true, tcEntry = true, sndCrowd = true, sndCheer = true, sndGenerator = true, lamp = true }
 
 local A = nil   -- la auditoría en marcha
@@ -56,16 +56,36 @@ end
 -- lo que hay montado cerca de (x, y): las líneas y lo que está en la calzada
 local function measure(cx, cy, radius)
   local lines, onRoad, hidden = {}, {}, 0
+  local a = api()
   for _, it in ipairs(props.all()) do
     if it.obj and it.kind then
       local q = it.obj:getPosition()
       if (q.x - cx) ^ 2 + (q.y - cy) ^ 2 < radius * radius then
         if it.hidden then hidden = hidden + 1
+        elseif it.line and it.lat2 then
+          -- una línea pintada (DecalRoad de borde a borde): su centro en el eje y cruzada a la carretera
+          local mx, my = a.toGame((it.lat + it.lat2) / 2, (it.lon + it.lon2) / 2, 0)
+          local ex, ey = a.toGame(it.lat2, it.lon2, 0)
+          if mx then
+            local _, _, gz = props.ground((it.lat + it.lat2) / 2, (it.lon + it.lon2) / 2)
+            local n1, n2, d = props.nearestRoad(mx, my, gz or q.z, 60)
+            local m = map.getMap()
+            local r, perp = nil, nil
+            if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
+              r = m.nodes[n1].radius or 3
+              local A_, B_ = m.nodes[n1].pos, m.nodes[n2].pos
+              local sx, sy = B_.x - A_.x, B_.y - A_.y
+              local lx, ly = ex - mx, ey - my
+              local L1, L2 = math.sqrt(sx * sx + sy * sy), math.sqrt(lx * lx + ly * ly)
+              if L1 > 0.1 and L2 > 0.1 then perp = 1 - math.abs((sx * lx + sy * ly) / (L1 * L2)) end
+            end
+            lines[#lines + 1] = { kind = 'line', d = d, r = r, align = perp, x = math.floor(mx), y = math.floor(my) }
+          end
         else
           local d, r, align = roadRel(it.obj)
-          if M.LINE_KINDS[it.kind] or M.BOARD_KINDS[it.kind] then
-            lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = align, x = math.floor(q.x), y = math.floor(q.y), board = M.BOARD_KINDS[it.kind] }
-          elseif d and r and d < r + 0.3 and not M.ROAD_OK[it.kind] then
+          if M.BOARD_KINDS[it.kind] then
+            lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = nil, x = math.floor(q.x), y = math.floor(q.y), board = true }
+          elseif d and r and d < r + 0.3 and not M.ROAD_OK[it.kind] and not it.closure then
             onRoad[#onRoad + 1] = { kind = it.kind, d = d, r = r, x = math.floor(q.x), y = math.floor(q.y) }
           end
         end
@@ -173,7 +193,17 @@ function M.update(dt)
       A.step, A.t = 'startSettle', 0
     elseif A.t > 240 then A.res.problems[#A.res.problems + 1] = 'loading timed out' finishStage(A.res) return end
   elseif A.step == 'startSettle' then
+    -- primero junto a la salida (lo de allí se recomprueba al acercarse, como al conducir), luego la medida
+    if A.t < 6 then return end
+    if not A.atLine then
+      A.atLine = true
+      local S0 = st.state()
+      if S0 and S0.line then teleport(S0.line.lat, S0.line.lon) end
+      A.t = 0
+      return
+    end
     if A.t < 8 then return end
+    A.atLine = nil
     local S = st.state()
     local t = S.track
     local a = api()
@@ -214,7 +244,19 @@ function M.update(dt)
       teleport(A.finishLL[1], A.finishLL[2])
     end
     if A.t < M.SETTLE_S then return end
-    if st.jobsHeld then st.holdJobs(false) end
+    if st.jobsHeld then
+      -- la meta se monta cuando el grafo de carreteras está cargado allí (como cuando se llega conduciendo)
+      local S0 = st.state()
+      if S0 and A.t < M.SETTLE_S + 60 then
+        local t0 = S0.track
+        local fx0, fy0 = geo.at(t0, t0.total)
+        local fla0, flo0 = geo.toGeo(t0, fx0, fy0)
+        local gx0, gy0, gz0 = props.ground(fla0, flo0)
+        local n1 = gx0 and props.nearestRoad(gx0, gy0, gz0, 80)
+        if not n1 then return end
+      end
+      st.holdJobs(false)
+    end
     local a = api()
     local pl, po = a.position()
     local left = pl and dressing.pendingJobsNear(pl, po) or 0

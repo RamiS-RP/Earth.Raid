@@ -502,11 +502,13 @@ function M.start(ev, st, info)
   end
   -- los enlaces del organizador suelen estar dibujados a mano (rectas por el monte): hasta pasado el STOP tiene que ir
   -- por carretera de verdad
+  -- devuelve 'unknown' si el grafo de carreteras aún no está cargado por ahí (hay que esperar)
   local function checkAfter()
     if t.finishCut or not t.after then return end
     local need = (t.stopAt or dressing.STOP_AFTER_M) + 20
     local fr = onRoadFrac(t.after, 10, need)
-    if fr == nil or fr >= 0.8 then return end
+    if fr == nil then return 'unknown' end
+    if fr >= 0.8 then return end
     log('W', TAG, ('after the finish: only %.0f%% on a road, looking for the real road'):format(fr * 100))
     local f, f0 = cpath[#cpath], refPoint(cpath, true, 15)
     local wr = walkRoads(f, f0)
@@ -519,10 +521,30 @@ function M.start(ev, st, info)
       t.after = nil   -- pullFinishBack: el STOP en la calzada del tramo
     end
   end
-  local finishLater = function()
+  local finishLater
+  finishLater = function()
     pcall(trimFinishToRoad)
     if not t.finishCut then findAfter() end
-    pcall(checkAfter)
+    local okC, verdict = pcall(checkAfter)
+    if okC and verdict == 'unknown' then
+      -- las carreteras tras la meta aún no están cargadas: la meta se monta cuando lo estén (si el coche no está ya
+      -- encima), hasta 90 s (18-nov: el STOP de Rey Silo se montaba en el monte por montarse antes de tiempo)
+      S.finishWait = (S.finishWait or 0) + 1
+      local far = true
+      pcall(function()
+        local a = api()
+        local pl, po = a.position()
+        if pl then
+          local x, y = geo.toLocal(t, pl, po)
+          local fx, fy = t.pts[#t.pts][1], t.pts[#t.pts][2]
+          far = (x - fx) ^ 2 + (y - fy) ^ 2 > 150 * 150
+        end
+      end)
+      if far and S.finishWait < 60 then
+        dressing.later(t.total, finishLater, t, 1.5)
+        return
+      end
+    end
     pcall(pullFinishBack)
     pcall(S.setVirtual)
     local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
