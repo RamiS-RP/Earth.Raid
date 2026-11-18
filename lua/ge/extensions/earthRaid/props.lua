@@ -48,7 +48,8 @@ M.SHAPES = {
   -- protecciones en curvas peligrosas y cortes de calles (lo que usan los rallies del juego)
   -- pacas del juego (las de carga de vehículos; sus materiales se cargan aparte, ver create): redondas (un grupo de
   -- 4,4 m de ancho en X) y cuadradas (1,8 x 2,5 m)
-  hayBale = '/vehicles/common/loads/haybale/haybale_round.dae',
+  -- (la redonda, haybale_round.dae, usa un material que no existe fuera del vehículo: sale naranja; se usa la cuadrada)
+  hayBale = '/vehicles/common/loads/haybale/haybale.dae',
   hayBale2 = '/vehicles/common/loads/haybale/haybale.dae',
   meshBarricade = '/art/shapes/race/ut_race_mesh_barricade_.DAE',   -- malla naranja de 10 m (Utah), larga en Y
   barrel = '/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae',

@@ -278,6 +278,23 @@ function M.update(dt)
     local pl, po = a.position()
     local left = pl and dressing.pendingJobsNear(pl, po) or 0
     if left > 0 and A.t < M.SETTLE_S + M.JOBS_S then return end
+    -- la meta puede esperar a las carreteras (finishLater se repite): hasta que haya carteles de meta, o 150 s
+    local S1 = st.state()
+    if S1 and not A.built then
+      local t1 = S1.track
+      local fx1, fy1 = geo.at(t1, t1.total)
+      local fla1, flo1 = geo.toGeo(t1, fx1, fy1)
+      local gx1, gy1 = a.toGame(fla1, flo1, 0)
+      local seenF = false
+      for _, it in ipairs(props.all()) do
+        if it.obj and it.kind == 'finish' then
+          local q = it.obj:getPosition()
+          if gx1 and (q.x - gx1) ^ 2 + (q.y - gy1) ^ 2 < 450 * 450 then seenF = true break end
+        end
+      end
+      if not seenF and A.t < M.SETTLE_S + M.JOBS_S + 150 then return end
+      A.built = A.t
+    end
     if not A.built then A.built = A.t end
     if A.t < A.built + M.BUILD_S then return end
     A.built = nil

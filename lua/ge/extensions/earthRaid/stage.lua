@@ -533,9 +533,11 @@ function M.start(ev, st, info)
   -- mapa y cuenta la calzada virtual). Devuelve 'unknown' si el grafo no está cargado por ahí.
   local function checkFinish()
     if t.finishCut or t.finishMoved then return end
-    if dressing.normSurface(S.surface) == 'gravel' then return end
     local fr = onRoadFrac(t, t.total - 120, t.total)
     if fr == nil then return 'unknown' end
+    -- en tierra el camino puede no estar en el mapa (cuenta la calzada virtual): solo si el último kilómetro sí va
+    -- por carretera del juego, es que el mapa la tiene y la meta debe ir por ella
+    if dressing.normSurface(S.surface) == 'gravel' and (onRoadFrac(t, t.total - 1000, t.total - 120) or 0) < 0.6 then return end
     if fr >= 0.8 then return end
     for a0 = t.total - 20, 700, -20 do
       local f2 = onRoadFrac(t, a0 - 120, a0)

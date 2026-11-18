@@ -290,7 +290,7 @@ end
 
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
-M.CLEAR_M = { hayBale = 2.3, hayBale2 = 1.4, meshBarricade = 0.5, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
+M.CLEAR_M = { hayBale = 1.4, hayBale2 = 1.4, meshBarricade = 0.5, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
   cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTapeBigA = 1.5, specTapeBigB = 1.5, specTapeBigCenter = 1.5, specTarpAngle = 1.5, meshBarricade = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
@@ -1029,7 +1029,10 @@ function M.closures(t, from, to)
       if lateral < 8 and along > 40 and along < t.total - 20 and along >= from and along <= to then
         -- la propia carretera del tramo sale del nodo hacia delante y hacia atrás: esas dos no se cortan nunca (el KMZ va
         -- desplazado de la carretera y en las curvas parecía una calle lateral: cintas en medio del tramo)
-        local tdx, tdy = geo.dirAt(t, along)
+        -- la dirección del tramo justo antes y justo después del nodo (en una horquilla la de "en el nodo" ya apunta a la
+        -- salida y la calle de atrás se confundía con la que sigue recto: Salas, 18-nov)
+        local tdx, tdy = geo.dirAt(t, math.min(t.total, along + 12))
+        local bdx, bdy = geo.dirAt(t, math.max(0, along - 12))
         -- 18-nov (Pravia: cortes en mitad del tramo): solo los cruces de verdad (3 o más calles) llevan corte, y la
         -- carretera del tramo es siempre la mejor alineada hacia delante y hacia atrás, por cerrada que sea la curva
         local degree = 0
@@ -1046,8 +1049,9 @@ function M.closures(t, from, to)
             local l = math.sqrt(ex * ex + ey * ey)
             if l > 0.1 then
               local dt = (ex * tdx + ey * tdy) / l
+              local db = -(ex * bdx + ey * bdy) / l
               if dt > fwdDot then fwdBest, fwdDot, fwdXY = other, dt, { ox, oy } end
-              if -dt > backDot then backBest, backDot, backXY = other, -dt, { ox, oy } end
+              if db > backDot then backBest, backDot, backXY = other, db, { ox, oy } end
             end
           end
         end
@@ -1084,15 +1088,25 @@ function M.closures(t, from, to)
                     -- que sigue recto): pacas redondas y cuadradas cruzando la boca de esa calle y detrás una fila
                     -- de barreras de plástico rojas y blancas
                     if turn < 0.55 then
+                      -- esta calle ya queda cerrada por la zona de escape: sin cinta de corte encima
+                      doneKeys[name < other and (name .. '|' .. other) or (other .. '|' .. name)] = true
                       local ux, uy = sx / sl, sy / sl
                       local qx, qy = -uy, ux
                       local w = (on.radius or 3)
                       local d0 = (node.radius or 3) + 5
-                      local kinds = { { 'hayBale', -w + 0.3, 0 }, { 'hayBale2', w - 1.2, 0 }, { 'hayBale2', w - 1.2, 1.3 } }
+                      -- pacas cuadradas (1,8 x 2,5 m) a lo ancho de la calle y una segunda fila encima
+                      local kinds = {}
+                      local nb = math.max(2, math.floor((2 * w) / 1.9 + 0.5))
+                      for i = 0, nb - 1 do
+                        local off = -w + 0.95 + i * ((2 * w - 1.9) / math.max(1, nb - 1))
+                        kinds[#kinds + 1] = { 'hayBale2', off, 0, 0 }
+                        if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + 0.95, 0, 1.3 } end
+                      end
                       for _, k in ipairs(kinds) do
                         local bx, by = nx + ux * (d0 + k[3]) + qx * k[2], ny + uy * (d0 + k[3]) + qy * k[2]
                         local bl, bo = geo.toGeo(t, bx, by)
-                        local it3 = props.add(k[1], bl, bo, ux, uy, 90)
+                        -- la paca con su lado largo (Y, 2,5 m) en el sentido de la calle y el corto (1,8 m) a lo ancho
+                        local it3 = props.add(k[1], bl, bo, ux, uy, 0, k[4] > 0 and { dz = k[4] } or nil)
                         if it3 then it3.roadOk = true it3.closure = true end
                       end
                       local nB = 0
