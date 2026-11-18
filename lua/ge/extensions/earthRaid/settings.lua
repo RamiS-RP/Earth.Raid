@@ -70,8 +70,13 @@ function M.voicepacks()
       -- cuántas notas trae: un voicepack incompleto (Clover, de broma) se completa con la voz por defecto
       local notes = 0
       for _ in pairs(jsonReadFile(dir .. '/metadata.json') or {}) do notes = notes + 1 end
-      out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
-        style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes, partial = notes < 120 }
+      -- fuera del selector los de broma (Clover, el gato del 1 de abril: idioma "Feline", 12 maullidos) y los incompletos
+      local joke = d.enableAnimalCodrivers ~= nil and not tostring(d.language or ''):find('languages', 1, true)
+      if not joke and notes >= 120 then
+        out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
+          style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes,
+          language = tostring(d.language or ''):match('languages%.(%w+)%.name') or d.language }
+      end
     end
   end
   table.sort(out, function(a, b) return a.id < b.id end)
@@ -79,9 +84,11 @@ function M.voicepacks()
 end
 
 function M.voiceDir()
-  local id = M.get().voicepack
-  local dir = M.VOICE_DIR .. tostring(id)
-  if FS:fileExists(dir .. '/metadata.json') then return dir end
+  local id = tostring(M.get().voicepack)
+  local dir = M.VOICE_DIR .. id
+  local listed = false
+  for _, v in ipairs(M.voicepacks()) do if v.id == id then listed = true end end
+  if listed and FS:fileExists(dir .. '/metadata.json') then return dir end
   return M.VOICE_DIR .. M.DEFAULTS.voicepack
 end
 

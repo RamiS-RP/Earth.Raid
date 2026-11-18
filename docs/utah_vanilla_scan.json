@@ -1,0 +1,3278 @@
+{
+"level": "/levels/utah/main.level.json",
+"note": "NGRC Rally Utah 2026: objetos a menos de 400 m del coche parado en el control horario, antes de la salida de un tramo (18-nov). f = metros hacia delante del coche, s = metros a la derecha.",
+"objects": [
+{
+"f": -382.1,
+"s": -110.3,
+"z": 4.4,
+"yaw": 54,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/utah_mines_walls.dae"
+},
+{
+"f": -379.5,
+"s": -112.8,
+"z": 5.5,
+"yaw": -121,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -377.7,
+"s": -108.9,
+"z": 5.5,
+"yaw": -129,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -371.7,
+"s": -112.8,
+"z": 5.9,
+"yaw": 59,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -370.0,
+"s": -110.6,
+"z": 6.0,
+"yaw": 51,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -365.9,
+"s": -112.5,
+"z": 5.6,
+"yaw": -126,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/utah_mines_walls.dae"
+},
+{
+"f": -365.1,
+"s": -112.6,
+"z": -3.4,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": -363.3,
+"s": -114.5,
+"z": 6.9,
+"yaw": -126,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -361.9,
+"s": -110.6,
+"z": 7.0,
+"yaw": -124,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -359.6,
+"s": -114.6,
+"z": 11.9,
+"yaw": -118,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_b_top.dae"
+},
+{
+"f": -357.8,
+"s": -107.6,
+"z": 10.0,
+"yaw": -41,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_d_top.dae"
+},
+{
+"f": -357.4,
+"s": -111.9,
+"z": 10.0,
+"yaw": 57,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_flat_b.dae"
+},
+{
+"f": -357.4,
+"s": -115.4,
+"z": 10.0,
+"yaw": -127,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_flat_b.dae"
+},
+{
+"f": -355.5,
+"s": -115.3,
+"z": 7.7,
+"yaw": 54,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -355.5,
+"s": -115.0,
+"z": 10.1,
+"yaw": 81,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_flat_b.dae"
+},
+{
+"f": -355.1,
+"s": -116.7,
+"z": 12.1,
+"yaw": 99,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_b_top.dae"
+},
+{
+"f": -354.1,
+"s": -111.5,
+"z": 7.8,
+"yaw": 56,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -353.2,
+"s": -117.1,
+"z": 10.2,
+"yaw": -69,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_flat_b.dae"
+},
+{
+"f": -353.1,
+"s": -120.4,
+"z": -3.1,
+"yaw": -39,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_b.dae"
+},
+{
+"f": -352.7,
+"s": -110.3,
+"z": -3.1,
+"yaw": -31,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_b.dae"
+},
+{
+"f": -347.6,
+"s": -113.7,
+"z": 8.6,
+"yaw": -124,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/utah_mines_tracks.dae"
+},
+{
+"f": -347.5,
+"s": -111.3,
+"z": 9.0,
+"yaw": -118,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -347.5,
+"s": -116.2,
+"z": 9.2,
+"yaw": -119,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/utah_mines_rough_edge.dae"
+},
+{
+"f": -346.8,
+"s": -118.6,
+"z": 9.9,
+"yaw": 152,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_b_top.dae"
+},
+{
+"f": -345.8,
+"s": -107.3,
+"z": 10.0,
+"yaw": -38,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/rocks/utah_rock_big_2_d_top.dae"
+},
+{
+"f": -341.5,
+"s": -117.5,
+"z": 10.3,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_danger_mine.DAE"
+},
+{
+"f": -229.7,
+"s": 172.7,
+"z": 7.7,
+"yaw": 60,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_70_speed_limit.DAE"
+},
+{
+"f": -225.2,
+"s": 181.7,
+"z": 7.8,
+"yaw": -120,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_side_road_diag_left.DAE"
+},
+{
+"f": -223.0,
+"s": 171.6,
+"z": 8.1,
+"yaw": 48,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_busstop_old_sign.dae"
+},
+{
+"f": -220.2,
+"s": 169.5,
+"z": 7.7,
+"yaw": 143,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_busstop_old.dae"
+},
+{
+"f": -206.6,
+"s": -341.5,
+"z": -13.1,
+"yaw": -46,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -206.1,
+"s": 180.4,
+"z": 7.5,
+"yaw": -37,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_busstop_old.dae"
+},
+{
+"f": -205.4,
+"s": -337.7,
+"z": -13.3,
+"yaw": -46,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -204.9,
+"s": -335.8,
+"z": -13.3,
+"yaw": -46,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -203.6,
+"s": -332.0,
+"z": -13.4,
+"yaw": -51,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -203.3,
+"s": 178.2,
+"z": 7.7,
+"yaw": -132,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_busstop_old_sign.dae"
+},
+{
+"f": -202.9,
+"s": -330.2,
+"z": -13.3,
+"yaw": -51,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -201.3,
+"s": -326.5,
+"z": -13.4,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -200.5,
+"s": -324.7,
+"z": -13.5,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -200.5,
+"s": -205.6,
+"z": -14.2,
+"yaw": -23,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -200.4,
+"s": -203.5,
+"z": -14.2,
+"yaw": -32,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -200.3,
+"s": -207.6,
+"z": -14.2,
+"yaw": -21,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -200.3,
+"s": -201.5,
+"z": -14.1,
+"yaw": -32,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -199.9,
+"s": -209.6,
+"z": -14.3,
+"yaw": -22,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -198.9,
+"s": -321.1,
+"z": -13.5,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -198.4,
+"s": -274.7,
+"z": -14.0,
+"yaw": 42,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -198.1,
+"s": -319.2,
+"z": -13.5,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -196.5,
+"s": -315.6,
+"z": -13.5,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -196.5,
+"s": -275.3,
+"z": -13.9,
+"yaw": 42,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -195.7,
+"s": -313.8,
+"z": -13.5,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -194.0,
+"s": -310.2,
+"z": -13.4,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -193.2,
+"s": -308.4,
+"z": -13.4,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -193.1,
+"s": -277.3,
+"z": -13.8,
+"yaw": 17,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -191.7,
+"s": -278.7,
+"z": -13.6,
+"yaw": 17,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -191.6,
+"s": -304.7,
+"z": -13.3,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -190.8,
+"s": -302.9,
+"z": -13.3,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -189.2,
+"s": -299.3,
+"z": -13.2,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -188.8,
+"s": -281.4,
+"z": -13.3,
+"yaw": 17,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -188.4,
+"s": -297.5,
+"z": -13.2,
+"yaw": -54,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -187.4,
+"s": -282.7,
+"z": -13.2,
+"yaw": 17,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -186.9,
+"s": -293.8,
+"z": -13.2,
+"yaw": -49,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -186.2,
+"s": -291.9,
+"z": -13.2,
+"yaw": -49,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -185.8,
+"s": -286.0,
+"z": -13.2,
+"yaw": -26,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -185.7,
+"s": -288.0,
+"z": -13.2,
+"yaw": -26,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -177.6,
+"s": -264.3,
+"z": -13.0,
+"yaw": 19,
+"cls": "TSStatic",
+"asset": "/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae"
+},
+{
+"f": -172.3,
+"s": -267.1,
+"z": -13.1,
+"yaw": 19,
+"cls": "TSStatic",
+"asset": "/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae"
+},
+{
+"f": -163.7,
+"s": -265.5,
+"z": -12.7,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -161.8,
+"s": -268.9,
+"z": -12.4,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": -160.8,
+"s": -270.6,
+"z": -12.3,
+"yaw": -45,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": -154.4,
+"s": -48.2,
+"z": 0.6,
+"yaw": -75,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_crossroads.DAE"
+},
+{
+"f": -154.4,
+"s": -48.2,
+"z": -0.3,
+"yaw": -75,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_right_turn.DAE"
+},
+{
+"f": -151.3,
+"s": 153.6,
+"z": 6.5,
+"yaw": 45,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_yield.DAE"
+},
+{
+"f": -137.0,
+"s": 155.7,
+"z": 6.2,
+"yaw": -135,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_airport.DAE"
+},
+{
+"f": -115.9,
+"s": 38.6,
+"z": 3.4,
+"yaw": -112,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -115.7,
+"s": 39.2,
+"z": 3.4,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -115.7,
+"s": 38.9,
+"z": 4.3,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -115.6,
+"s": 38.9,
+"z": 3.4,
+"yaw": 124,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_tarp_group_a300.dae"
+},
+{
+"f": -115.5,
+"s": 39.1,
+"z": 3.6,
+"yaw": 124,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/clutter_barrels_tarp_group.prefab.json"
+},
+{
+"f": -115.4,
+"s": 39.8,
+"z": 3.4,
+"yaw": -161,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -115.4,
+"s": 39.3,
+"z": 4.3,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -115.3,
+"s": -31.2,
+"z": -1.5,
+"yaw": 105,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_winding_road_right.DAE"
+},
+{
+"f": -115.3,
+"s": 38.7,
+"z": 3.4,
+"yaw": -23,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -115.1,
+"s": 39.3,
+"z": 3.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -110.3,
+"s": 63.2,
+"z": 3.8,
+"yaw": -58,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -110.0,
+"s": 62.6,
+"z": 3.8,
+"yaw": 78,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -109.8,
+"s": 63.6,
+"z": 4.0,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -109.6,
+"s": 62.1,
+"z": 3.8,
+"yaw": -82,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -108.8,
+"s": 65.1,
+"z": 3.8,
+"yaw": -178,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -108.7,
+"s": 170.9,
+"z": 5.4,
+"yaw": -120,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_30_speed_limit.DAE"
+},
+{
+"f": -108.1,
+"s": 65.6,
+"z": 4.3,
+"yaw": -126,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -108.1,
+"s": 65.2,
+"z": 4.3,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -108.1,
+"s": 65.6,
+"z": 5.0,
+"yaw": 93,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_fire_extinguisher.dae"
+},
+{
+"f": -108.1,
+"s": 45.3,
+"z": 3.1,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/airport_old_plane.dae"
+},
+{
+"f": -107.8,
+"s": 65.7,
+"z": 5.0,
+"yaw": -15,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_green_can.dae"
+},
+{
+"f": -107.7,
+"s": 66.0,
+"z": 5.0,
+"yaw": 175,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -107.7,
+"s": 65.4,
+"z": 4.3,
+"yaw": -18,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -107.4,
+"s": 65.8,
+"z": 4.3,
+"yaw": 11,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_toolbox.dae"
+},
+{
+"f": -107.2,
+"s": 65.0,
+"z": 3.8,
+"yaw": -18,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_hand_truck.dae"
+},
+{
+"f": -106.9,
+"s": 66.0,
+"z": 4.3,
+"yaw": -81,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -106.9,
+"s": 66.5,
+"z": 3.8,
+"yaw": 10,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_shelves_4x1.dae"
+},
+{
+"f": -106.7,
+"s": 66.7,
+"z": 5.0,
+"yaw": -129,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -106.5,
+"s": 65.6,
+"z": 3.9,
+"yaw": -58,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -106.4,
+"s": 65.5,
+"z": 3.8,
+"yaw": 61,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_hand_dolly.dae"
+},
+{
+"f": -106.3,
+"s": 67.4,
+"z": 5.0,
+"yaw": 6,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_green_can.dae"
+},
+{
+"f": -106.3,
+"s": 67.2,
+"z": 5.0,
+"yaw": -22,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_green_can.dae"
+},
+{
+"f": -106.1,
+"s": 66.8,
+"z": 4.3,
+"yaw": -123,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -106.0,
+"s": 66.8,
+"z": 4.3,
+"yaw": 169,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -106.0,
+"s": 50.3,
+"z": 4.0,
+"yaw": 10,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/airport_antenna.dae"
+},
+{
+"f": -105.9,
+"s": 66.9,
+"z": 4.3,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -105.9,
+"s": 67.1,
+"z": 4.3,
+"yaw": -81,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -105.9,
+"s": 67.1,
+"z": 5.1,
+"yaw": 160,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_green_can.dae"
+},
+{
+"f": -105.9,
+"s": 67.6,
+"z": 5.0,
+"yaw": 93,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_green_can.dae"
+},
+{
+"f": -105.8,
+"s": 67.1,
+"z": 4.3,
+"yaw": -24,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -105.8,
+"s": 67.6,
+"z": 4.4,
+"yaw": 135,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -105.7,
+"s": 67.1,
+"z": 4.3,
+"yaw": 44,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -105.7,
+"s": 67.3,
+"z": 4.3,
+"yaw": 180,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -105.6,
+"s": 67.1,
+"z": 5.1,
+"yaw": 62,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -105.4,
+"s": 67.3,
+"z": 5.0,
+"yaw": -77,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -105.3,
+"s": 67.3,
+"z": 5.0,
+"yaw": 9,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -105.1,
+"s": 67.7,
+"z": 4.3,
+"yaw": 53,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.9,
+"s": 67.8,
+"z": 4.3,
+"yaw": 121,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.8,
+"s": 67.9,
+"z": 4.3,
+"yaw": -49,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -104.7,
+"s": 67.4,
+"z": 3.9,
+"yaw": 96,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_broom.dae"
+},
+{
+"f": -104.7,
+"s": 67.8,
+"z": 5.8,
+"yaw": 9,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -104.7,
+"s": 67.8,
+"z": 4.3,
+"yaw": 9,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -104.5,
+"s": 68.4,
+"z": 4.3,
+"yaw": 50,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.4,
+"s": 68.3,
+"z": 4.3,
+"yaw": -98,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.4,
+"s": 68.2,
+"z": 4.3,
+"yaw": 45,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -104.3,
+"s": 67.5,
+"z": 3.8,
+"yaw": 8,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_broom.dae"
+},
+{
+"f": -104.3,
+"s": 68.4,
+"z": 4.3,
+"yaw": -30,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.2,
+"s": 68.2,
+"z": 4.3,
+"yaw": 106,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -104.1,
+"s": 69.0,
+"z": 5.8,
+"yaw": -3,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -103.8,
+"s": 69.3,
+"z": 5.0,
+"yaw": -18,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -103.7,
+"s": 69.1,
+"z": 3.8,
+"yaw": 10,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_shelves_4x1.dae"
+},
+{
+"f": -103.6,
+"s": 69.3,
+"z": 5.8,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -103.4,
+"s": 68.2,
+"z": 3.8,
+"yaw": -58,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -103.1,
+"s": 68.4,
+"z": 4.6,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -103.1,
+"s": 69.7,
+"z": 5.8,
+"yaw": -101,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -103.0,
+"s": 69.5,
+"z": 5.1,
+"yaw": 96,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_broom.dae"
+},
+{
+"f": -102.9,
+"s": 68.6,
+"z": 3.8,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -102.8,
+"s": 53.4,
+"z": 4.1,
+"yaw": -135,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -102.8,
+"s": 68.0,
+"z": 3.8,
+"yaw": 45,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -102.8,
+"s": 68.0,
+"z": 4.6,
+"yaw": -17,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_fire_extinguisher.dae"
+},
+{
+"f": -102.5,
+"s": 69.8,
+"z": 5.0,
+"yaw": -110,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -102.4,
+"s": 69.9,
+"z": 5.1,
+"yaw": 62,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -102.4,
+"s": 69.1,
+"z": 3.8,
+"yaw": 112,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -102.4,
+"s": 69.7,
+"z": 5.0,
+"yaw": -24,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_black_oil.dae"
+},
+{
+"f": -102.3,
+"s": 70.1,
+"z": 5.0,
+"yaw": -98,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -102.2,
+"s": 53.0,
+"z": 3.8,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -101.7,
+"s": 69.6,
+"z": 4.0,
+"yaw": -46,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_hand_truck.dae"
+},
+{
+"f": -101.4,
+"s": 70.3,
+"z": 3.9,
+"yaw": -90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_broom.dae"
+},
+{
+"f": -101.2,
+"s": 71.1,
+"z": 5.8,
+"yaw": 170,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bucket.dae"
+},
+{
+"f": -100.9,
+"s": 71.7,
+"z": 5.8,
+"yaw": -58,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -100.6,
+"s": 71.7,
+"z": 3.8,
+"yaw": 10,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_shelves_4x1.dae"
+},
+{
+"f": -100.6,
+"s": 64.2,
+"z": 8.3,
+"yaw": 0,
+"cls": "PointLight",
+"asset": null
+},
+{
+"f": -100.5,
+"s": 71.6,
+"z": 5.3,
+"yaw": -135,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -100.4,
+"s": 72.0,
+"z": 4.6,
+"yaw": 43,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -100.2,
+"s": 71.5,
+"z": 4.3,
+"yaw": -58,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -100.2,
+"s": 71.5,
+"z": 5.0,
+"yaw": -5,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_short_bottle.dae"
+},
+{
+"f": -100.1,
+"s": 71.5,
+"z": 5.8,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -99.8,
+"s": 72.2,
+"z": 5.3,
+"yaw": -168,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -99.8,
+"s": 63.2,
+"z": 3.8,
+"yaw": 10,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/airport_hangar.dae"
+},
+{
+"f": -99.7,
+"s": 72.4,
+"z": 4.3,
+"yaw": -139,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -99.6,
+"s": 72.1,
+"z": 4.3,
+"yaw": -111,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -99.4,
+"s": 72.2,
+"z": 4.3,
+"yaw": 6,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_white_bottle.dae"
+},
+{
+"f": -99.3,
+"s": 72.5,
+"z": 4.3,
+"yaw": 11,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_toolbox.dae"
+},
+{
+"f": -99.3,
+"s": 72.5,
+"z": 4.6,
+"yaw": -16,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_toolbox.dae"
+},
+{
+"f": -98.7,
+"s": 73.2,
+"z": 4.6,
+"yaw": -47,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -98.7,
+"s": 73.2,
+"z": 3.8,
+"yaw": 45,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -98.2,
+"s": 72.7,
+"z": 3.8,
+"yaw": -40,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/clutter/clutter_workshop_hand_dolly.dae"
+},
+{
+"f": -98.2,
+"s": 73.5,
+"z": 3.8,
+"yaw": 89,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -97.5,
+"s": 73.2,
+"z": 3.8,
+"yaw": -82,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -90.3,
+"s": -357.5,
+"z": 9.7,
+"yaw": -78,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_roadsigns_east_highway_2.dae"
+},
+{
+"f": -89.0,
+"s": 60.7,
+"z": 3.4,
+"yaw": -112,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -88.9,
+"s": 61.3,
+"z": 3.4,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -88.9,
+"s": 61.0,
+"z": 4.3,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -88.8,
+"s": 61.0,
+"z": 3.4,
+"yaw": 124,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_tarp_group_a300.dae"
+},
+{
+"f": -88.7,
+"s": 61.2,
+"z": 3.7,
+"yaw": 124,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/clutter_barrels_tarp_group.prefab.json"
+},
+{
+"f": -88.6,
+"s": 61.9,
+"z": 3.4,
+"yaw": -161,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -88.6,
+"s": 61.5,
+"z": 4.3,
+"yaw": -116,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -88.5,
+"s": 60.9,
+"z": 3.4,
+"yaw": -23,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_red.dae"
+},
+{
+"f": -88.3,
+"s": 61.4,
+"z": 3.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/clutter/clutter_barrels_white.dae"
+},
+{
+"f": -82.3,
+"s": 57.3,
+"z": 2.6,
+"yaw": 30,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_no_dumping.DAE"
+},
+{
+"f": -77.5,
+"s": 116.2,
+"z": 4.9,
+"yaw": -150,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_left_turn.DAE"
+},
+{
+"f": -75.1,
+"s": 41.3,
+"z": 2.8,
+"yaw": 132,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_do_not_enter.DAE"
+},
+{
+"f": -62.6,
+"s": 97.5,
+"z": 3.8,
+"yaw": 30,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_yield_ahead.DAE"
+},
+{
+"f": -58.1,
+"s": -88.9,
+"z": -17.4,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/cone.dae"
+},
+{
+"f": -56.1,
+"s": 0.2,
+"z": -0.0,
+"yaw": 105,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_juniper_grove.DAE"
+},
+{
+"f": -55.6,
+"s": -80.3,
+"z": -17.7,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/cone.dae"
+},
+{
+"f": -48.1,
+"s": 160.6,
+"z": 5.6,
+"yaw": -120,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_curve_right.DAE"
+},
+{
+"f": -47.7,
+"s": 22.3,
+"z": 0.9,
+"yaw": 15,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_airport.DAE"
+},
+{
+"f": -47.5,
+"s": 23.8,
+"z": 23.6,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": -44.7,
+"s": -324.9,
+"z": 5.8,
+"yaw": -75,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_merge_right.DAE"
+},
+{
+"f": -35.7,
+"s": 27.0,
+"z": 1.0,
+"yaw": -150,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_STOP.DAE"
+},
+{
+"f": -33.4,
+"s": -79.7,
+"z": -19.1,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/cone.dae"
+},
+{
+"f": -33.4,
+"s": -87.5,
+"z": -19.0,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/cone.dae"
+},
+{
+"f": -28.5,
+"s": -45.2,
+"z": 2.4,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": -8.8,
+"s": 11.5,
+"z": 0.4,
+"yaw": 53,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/ut_race_mesh_barricade_curve_b.DAE"
+},
+{
+"f": -7.1,
+"s": 28.7,
+"z": 2.5,
+"yaw": 121,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_time_control_entry.dae"
+},
+{
+"f": -4.5,
+"s": 6.8,
+"z": -0.1,
+"yaw": -150,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_unimproved_road.DAE"
+},
+{
+"f": -3.8,
+"s": -3.2,
+"z": -0.1,
+"yaw": -49,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": -3.5,
+"s": -1.9,
+"z": -5.3,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": -3.4,
+"s": 5.0,
+"z": -0.1,
+"yaw": -173,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": -2.7,
+"s": -2.8,
+"z": -0.0,
+"yaw": 7,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/clutter_workshop_fire_extinguisher.dae"
+},
+{
+"f": -2.6,
+"s": -2.5,
+"z": -0.0,
+"yaw": -141,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/clutter_workshop_fire_extinguisher.dae"
+},
+{
+"f": -2.5,
+"s": -83.6,
+"z": -19.5,
+"yaw": -161,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": -2.5,
+"s": -83.6,
+"z": -19.5,
+"yaw": -161,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": -2.0,
+"s": -2.7,
+"z": 0.7,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/garage/s_laptop.dae"
+},
+{
+"f": -1.9,
+"s": -2.8,
+"z": -0.1,
+"yaw": -130,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_fold_table_01.dae"
+},
+{
+"f": -1.9,
+"s": -3.2,
+"z": -0.1,
+"yaw": -130,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_fold_chair_01.dae"
+},
+{
+"f": -1.5,
+"s": 130.8,
+"z": 10.4,
+"yaw": 45,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_merge_right.DAE"
+},
+{
+"f": -1.4,
+"s": -3.8,
+"z": -0.2,
+"yaw": -40,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_gazebo_mod_cover_ngrc_3x3.dae"
+},
+{
+"f": -1.4,
+"s": -3.8,
+"z": -0.2,
+"yaw": -40,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_gazebo_mod_frame_3x3.dae"
+},
+{
+"f": -1.2,
+"s": 2.9,
+"z": -0.0,
+"yaw": 26,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_stop.dae"
+},
+{
+"f": -0.9,
+"s": -3.7,
+"z": -0.2,
+"yaw": -93,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_fold_chair_01.dae"
+},
+{
+"f": -0.7,
+"s": -3.0,
+"z": -0.1,
+"yaw": -130,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_fold_table_01.dae"
+},
+{
+"f": -0.2,
+"s": -84.8,
+"z": -19.4,
+"yaw": -135,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": -0.2,
+"s": -84.8,
+"z": -19.4,
+"yaw": -135,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": -0.0,
+"s": 0.0,
+"z": 0.0,
+"yaw": 32,
+"cls": "BeamNGVehicle",
+"asset": "sunburst2"
+},
+{
+"f": 0.6,
+"s": -2.4,
+"z": 0.0,
+"yaw": -138,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_time_control.dae"
+},
+{
+"f": 0.7,
+"s": -4.2,
+"z": -0.3,
+"yaw": -36,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 1.7,
+"s": 3.3,
+"z": -0.5,
+"yaw": 64,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 2.4,
+"s": -85.4,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 2.4,
+"s": -85.4,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 5.0,
+"s": -86.0,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 5.0,
+"s": -86.0,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": 7.6,
+"s": -86.6,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 7.6,
+"s": -86.6,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 10.2,
+"s": -87.2,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 10.2,
+"s": -87.2,
+"z": -19.4,
+"yaw": -133,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": 12.9,
+"s": -87.5,
+"z": -19.5,
+"yaw": -118,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 12.9,
+"s": -87.5,
+"z": -19.5,
+"yaw": -118,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 19.5,
+"s": 48.8,
+"z": 2.4,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": 24.6,
+"s": 17.0,
+"z": -5.6,
+"yaw": -71,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_start.dae"
+},
+{
+"f": 24.7,
+"s": 17.2,
+"z": -5.9,
+"yaw": 20,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_sensor.dae"
+},
+{
+"f": 25.2,
+"s": 18.6,
+"z": -6.0,
+"yaw": 112,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_01.dae"
+},
+{
+"f": 28.7,
+"s": 13.7,
+"z": -5.9,
+"yaw": -71,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_start.dae"
+},
+{
+"f": 29.0,
+"s": 13.8,
+"z": -6.1,
+"yaw": -159,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_sensor.dae"
+},
+{
+"f": 29.4,
+"s": 22.7,
+"z": -6.6,
+"yaw": -62,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_clock_display.dae"
+},
+{
+"f": 29.4,
+"s": 22.7,
+"z": -6.6,
+"yaw": -62,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_tree.dae"
+},
+{
+"f": 30.2,
+"s": 14.1,
+"z": -6.3,
+"yaw": 112,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_01.dae"
+},
+{
+"f": 33.9,
+"s": 26.9,
+"z": -6.6,
+"yaw": -64,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_end_of_area.dae"
+},
+{
+"f": 36.8,
+"s": -258.8,
+"z": 2.9,
+"yaw": 60,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_unimproved_road.DAE"
+},
+{
+"f": 38.5,
+"s": -20.2,
+"z": -18.8,
+"yaw": 0,
+"cls": "SFXEmitter",
+"asset": null
+},
+{
+"f": 49.9,
+"s": -93.3,
+"z": -20.5,
+"yaw": -107,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_finish_entry.dae"
+},
+{
+"f": 51.4,
+"s": -101.9,
+"z": -20.5,
+"yaw": -121,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_finish_entry.dae"
+},
+{
+"f": 57.0,
+"s": -288.7,
+"z": 4.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_divided_highway.DAE"
+},
+{
+"f": 59.6,
+"s": 87.7,
+"z": 23.7,
+"yaw": 161,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 59.7,
+"s": 87.7,
+"z": 23.7,
+"yaw": 116,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 59.8,
+"s": 87.6,
+"z": 23.7,
+"yaw": 71,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 62.0,
+"s": 23.7,
+"z": -8.9,
+"yaw": 19,
+"cls": "TSStatic",
+"asset": "/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae"
+},
+{
+"f": 70.2,
+"s": 83.3,
+"z": 25.8,
+"yaw": 175,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 70.3,
+"s": 83.2,
+"z": 25.8,
+"yaw": 130,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 70.5,
+"s": 83.2,
+"z": 25.8,
+"yaw": 85,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 70.7,
+"s": -33.7,
+"z": -20.6,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": 72.7,
+"s": -37.2,
+"z": -20.4,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 73.6,
+"s": -38.8,
+"z": -20.3,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_b_2m.dae"
+},
+{
+"f": 73.8,
+"s": 11.8,
+"z": -11.9,
+"yaw": 24,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_02.dae"
+},
+{
+"f": 76.5,
+"s": -39.4,
+"z": -20.3,
+"yaw": 5,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_03.dae"
+},
+{
+"f": 81.7,
+"s": -82.0,
+"z": -21.7,
+"yaw": -130,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 81.7,
+"s": -82.0,
+"z": -21.7,
+"yaw": -130,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 83.3,
+"s": -217.3,
+"z": 5.9,
+"yaw": 137,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_roadsign_onramp.dae"
+},
+{
+"f": 83.9,
+"s": -38.0,
+"z": -20.3,
+"yaw": -41,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_03.dae"
+},
+{
+"f": 84.2,
+"s": 16.2,
+"z": -11.6,
+"yaw": -19,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_cooldown_board_02.dae"
+},
+{
+"f": 84.3,
+"s": -81.5,
+"z": -21.9,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 84.3,
+"s": -81.5,
+"z": -21.9,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": 84.4,
+"s": 80.2,
+"z": 27.9,
+"yaw": -175,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 84.5,
+"s": 80.2,
+"z": 27.9,
+"yaw": 140,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 84.6,
+"s": 80.2,
+"z": 27.9,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 86.5,
+"s": -47.2,
+"z": -21.1,
+"yaw": -140,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 86.6,
+"s": -48.6,
+"z": -21.2,
+"yaw": -88,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 86.6,
+"s": -80.3,
+"z": -22.0,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 86.6,
+"s": -80.3,
+"z": -22.0,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 87.1,
+"s": -45.9,
+"z": -21.0,
+"yaw": -140,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 87.4,
+"s": -49.8,
+"z": -21.3,
+"yaw": -83,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 87.5,
+"s": -44.5,
+"z": -20.8,
+"yaw": -140,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 88.0,
+"s": -43.1,
+"z": -20.7,
+"yaw": -140,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 88.3,
+"s": -51.0,
+"z": -21.4,
+"yaw": -83,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 88.5,
+"s": -41.7,
+"z": -20.5,
+"yaw": -140,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 88.9,
+"s": -79.0,
+"z": -22.1,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 88.9,
+"s": -79.0,
+"z": -22.1,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_blastr.dae"
+},
+{
+"f": 89.2,
+"s": -52.2,
+"z": -21.5,
+"yaw": -81,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 89.7,
+"s": 92.3,
+"z": 26.8,
+"yaw": -120,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_stop_ahead.DAE"
+},
+{
+"f": 90.1,
+"s": -53.3,
+"z": -21.6,
+"yaw": -78,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 90.2,
+"s": -67.9,
+"z": -21.9,
+"yaw": 20,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 90.2,
+"s": -67.9,
+"z": -21.9,
+"yaw": 20,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 91.1,
+"s": -54.4,
+"z": -21.7,
+"yaw": -78,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 91.3,
+"s": -65.2,
+"z": -21.8,
+"yaw": 118,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_sensor.dae"
+},
+{
+"f": 91.3,
+"s": -77.8,
+"z": -22.2,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 91.3,
+"s": -77.8,
+"z": -22.2,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 91.5,
+"s": -93.4,
+"z": -21.9,
+"yaw": 124,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 91.6,
+"s": -65.4,
+"z": -21.6,
+"yaw": 36,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_finish.dae"
+},
+{
+"f": 92.1,
+"s": -55.5,
+"z": -21.8,
+"yaw": -78,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 92.5,
+"s": -69.3,
+"z": -22.1,
+"yaw": 37,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 92.5,
+"s": -69.3,
+"z": -22.1,
+"yaw": 37,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_blastr.dae"
+},
+{
+"f": 93.0,
+"s": -56.6,
+"z": -21.9,
+"yaw": -78,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 93.3,
+"s": -89.8,
+"z": -22.0,
+"yaw": 124,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 93.6,
+"s": -76.5,
+"z": -22.2,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 93.6,
+"s": -76.5,
+"z": -22.2,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": 94.1,
+"s": -57.7,
+"z": -22.0,
+"yaw": -74,
+"cls": "TSStatic",
+"asset": "/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE"
+},
+{
+"f": 94.1,
+"s": -88.1,
+"z": -22.1,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 95.0,
+"s": -70.2,
+"z": -22.1,
+"yaw": 44,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 95.0,
+"s": -70.2,
+"z": -22.1,
+"yaw": 44,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 95.5,
+"s": -58.7,
+"z": -22.0,
+"yaw": -63,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_start_sensor.dae"
+},
+{
+"f": 95.8,
+"s": -58.9,
+"z": -21.6,
+"yaw": 22,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_rally_signboard_finish.dae"
+},
+{
+"f": 96.0,
+"s": -75.3,
+"z": -22.3,
+"yaw": -96,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 96.0,
+"s": -75.3,
+"z": -22.3,
+"yaw": -96,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_ngrc.dae"
+},
+{
+"f": 97.4,
+"s": -85.9,
+"z": -22.2,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 97.7,
+"s": -71.0,
+"z": -22.2,
+"yaw": 47,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 97.7,
+"s": -71.0,
+"z": -22.2,
+"yaw": 47,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_rotopad.dae"
+},
+{
+"f": 98.5,
+"s": -74.1,
+"z": -22.3,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_metal_fence.dae"
+},
+{
+"f": 98.5,
+"s": -74.1,
+"z": -22.3,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_metal_fence_branding_blastr.dae"
+},
+{
+"f": 99.0,
+"s": -84.7,
+"z": -22.2,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 100.5,
+"s": 79.9,
+"z": 30.2,
+"yaw": -166,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 100.6,
+"s": 79.9,
+"z": 30.2,
+"yaw": 149,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 100.7,
+"s": 79.9,
+"z": 30.2,
+"yaw": 104,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 100.8,
+"s": -83.9,
+"z": -22.4,
+"yaw": 27,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_tape_road_closure_6m.dae"
+},
+{
+"f": 102.3,
+"s": -82.4,
+"z": -22.3,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 103.9,
+"s": -81.3,
+"z": -22.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 105.6,
+"s": -71.3,
+"z": -22.2,
+"yaw": -29,
+"cls": "TSStatic",
+"asset": "/assets/meshes/props/race_event/equipment/s_tube_01.dae"
+},
+{
+"f": 106.6,
+"s": -192.3,
+"z": 5.7,
+"yaw": -94,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_advisory_ramp_speed.DAE"
+},
+{
+"f": 107.2,
+"s": -79.0,
+"z": -22.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 108.8,
+"s": -77.9,
+"z": -22.4,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 111.6,
+"s": -77.0,
+"z": -22.7,
+"yaw": -19,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_tape_road_closure_6m.dae"
+},
+{
+"f": 112.0,
+"s": -75.6,
+"z": -22.5,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 113.7,
+"s": -74.5,
+"z": -22.5,
+"yaw": 95,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 115.3,
+"s": -73.3,
+"z": -22.5,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 116.8,
+"s": 83.5,
+"z": 32.6,
+"yaw": -156,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 116.9,
+"s": 83.5,
+"z": 32.6,
+"yaw": 159,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 117.1,
+"s": -258.3,
+"z": 6.0,
+"yaw": 105,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_autorepair_sign.DAE"
+},
+{
+"f": 117.1,
+"s": 83.6,
+"z": 32.6,
+"yaw": 114,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 117.9,
+"s": -72.7,
+"z": -22.7,
+"yaw": -19,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_tape_road_closure_6m.dae"
+},
+{
+"f": 118.8,
+"s": -71.3,
+"z": -22.5,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 120.5,
+"s": -70.4,
+"z": -22.5,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 122.0,
+"s": -200.8,
+"z": 7.0,
+"yaw": -155,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 122.1,
+"s": -200.8,
+"z": 7.0,
+"yaw": 160,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 122.2,
+"s": -200.8,
+"z": 7.0,
+"yaw": 115,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 123.2,
+"s": -69.0,
+"z": -22.6,
+"yaw": -19,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_tape_road_closure_6m.dae"
+},
+{
+"f": 123.4,
+"s": -219.8,
+"z": 6.7,
+"yaw": -90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_divided_highway.DAE"
+},
+{
+"f": 124.3,
+"s": -59.2,
+"z": -22.7,
+"yaw": -144,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 124.3,
+"s": -59.2,
+"z": -22.7,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 126.2,
+"s": -62.6,
+"z": -22.6,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_center.dae"
+},
+{
+"f": 127.2,
+"s": -64.4,
+"z": -22.7,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 128.1,
+"s": -66.2,
+"z": -22.7,
+"yaw": -49,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_spectator_grid_a_2m.dae"
+},
+{
+"f": 129.1,
+"s": -55.5,
+"z": -22.9,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/art/shapes/race/rally/rally_assets/s_tape_road_closure_10m.dae"
+},
+{
+"f": 137.4,
+"s": -198.4,
+"z": 8.0,
+"yaw": -155,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 137.5,
+"s": -198.4,
+"z": 8.0,
+"yaw": 160,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 137.7,
+"s": -198.4,
+"z": 8.0,
+"yaw": 115,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 151.8,
+"s": -195.3,
+"z": 9.2,
+"yaw": -155,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 152.0,
+"s": -195.3,
+"z": 9.2,
+"yaw": 160,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 152.1,
+"s": -195.3,
+"z": 9.2,
+"yaw": 115,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 159.1,
+"s": 96.9,
+"z": 35.5,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_curve_left.DAE"
+},
+{
+"f": 165.2,
+"s": -190.2,
+"z": 10.2,
+"yaw": -139,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 165.3,
+"s": -190.2,
+"z": 10.2,
+"yaw": 176,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 165.4,
+"s": -190.1,
+"z": 10.2,
+"yaw": 131,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 165.8,
+"s": -231.7,
+"z": 6.7,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_watch_for_rocks.DAE"
+},
+{
+"f": 167.6,
+"s": 99.7,
+"z": 35.1,
+"yaw": 90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_30_speed_limit.DAE"
+},
+{
+"f": 178.5,
+"s": -182.4,
+"z": 11.2,
+"yaw": -136,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 178.6,
+"s": -182.4,
+"z": 11.2,
+"yaw": 179,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 178.8,
+"s": -182.3,
+"z": 11.2,
+"yaw": 134,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 181.0,
+"s": 103.8,
+"z": 36.0,
+"yaw": 80,
+"cls": "TSStatic",
+"asset": "/art/shapes/objects/s_busstop_utah.dae"
+},
+{
+"f": 191.9,
+"s": -173.1,
+"z": 11.9,
+"yaw": -125,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 192.0,
+"s": -173.1,
+"z": 11.9,
+"yaw": -170,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 192.1,
+"s": -173.0,
+"z": 11.9,
+"yaw": 145,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 192.1,
+"s": 182.0,
+"z": 45.4,
+"yaw": 14,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 192.1,
+"s": 182.3,
+"z": 45.4,
+"yaw": 104,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 192.1,
+"s": 182.1,
+"z": 45.4,
+"yaw": 59,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 194.0,
+"s": 162.8,
+"z": 42.4,
+"yaw": 23,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 194.0,
+"s": 163.1,
+"z": 42.4,
+"yaw": 113,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 194.0,
+"s": 162.9,
+"z": 42.4,
+"yaw": 68,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 194.3,
+"s": 122.2,
+"z": 36.5,
+"yaw": -90,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_STOP.DAE"
+},
+{
+"f": 194.5,
+"s": 202.5,
+"z": 48.3,
+"yaw": 4,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 194.5,
+"s": 202.6,
+"z": 48.3,
+"yaw": 49,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 194.6,
+"s": 202.7,
+"z": 48.3,
+"yaw": 94,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 197.6,
+"s": 145.3,
+"z": 39.0,
+"yaw": -15,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_reverse_curve_left.DAE"
+},
+{
+"f": 198.6,
+"s": 220.2,
+"z": 50.2,
+"yaw": 4,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 198.6,
+"s": 220.4,
+"z": 50.2,
+"yaw": 94,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 198.6,
+"s": 220.3,
+"z": 50.2,
+"yaw": 49,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 204.0,
+"s": 237.4,
+"z": 52.4,
+"yaw": 4,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 204.1,
+"s": 237.7,
+"z": 52.4,
+"yaw": 94,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 204.1,
+"s": 237.5,
+"z": 52.4,
+"yaw": 49,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 205.0,
+"s": -160.1,
+"z": 12.7,
+"yaw": -117,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 205.1,
+"s": -160.0,
+"z": 12.7,
+"yaw": -162,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 205.2,
+"s": -159.9,
+"z": 12.7,
+"yaw": 153,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 205.3,
+"s": 74.1,
+"z": 31.1,
+"yaw": 0,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_utah_sign.DAE"
+},
+{
+"f": 209.6,
+"s": 252.2,
+"z": 54.2,
+"yaw": 4,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 209.6,
+"s": 252.5,
+"z": 54.2,
+"yaw": 94,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 209.6,
+"s": 252.4,
+"z": 54.2,
+"yaw": 49,
+"cls": "Prefab",
+"asset": "/levels/utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 212.4,
+"s": 120.2,
+"z": 36.1,
+"yaw": -111,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_double_arrow.DAE"
+},
+{
+"f": 214.8,
+"s": -97.3,
+"z": 13.7,
+"yaw": -15,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_side_road_right.DAE"
+},
+{
+"f": 215.9,
+"s": -145.4,
+"z": 13.3,
+"yaw": -106,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 216.0,
+"s": -145.3,
+"z": 13.3,
+"yaw": -151,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 216.1,
+"s": -145.2,
+"z": 13.3,
+"yaw": 164,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 216.2,
+"s": -11.1,
+"z": 22.6,
+"yaw": -27,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_bridge_massive.dae"
+},
+{
+"f": 223.0,
+"s": -128.7,
+"z": 13.8,
+"yaw": -91,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 223.0,
+"s": -128.6,
+"z": 13.8,
+"yaw": -136,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 223.1,
+"s": -128.5,
+"z": 13.8,
+"yaw": 179,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 225.4,
+"s": -108.5,
+"z": 14.1,
+"yaw": -166,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_left.DAE"
+},
+{
+"f": 225.4,
+"s": -108.7,
+"z": 14.1,
+"yaw": -76,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_chevron_right.DAE"
+},
+{
+"f": 225.4,
+"s": -108.6,
+"z": 14.1,
+"yaw": -121,
+"cls": "Prefab",
+"asset": "/levels/Utah/art/prefabs/ut_chevron_signs.prefab.json"
+},
+{
+"f": 225.5,
+"s": -97.4,
+"z": 14.1,
+"yaw": 150,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_curve_left.DAE"
+},
+{
+"f": 225.5,
+"s": -97.4,
+"z": 13.4,
+"yaw": 150,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_advisory_ramp_speed.DAE"
+},
+{
+"f": 233.2,
+"s": -197.9,
+"z": 7.3,
+"yaw": 98,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_80_speed_limit.DAE"
+},
+{
+"f": 233.2,
+"s": -197.9,
+"z": 6.7,
+"yaw": 98,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/ut_roadsigns/ut_trucks_advisory.DAE"
+},
+{
+"f": 268.3,
+"s": -179.1,
+"z": 7.4,
+"yaw": 97,
+"cls": "TSStatic",
+"asset": "/levels/Utah/art/shapes/buildings/ut_roadsign_east_highway.dae"
+},
+{
+"f": 277.9,
+"s": -144.0,
+"z": 7.9,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/ut_jbarrier_angle.dae"
+},
+{
+"f": 283.5,
+"s": -153.7,
+"z": 7.7,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/ut_jbarrier_angle.dae"
+},
+{
+"f": 285.1,
+"s": -156.9,
+"z": 7.9,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/ut_jbarrier_angle.dae"
+},
+{
+"f": 290.5,
+"s": -166.5,
+"z": 7.8,
+"yaw": -92,
+"cls": "TSStatic",
+"asset": "/levels/utah/art/shapes/buildings/ut_jbarrier_angle.dae"
+}
+]
+}

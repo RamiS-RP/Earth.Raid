@@ -33,6 +33,7 @@ end
 -- del GPS. Sigue la ruta del GPS (el trazado), así que se oculta la azul del suelo y se le pide su línea de velocidad;
 -- al acabar se devuelve todo como estaba.
 M.RL_DELAY_S = 1.0          -- el planificador de rutas tarda un poco en tener la ruta nueva
+local racingLineOffForce
 local rl = { on = false, wait = nil, saved = nil }
 local function rlAction(name, v)
   local ext = rawget(_G, 'racingline')
@@ -115,6 +116,12 @@ function M.hold()
   rlAction('clear')
   rlAction('tg_navFollow', false)
 end
+-- en un mapa normal (rally vanilla, etc.): el mod Racing Line, tal como estaba sin Raid.Earth
+function M.restoreAll()
+  rl.held = true
+  M.release()
+  pcall(racingLineOffForce)
+end
 function M.release()
   if not rl.held then return end
   rl.held = false
@@ -123,6 +130,9 @@ end
 
 local function racingLineOff()
   if not rl.on then return end
+  racingLineOffForce()
+end
+racingLineOffForce = function()
   rl.on, rl.wait = false, nil
   rlAction('clear')
   rlAction('tg_hideNav', false)

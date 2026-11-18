@@ -1135,6 +1135,7 @@ function M.onExtensionLoaded()
   M.loadIndex()
   refresh()
   if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) end
+  S.earthLevel = M.isEarthLevel()
   log('I', TAG, 'Raid.Earth ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
 end
 
@@ -1305,6 +1306,8 @@ local function raceLayout(dt)
 end
 
 function M.onUpdate(dtReal, dtSim)
+  if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
+  if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
   if loader.active() then
     local okLd, errLd = pcall(loader.update, dtReal or 0)
@@ -1338,12 +1341,25 @@ function M.onBeamNGEarthWorldReady()
   end
 end
 -- en un mapa sin BeamNG.Earth: avisar de que hace falta (si no, parece que el mod no hace nada)
+-- En un mapa que no es de BeamNG.Earth (los rallies vanilla de Utah, Italia...) el mod queda dormido: sin avisos, sin
+-- cambiar las apps de la pantalla ni el mod Racing Line, nada por fotograma (no debe tocar el juego base)
+function M.isEarthLevel()
+  local f = (getMissionFilename and getMissionFilename() or ''):lower()
+  return f:find('beamng_earth', 1, true) ~= nil
+end
 function M.onClientPostStartMission()
-  local ok, why = M.checkEarth()
-  if not ok then
-    M.toast((spanish() and 'Raid.Earth necesita BeamNG.Earth (y su mapa): ' or 'Raid.Earth needs BeamNG.Earth (and its map): ') .. tostring(why), 10)
+  S.earthLevel = M.isEarthLevel()
+  if not S.earthLevel then
+    pcall(M.uiCancelStage)
+    pcall(guide.restoreAll)
+    if S.prevLayout then
+      local L = rawget(_G, 'ui_appLayouts')
+      if L and L.setCurrentLayout then pcall(L.setCurrentLayout, S.prevLayout) end
+      S.prevLayout = nil
+    end
   end
 end
+function M.onClientEndMission() S.earthLevel = false end
 function M.onBeamNGEarthTeleported()
   S.timer = M.CHECK_S
   if S.afterTp then S.afterTp.t = 0 end
@@ -1353,6 +1369,7 @@ function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
 function M.onExtensionUnloaded() rally.stop() stage.stop() end
 function M.onVehicleResetted(vid)
+  if not S.earthLevel then return end
   local v = getPlayerVehicle(0)
   if v and v:getID() == vid then stage.onReset() end
 end
