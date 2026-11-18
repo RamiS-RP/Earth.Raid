@@ -1161,7 +1161,8 @@ function M.closures(t, from, to)
                     -- el origen en un extremo y el largo (-Y) a lo ancho: Y = perpendicular a la calle
                     local lat0, lon0 = geo.toGeo(t, cx + px * half, cy + py * half)
                     -- props.add mide el giro desde (dx, dy): pasamos la perpendicular como dirección y giro 0
-                    props.add(kind, lat0, lon0, px, py, 0, { noCollision = false })
+                    local itT = props.add(kind, lat0, lon0, px, py, 0, { noCollision = false })
+                    if itT then itT.closure = true end
                     -- y detrás, el corte como en los rallies del juego: dos barreras de plástico rojas y un bidón
                     if M.protection ~= false then
                       -- a lo ancho de la calle (el largo de la barrera, eje X, en la dirección de la cinta)

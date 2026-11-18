@@ -313,9 +313,14 @@ M.onRoadFrac = onRoadFrac
 -- control horario, la salida se adelanta TC_BEFORE_M + 60 m por el propio tramo y el trozo quitado hace de acceso.
 -- Devuelve los metros quitados (0 si nada) y el trozo quitado como path
 M.START_CHECK_M = 120
-local function validateStart(t, hasBefore)
+local function validateStart(t, hasBefore, graphReady)
   local fr = onRoadFrac(t, 0, M.START_CHECK_M)
-  if fr == nil then return 0, nil end
+  -- nil: ninguna carretera del juego cerca. Si el grafo de la zona ya está cargado (viaje con carga), es que no la
+  -- hay: se busca más adelante
+  if fr == nil then
+    if not graphReady then return 0, nil end
+    fr = 0
+  end
   local cut = 0
   if fr < 0.8 then
     for a0 = 10, t.total - 600, 10 do
@@ -366,7 +371,7 @@ function M.start(ev, st, info)
   local cutM, removed = 0, nil
   do
     local okV, c, r = pcall(validateStart, t, bp ~= nil and onRoadFrac(geo.track(bp), 0, dressing.TC_BEFORE_M) ~= nil
-      and (onRoadFrac(geo.track(bp), 0, dressing.TC_BEFORE_M) or 0) >= 0.8)
+      and (onRoadFrac(geo.track(bp), 0, dressing.TC_BEFORE_M) or 0) >= 0.8, info and info.graphReady)
     if okV then cutM, removed = c or 0, r else log('W', TAG, 'validateStart: ' .. tostring(c)) end
   end
   if cutM > 0 then

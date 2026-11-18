@@ -11,9 +11,9 @@ local geo = require('earthRaid/geo')
 
 M.FILE = '/settings/earthRaid/audit.json'
 M.LINE_OK_M = 1.6            -- el centro de una línea, a menos de esto del eje de la carretera
-M.ALIGN_OK = 0.85            -- coseno entre la línea y la carretera
+M.ALIGN_OK = 0.6             -- 1 - |coseno| entre la línea y la carretera (1 = cruzada del todo)
 M.SETTLE_S = 30              -- espera tras un viaje para que carguen carreteras y terreno
-M.JOBS_S = 45                -- espera máxima a que se monte la zona (tras soltar los trabajos retenidos)
+M.JOBS_S = 130               -- espera máxima a que se monte la zona (tras soltar los trabajos retenidos)
 M.BUILD_S = 12               -- y un momento más para que se creen los objetos
 M.LINE_KINDS = { line = true }
 M.BOARD_KINDS = { tc = true, start = true, finish = true, stop = true }   -- carteles: junto a la calzada
@@ -34,15 +34,34 @@ local function objDir(obj)
   return nil
 end
 
+-- la carretera más cercana a (x, y): del grafo del juego o, donde no la hay (pistas de tierra que el mapa no tiene),
+-- la virtual del tramo (índice de props): distancia al eje, radio y dirección del segmento
+local function roadAt(x, y, z)
+  local n1, n2, d = props.nearestRoad(x, y, z, 60)
+  local m = map.getMap()
+  if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
+    local a, b = m.nodes[n1].pos, m.nodes[n2].pos
+    return d, m.nodes[n1].radius or 3, b.x - a.x, b.y - a.y, false
+  end
+  local best = nil
+  for _, sg in ipairs(props.roadsAt(x, y) or {}) do
+    if sg.virtual then
+      local sx, sy = sg.bx - sg.ax, sg.by - sg.ay
+      local L2 = sx * sx + sy * sy
+      local u = L2 > 0.01 and math.max(0, math.min(1, ((x - sg.ax) * sx + (y - sg.ay) * sy) / L2)) or 0
+      local dd = math.sqrt((x - sg.ax - sx * u) ^ 2 + (y - sg.ay - sy * u) ^ 2)
+      if not best or dd < best[1] then best = { dd, sg.ra + (sg.rb - sg.ra) * u, sx, sy } end
+    end
+  end
+  if best then return best[1], best[2], best[3], best[4], true end
+  return nil
+end
+
 -- distancia del centro de un objeto al eje de la carretera más cercana, su radio y la alineación con ella
 local function roadRel(obj)
   local q = obj:getPosition()
-  local n1, n2, d = props.nearestRoad(q.x, q.y, q.z, 60)
-  local m = map.getMap()
-  if not (n1 and n2 and m.nodes[n1] and m.nodes[n2]) then return nil end
-  local r = m.nodes[n1].radius or 3
-  local a, b = m.nodes[n1].pos, m.nodes[n2].pos
-  local sx, sy = b.x - a.x, b.y - a.y
+  local d, r, sx, sy = roadAt(q.x, q.y, q.z)
+  if not d then return nil end
   local L = math.sqrt(sx * sx + sy * sy)
   local align = nil
   local ox, oy = objDir(obj)
@@ -68,13 +87,9 @@ local function measure(cx, cy, radius)
           local ex, ey = a.toGame(it.lat2, it.lon2, 0)
           if mx then
             local _, _, gz = props.ground((it.lat + it.lat2) / 2, (it.lon + it.lon2) / 2)
-            local n1, n2, d = props.nearestRoad(mx, my, gz or q.z, 60)
-            local m = map.getMap()
-            local r, perp = nil, nil
-            if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
-              r = m.nodes[n1].radius or 3
-              local A_, B_ = m.nodes[n1].pos, m.nodes[n2].pos
-              local sx, sy = B_.x - A_.x, B_.y - A_.y
+            local d, r, sx, sy = roadAt(mx, my, gz or q.z)
+            local perp = nil
+            if d then
               local lx, ly = ex - mx, ey - my
               local L1, L2 = math.sqrt(sx * sx + sy * sy), math.sqrt(lx * lx + ly * ly)
               if L1 > 0.1 and L2 > 0.1 then perp = 1 - math.abs((sx * lx + sy * ly) / (L1 * L2)) end
@@ -85,7 +100,8 @@ local function measure(cx, cy, radius)
           local d, r, align = roadRel(it.obj)
           if M.BOARD_KINDS[it.kind] then
             lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = nil, x = math.floor(q.x), y = math.floor(q.y), board = true }
-          elseif d and r and d < r + 0.3 and not M.ROAD_OK[it.kind] and not it.closure then
+          elseif d and r and d < r and not M.ROAD_OK[it.kind] and not it.closure then
+            -- dentro de la línea de borde (el asfalto sigue ~0,6 m más allá del radio del grafo)
             onRoad[#onRoad + 1] = { kind = it.kind, d = d, r = r, x = math.floor(q.x), y = math.floor(q.y) }
           end
         end

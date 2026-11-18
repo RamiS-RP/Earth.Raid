@@ -947,7 +947,7 @@ local function ensureHud()
 end
 
 -- Comenzar un tramo: coloca sus objetos y arranca las fases (ir a la salida, colocarse, cuenta atrás, crono)
-function M.uiStart(eventId, stageId, reverse)
+function M.uiStart(eventId, stageId, reverse, graphReady)
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   local n, count, number = 0, 0, nil
@@ -958,7 +958,7 @@ function M.uiStart(eventId, stageId, reverse)
     if s0 == base then
       local s = play
       number = s0.kind == 'ss' and n or nil
-      local ok, err = stage.start(full, s, { number = number, count = count })
+      local ok, err = stage.start(full, s, { number = number, count = count, graphReady = graphReady == true })
       if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
       stage.setLang(spanish() and 'es' or 'en')
       S.target = { eventId = eventId, stageId = s.id }
@@ -1049,7 +1049,7 @@ function M.uiPlay(eventId, stageId, reverse)
     near = { { s.start[1], s.start[2] } },
     dress = function()
       if not stage.state() then
-        M.uiStart(eventId, stageId, reverse)
+        M.uiStart(eventId, stageId, reverse, true)
         if not stage.state() then return 0 end
         return 1
       end
