@@ -47,11 +47,11 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:**
 
 1. Entra en cada enlace de la tabla (es la web oficial de BeamNG).
-2. Pulsa **Download** (Descargar). Se descarga un archivo `.zip`.
-3. Copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods`
+2. Pulsa  **Suscribe** (Suscribirse). Para instalar automaticamente, o **manual** **Download** (Descargar). Se descarga un archivo `.zip`.
+   2.1. Copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods`
    (o abre el juego → menú principal → **Mods** → **Abrir carpeta de mods**).
-4. Abre el juego. **Raid.Earth activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Raid.Earth → Ajustes → «Activar solos los mods recomendados descargados»).
-5. Para comprobarlo: Raid.Earth → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
+3. Abre el juego. **Raid.Earth activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Raid.Earth → Ajustes → «Activar solos los mods recomendados descargados»).
+4. Para comprobarlo: Raid.Earth → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
 
 | Mod | Para qué sirve |
 |---|---|
