@@ -1,0 +1,241 @@
+-- Raid.Earth: control de calidad automático de los tramos (18-nov, el usuario: "comprueba que todos los tramos
+-- cumplan la norma"). Para cada tramo: viaje a la salida con la carga normal, se mide el control horario y la salida;
+-- viaje a la meta, se mide la meta y el STOP; se cuentan los objetos que han quedado en la calzada. Mueve el coche del
+-- jugador: solo cuando no esté jugando. Resultado en /settings/earthRaid/audit.json y en el log (tag earthRaid.audit).
+local M = {}
+local TAG = 'earthRaid.audit'
+
+local props = require('earthRaid/props')
+local dressing = require('earthRaid/dressing')
+local geo = require('earthRaid/geo')
+
+M.FILE = '/settings/earthRaid/audit.json'
+M.LINE_OK_M = 1.6            -- el centro de una línea, a menos de esto del eje de la carretera
+M.ALIGN_OK = 0.85            -- coseno entre la línea y la carretera
+M.SETTLE_S = 30              -- espera tras un viaje para que carguen carreteras y terreno
+M.JOBS_S = 45                -- espera máxima a que se monte la zona
+M.LINE_KINDS = { tc = true, start = true, finish = true, stop = true }
+M.ROAD_OK = { cone = true, line = true, sensor = true, tc = true, start = true, finish = true, stop = true,
+  finishEntry = true, tcEntry = true, sndCrowd = true, sndCheer = true, sndGenerator = true, lamp = true }
+
+local A = nil   -- la auditoría en marcha
+
+local function api() return rawget(_G, 'beamngEarth_api') end
+local function main() return rawget(_G, 'earthRaid_main') end
+local function stage() return require('earthRaid/stage') end
+
+-- posición y dirección (eje Y del objeto) de un objeto
+local function objDir(obj)
+  local ok, d = pcall(function() return obj:getTransform():getColumn(1) end)
+  if ok and d then return d.x, d.y end
+  return nil
+end
+
+-- distancia del centro de un objeto al eje de la carretera más cercana, su radio y la alineación con ella
+local function roadRel(obj)
+  local q = obj:getPosition()
+  local n1, n2, d = props.nearestRoad(q.x, q.y, q.z, 60)
+  local m = map.getMap()
+  if not (n1 and n2 and m.nodes[n1] and m.nodes[n2]) then return nil end
+  local r = m.nodes[n1].radius or 3
+  local a, b = m.nodes[n1].pos, m.nodes[n2].pos
+  local sx, sy = b.x - a.x, b.y - a.y
+  local L = math.sqrt(sx * sx + sy * sy)
+  local align = nil
+  local ox, oy = objDir(obj)
+  if ox and L > 0.1 then
+    local ol = math.sqrt(ox * ox + oy * oy)
+    if ol > 0.01 then align = math.abs((ox * sx + oy * sy) / (L * ol)) end
+  end
+  return d, r, align
+end
+
+-- lo que hay montado cerca de (x, y): las líneas y lo que está en la calzada
+local function measure(cx, cy, radius)
+  local lines, onRoad, hidden = {}, {}, 0
+  for _, it in ipairs(props.all()) do
+    if it.obj and it.kind then
+      local q = it.obj:getPosition()
+      if (q.x - cx) ^ 2 + (q.y - cy) ^ 2 < radius * radius then
+        if it.hidden then hidden = hidden + 1
+        else
+          local d, r, align = roadRel(it.obj)
+          if M.LINE_KINDS[it.kind] then
+            -- las líneas van de borde a borde: su eje X cruza la carretera, el Y va con ella (giro aparte)
+            lines[#lines + 1] = { kind = it.kind, d = d, r = r, align = align, x = math.floor(q.x), y = math.floor(q.y) }
+          elseif d and r and d < r + 0.3 and not M.ROAD_OK[it.kind] then
+            onRoad[#onRoad + 1] = { kind = it.kind, d = d, r = r, x = math.floor(q.x), y = math.floor(q.y) }
+          end
+        end
+      end
+    end
+  end
+  return lines, onRoad, hidden
+end
+
+local function lineOk(l)
+  if not l.d then return false, 'no road' end
+  if l.d > M.LINE_OK_M then return false, ('%.1f m off the axis'):format(l.d) end
+  return true
+end
+
+local function gazeboNear(cx, cy)
+  for _, it in ipairs(props.all()) do
+    if it.obj and it.kind == 'gazebo3x3' and not it.hidden then
+      local q = it.obj:getPosition()
+      if (q.x - cx) ^ 2 + (q.y - cy) ^ 2 < 30 * 30 then return true end
+    end
+  end
+  return false
+end
+
+local function save()
+  if not A then return end
+  pcall(function()
+    FS:directoryCreate('/settings/earthRaid')
+    jsonWriteFile(M.FILE, { startedAt = A.startedAt, done = A.done, results = A.results }, true)
+  end)
+end
+
+local function teleport(lat, lon)
+  local v = be:getPlayerVehicle(0)
+  local x, y, z = props.ground(lat, lon)
+  if not (v and x) then return false end
+  v:setPositionRotation(x, y, z + 0.6, 0, 0, 0, 1)
+  pcall(function() v:queueLuaCommand('obj:requestReset(RESET_PHYSICS)') end)
+  return true
+end
+
+local function next_()
+  A.i = A.i + 1
+  A.step, A.t = 'begin', 0
+end
+
+local function finishStage(res)
+  res.ok = #res.problems == 0
+  A.results[#A.results + 1] = res
+  log(res.ok and 'I' or 'W', TAG, ('%s / %s: %s'):format(res.event, res.stage, res.ok and 'OK' or table.concat(res.problems, '; ')))
+  save()
+  pcall(function() main().uiCancelStage() end)
+  next_()
+end
+
+-- Empieza: list = { { eventId, stageId, reverse }... } o nil (todos los tramos de todos los eventos)
+function M.run(list)
+  local mn = main()
+  if not mn then return false end
+  if not list then
+    list = {}
+    for _, e in ipairs(mn.events and mn.events() or {}) do
+      local full = mn.event(e.id)
+      for _, s in ipairs(full and full.stages or {}) do list[#list + 1] = { full.id, s.id, false } end
+    end
+  end
+  A = { list = list, i = 1, step = 'begin', t = 0, results = {}, startedAt = os.date('%Y-%m-%d %H:%M') }
+  pcall(function() mn.uiCancelStage() end)
+  log('I', TAG, ('audit: %d stages'):format(#list))
+  return true
+end
+function M.stop() if A then A.done = true save() end A = nil end
+function M.active() return A ~= nil end
+function M.state() return A and { i = A.i, n = #A.list, step = A.step, results = #A.results } or nil end
+
+function M.update(dt)
+  if not A then return end
+  A.t = A.t + (dt or 0)
+  local mn, st = main(), stage()
+  local item = A.list[A.i]
+  if not item then
+    A.done = true
+    save()
+    log('I', TAG, 'audit finished: ' .. #A.results .. ' stages')
+    A = nil
+    return
+  end
+  if A.step == 'begin' then
+    A.res = { event = item[1], stage = item[2], problems = {}, cut = 0 }
+    local keep = mn.PLAY_TELEPORT_M
+    mn.PLAY_TELEPORT_M = 0
+    local ok, err = pcall(mn.uiPlay, item[1], item[2], item[3])
+    mn.PLAY_TELEPORT_M = keep
+    if not ok then A.res.problems[#A.res.problems + 1] = 'uiPlay: ' .. tostring(err) finishStage(A.res) return end
+    A.step, A.t = 'loading', 0
+  elseif A.step == 'loading' then
+    local L = require('earthRaid/loader')
+    if not L.active() and A.t > 2 then
+      if not st.state() then A.res.problems[#A.res.problems + 1] = 'stage did not start' finishStage(A.res) return end
+      A.step, A.t = 'startSettle', 0
+    elseif A.t > 240 then A.res.problems[#A.res.problems + 1] = 'loading timed out' finishStage(A.res) return end
+  elseif A.step == 'startSettle' then
+    if A.t < 8 then return end
+    local S = st.state()
+    local t = S.track
+    local a = api()
+    local tx, ty = a.toGame(S.tcLat, S.tcLon, 0)
+    local lines, onRoad = measure(tx, ty, 400)
+    A.res.cut = (t.cutStart or 0)
+    local seen = {}
+    for _, l in ipairs(lines) do
+      if l.kind == 'tc' or l.kind == 'start' then
+        seen[l.kind] = true
+        local ok, why = lineOk(l)
+        if not ok then A.res.problems[#A.res.problems + 1] = ('%s line %s at %d,%d'):format(l.kind, why, l.x, l.y) end
+        if l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(l.kind, l.align) end
+      end
+    end
+    for _, k in ipairs({ 'tc', 'start' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k .. ' line' end end
+    if not gazeboNear(tx, ty) then A.res.problems[#A.res.problems + 1] = 'no gazebo at the time control' end
+    if #onRoad > 0 then
+      local k = {}
+      for i = 1, math.min(6, #onRoad) do k[#k + 1] = ('%s@%d,%d'):format(onRoad[i].kind, onRoad[i].x, onRoad[i].y) end
+      A.res.problems[#A.res.problems + 1] = ('%d objects on the road near the start: %s'):format(#onRoad, table.concat(k, ' '))
+    end
+    A.res.startOnRoad = #onRoad
+    A.res.before = t.before and math.floor(t.before.total) or 0
+    -- a la meta
+    local fx, fy = geo.at(t, math.max(0, t.total - 250))
+    local fla, flo = geo.toGeo(t, fx, fy)
+    A.finishLL = { fla, flo }
+    if not teleport(fla, flo) then A.res.problems[#A.res.problems + 1] = 'could not travel to the finish' finishStage(A.res) return end
+    A.step, A.t = 'finishSettle', 0
+  elseif A.step == 'finishSettle' then
+    if A.t > M.SETTLE_S * 0.6 and not A.reground then
+      A.reground = true
+      teleport(A.finishLL[1], A.finishLL[2])
+    end
+    if A.t < M.SETTLE_S then return end
+    local a = api()
+    local pl, po = a.position()
+    local left = pl and dressing.pendingJobsNear(pl, po) or 0
+    if left > 0 and A.t < M.SETTLE_S + M.JOBS_S then return end
+    local S = st.state()
+    if not S then A.res.problems[#A.res.problems + 1] = 'stage lost on the way to the finish' finishStage(A.res) return end
+    local t = S.track
+    local fx, fy = geo.at(t, t.total)
+    local fla, flo = geo.toGeo(t, fx, fy)
+    local gx, gy = a.toGame(fla, flo, 0)
+    local lines, onRoad = measure(gx, gy, 450)
+    local seen = {}
+    for _, l in ipairs(lines) do
+      if l.kind == 'finish' or l.kind == 'stop' then
+        seen[l.kind] = true
+        local ok, why = lineOk(l)
+        if not ok then A.res.problems[#A.res.problems + 1] = ('%s line %s at %d,%d'):format(l.kind, why, l.x, l.y) end
+        if l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(l.kind, l.align) end
+      end
+    end
+    for _, k in ipairs({ 'finish', 'stop' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k .. ' line' end end
+    if #onRoad > 0 then
+      local k = {}
+      for i = 1, math.min(6, #onRoad) do k[#k + 1] = ('%s@%d,%d'):format(onRoad[i].kind, onRoad[i].x, onRoad[i].y) end
+      A.res.problems[#A.res.problems + 1] = ('%d objects on the road near the finish: %s'):format(#onRoad, table.concat(k, ' '))
+    end
+    A.res.finishOnRoad = #onRoad
+    A.res.after = t.after and math.floor(t.after.total) or 0
+    A.res.finishCut = t.finishCut == true
+    A.reground = nil
+    finishStage(A.res)
+  end
+end
+
+return M

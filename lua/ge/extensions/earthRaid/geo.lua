@@ -19,6 +19,27 @@ function M.track(path)
   return t
 end
 
+-- quita el principio del trazado hasta `along` (la salida pasa a estar ahí); devuelve el trozo quitado como path
+-- { {lat, lon}... } (con el punto de corte al final). Mismo origen local (lat0, lon0): toLocal/toGeo siguen valiendo
+function M.cutStart(t, along)
+  if along <= 0 or along >= t.total then return nil end
+  local x, y = M.at(t, along)
+  local removed = {}
+  local i = 1
+  while t.cum[i + 1] and t.cum[i + 1] <= along do i = i + 1 end
+  for k = 1, i do removed[#removed + 1] = { M.toGeo(t, t.pts[k][1], t.pts[k][2]) } end
+  removed[#removed + 1] = { M.toGeo(t, x, y) }
+  local pts, cum = { { x, y } }, { 0 }
+  for k = i + 1, #t.pts do
+    pts[#pts + 1] = t.pts[k]
+    cum[#cum + 1] = t.cum[k] - along
+  end
+  if #pts >= 2 and cum[2] < 0.01 then table.remove(pts, 2) table.remove(cum, 2) end
+  t.pts, t.cum = pts, cum
+  t.total = cum[#cum]
+  return removed
+end
+
 -- corta el trazado en `along` (la meta pasa a estar ahí)
 function M.truncate(t, along)
   if along >= t.total or along <= 0 then return end

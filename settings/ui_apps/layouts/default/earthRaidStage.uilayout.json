@@ -172,10 +172,20 @@
         "width": "520px",
         "position": "absolute"
       }
+    },
+    {
+      "appName": "EarthRaidHud",
+      "placement": {
+        "left": "0px",
+        "top": "0px",
+        "width": "100%",
+        "height": "100%",
+        "position": "absolute"
+      }
     }
   ],
   "description": "Raid.Earth: the game Rally Stage layout (rallyModeStage) plus the BeamNG.Earth map credits",
   "title": "Raid.Earth - Stage",
   "type": "earthRaidStage",
-  "version": 11
+  "version": 12
 }

@@ -2,7 +2,7 @@
   <div class="erh-root" ref="root">
   <!-- Rally completo: en la asistencia y los enlaces, como el panel de enlace del juego (reloj del evento, tu tiempo,
        instrucciones), la tarjeta del siguiente control y el carnet de ruta -->
-  <div class="erh rally" v-if="r && r.active && r.phase !== 'stage'">
+  <div class="erh rally" v-if="!slim && r && r.active && r.phase !== 'stage'">
     <div class="rbar">
       <div class="rcell"><div class="rlab">{{ t.eventClock }}</div><div class="rclock mono">{{ hms(r.clock) }}</div></div>
       <div class="rcell"><div class="rlab">{{ t.yourTime }}</div><div class="rtime mono">{{ fmt(r.total || 0) }}</div></div>
@@ -50,7 +50,7 @@
 
   <!-- Ocupa la pantalla sin bloquear el ratón: la barra de tramo arriba a la izquierda y la tarjeta de fase arriba en el
        centro, como RallyStageTiming y RallyCountdown del juego -->
-  <div class="erh" v-if="d && d.phase && d.phase !== 'idle' && d.phase !== 'hold'">
+  <div class="erh" v-if="!slim && d && d.phase && d.phase !== 'idle' && d.phase !== 'hold'">
     <div class="bar">
       <div class="left">
         <div class="name">
@@ -110,7 +110,18 @@
       <div v-if="d.newBest" class="newbest">{{ t.newBest }}</div>
     </div>
 
-    <!-- marco de la cámara del reloj (la imagen la pone el juego debajo) -->
+  </div>
+  <!-- Modo superpuesto (18-nov): las apps del rally del juego llevan la interfaz; aquí solo lo que el juego no tiene:
+       las penalizaciones del tramo (bajo los tiempos del juego), las del rally (bajo la hoja de tiempos) y el marco de
+       la cámara del reloj (la imagen la pone el juego debajo) -->
+  <div class="erh" v-if="slim">
+    <div v-if="d && d.phase && d.phase !== 'idle' && d.phase !== 'hold' && d.penalty > 0" class="spen">
+      <span class="penb">+{{ d.penalty }}s</span> {{ penaltyText }}
+    </div>
+    <div v-if="r && r.active && r.phase !== 'finished' && list(r.penalties).length" class="tcpen slimpen">
+      <div class="tcpent"><b>{{ t.penalties }}</b><span>{{ t.total }} {{ penTotal }}s</span></div>
+      <div v-for="(p, i) in list(r.penalties)" :key="i" class="tcpenr"><span>{{ p.label }} · {{ penWhy(p.why) }}</span><b>{{ p.s }}s</b></div>
+    </div>
     <div v-if="view.show" class="clockframe" :class="'c' + view.code" :style="frameStyle"></div>
   </div>
   </div>
@@ -125,6 +136,8 @@ const { api } = useBridge()
 const events = useEvents()
 const d = ref(null)
 const view = ref({ show: false })
+// las apps del rally del juego llevan la interfaz; esta app solo superpone lo que falta
+const slim = computed(() => !(d.value && d.value.full) && !(r.value && r.value.full))
 const r = ref(null)
 const ld = ref(null)
 events.on("EarthRaidLoading", data => { ld.value = data })
@@ -407,4 +420,6 @@ const frameStyle = computed(() => {
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
 // la app de notas del juego (RallyVisualPacenotes): más pequeña y algo transparente, para no tapar la carretera
 .pacenotes-app { opacity: var(--er-notes-opacity, 0.72); transform: scale(var(--er-notes-scale, 0.72)); transform-origin: top center; }
+.spen { position: absolute; left: 10px; top: 436px; padding: 4px 10px; background: rgba(26, 29, 34, 0.82); color: #fff; font-size: 14px; font-weight: 700; }
+.slimpen { position: absolute; left: 10px; top: 900px; width: 270px; background: rgba(26, 29, 34, 0.82); padding: 6px 8px; }
 </style>

@@ -48,7 +48,7 @@ local function prox(distM, isStart)
 end
 
 -- el tramo en marcha (stage.lua): S
-local function fromStage(S, R)
+local function fromStage(S, R, api)
   local t = S.track
   local n = S.stageNumber or 1
   local label = tostring(n)
@@ -69,6 +69,11 @@ local function fromStage(S, R)
     S.tcDue = due
     sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(due), hhmm(due + 60)
     sc.canIncurLatePenalty = R ~= nil
+    local lim = api and api.speedLimit and api.speedLimit()
+    local k = lim and lim.ms and math.floor(lim.ms * 3.6 / 10 + 0.5) * 10 or nil   -- redondo a 10 km/h (56 -> 60)
+    if not k or k <= 0 then k = 50 end   -- sin dato del mapa: 50 km/h (la zona del control es siempre tranquila)
+    sc.speedLimit, sc.speedLimitDisplay = k, tostring(k)
+    sc.isSpeeding = speedNow() * 3.6 > k + 5
     d.vehicleProximity = prox(S.distM, false)
     canSkip = ph == 'tc'
   elseif ph == 'staging' then
@@ -78,9 +83,10 @@ local function fromStage(S, R)
     d.vehicleProximity = prox(S.distM, true)
     canSkip = S.staged == true
   elseif ph == 'countdown' then
-    d.activeState = 'countdown'
-    local c = math.max(0, math.ceil(S.countdown or 0))
-    d.countdownData = { countdown = c, state = c > 0 and 'counting' or 'go' }
+    -- la cuenta atrás va en el reloj LED real de la salida (startclock.lua, con la cámara y el marco): sin el semáforo
+    -- 2D del juego (como hace el juego con rallyStartCountdownDisplay = 3d)
+    d.activeState = 'vehicleProximity'
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
     d.vehicleProximity = prox(0, true)
   elseif ph == 'running' then
     d.activeState = 'stageActive'
@@ -136,11 +142,10 @@ local function fromRally(R, cur, a)
     sc.eventWallClockEnd = hhmm(cur.dueMin * 60 + 60)
     sc.canIncurLatePenalty = true
     local lim = a and a.speedLimit and a.speedLimit()
-    if lim and lim.ms then
-      local k = math.floor(lim.ms * 3.6 + 0.5)
-      sc.speedLimit, sc.speedLimitDisplay = k, tostring(k)
-      sc.isSpeeding = speedNow() * 3.6 > k + 5
-    end
+    local k = lim and lim.ms and math.floor(lim.ms * 3.6 / 10 + 0.5) * 10 or nil
+    if not k or k <= 0 then k = cur.limitKmh or 90 end
+    sc.speedLimit, sc.speedLimitDisplay = k, tostring(k)
+    sc.isSpeeding = speedNow() * 3.6 > k + 5
     local g = a and a.gps and a.gps()
     d.vehicleProximity = prox(g and g.remaining or 9999, false)
   end
@@ -165,7 +170,7 @@ function M.update(stage, rally, api)
   local R = rally.active() and rally.state() or nil
   local data
   if S and S.track and S.phase ~= 'idle' then
-    local ok, d = pcall(fromStage, S, R)
+    local ok, d = pcall(fromStage, S, R, api)
     data = ok and d or nil
     if data and R then data.timecardData = timecard(R) end
   elseif R then

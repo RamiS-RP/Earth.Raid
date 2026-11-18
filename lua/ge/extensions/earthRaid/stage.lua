@@ -287,6 +287,52 @@ local function endRoad(ev, path, atEnd)
   return nil
 end
 M.AFTER_ROAD_M = 9        -- tras la meta, a más de esto de una carretera del juego no se cuenta como carretera
+-- ¿va de verdad por carretera? cada 15 m entre from y upTo, la carretera del juego a menos de AFTER_ROAD_M.
+-- nil: no hay grafo cargado por ahí (no se puede saber)
+local function onRoadFrac(tr, from, upTo)
+  local n, ok, any = 0, 0, false
+  for d = math.max(0, from), math.min(tr.total, upTo), 15 do
+    local x, y = geo.at(tr, d)
+    local la, lo = geo.toGeo(tr, x, y)
+    local gx, gy, gz = props.ground(la, lo)
+    if gx then
+      local n1, _, dd = props.nearestRoad(gx, gy, gz, 60)
+      n = n + 1
+      if n1 then any = true end
+      if dd and dd <= M.AFTER_ROAD_M then ok = ok + 1 end
+    end
+  end
+  if n == 0 or not any then return nil end
+  return ok / n
+end
+M.onRoadFrac = onRoadFrac
+
+-- Norma de oro (18-nov, Salas): la salida y el control horario siempre en una carretera del juego, alineados y con
+-- sitio para la carpa. Si los primeros metros del trazado del organizador no van por carretera (pista que el mapa no
+-- tiene, trazado desplazado), la salida se adelanta hasta donde sí; y si no hay carretera antes de la salida para el
+-- control horario, la salida se adelanta TC_BEFORE_M + 60 m por el propio tramo y el trozo quitado hace de acceso.
+-- Devuelve los metros quitados (0 si nada) y el trozo quitado como path
+M.START_CHECK_M = 120
+local function validateStart(t, hasBefore)
+  local fr = onRoadFrac(t, 0, M.START_CHECK_M)
+  if fr == nil then return 0, nil end
+  local cut = 0
+  if fr < 0.8 then
+    for a0 = 10, t.total - 600, 10 do
+      local f2 = onRoadFrac(t, a0, a0 + M.START_CHECK_M)
+      if f2 and f2 >= 0.8 then cut = a0 break end
+    end
+    if cut == 0 then return 0, nil end
+    log('W', TAG, ('start: the first %.0f m are not on a road (%.0f%%): start moved forward'):format(cut, fr * 100))
+  end
+  if not hasBefore and cut < dressing.TC_BEFORE_M + 60 then
+    cut = dressing.TC_BEFORE_M + 60
+    log('W', TAG, 'start: no road before the start for the time control: start moved ' .. cut .. ' m forward')
+  end
+  if cut <= 0 or cut >= t.total - 500 then return 0, nil end
+  local removed = geo.cutStart(t, cut)
+  return cut, removed
+end
 local function afterPath(ev, path) return endRoad(ev, path, true) end
 local function beforePath(ev, path) return endRoad(ev, path, false) end
 
@@ -316,6 +362,27 @@ function M.start(ev, st, info)
   end
   findAfter()
   local bp, bhow = beforePath(ev, cpath)
+  -- norma de oro: salida y control horario en carretera (con el grafo cargado; si no, se repite en startLater)
+  local cutM, removed = 0, nil
+  do
+    local okV, c, r = pcall(validateStart, t, bp ~= nil and onRoadFrac(geo.track(bp), 0, dressing.TC_BEFORE_M) ~= nil
+      and (onRoadFrac(geo.track(bp), 0, dressing.TC_BEFORE_M) or 0) >= 0.8)
+    if okV then cutM, removed = c or 0, r else log('W', TAG, 'validateStart: ' .. tostring(c)) end
+  end
+  if cutM > 0 then
+    t.cutStart = cutM
+    bp, bhow = nil, nil
+    -- el acceso: el trozo quitado si va por carretera; si no, la carretera del juego hacia atrás desde la nueva salida
+    if removed and #removed >= 2 then
+      local rt = geo.track(removed)
+      if (onRoadFrac(rt, 0, rt.total) or 0) >= 0.8 then bp, bhow = removed, 'stage cut' end
+    end
+    if not bp then
+      local np = {}
+      for i, p in ipairs(t.pts) do np[i] = { geo.toGeo(t, p[1], p[2]) } end
+      bp, bhow = beforePath(ev, np)
+    end
+  end
   if bp then
     t.before = geo.track(bp)
     log('I', TAG, ('before the start: %s, %.0f m'):format(bhow, t.before.total))
@@ -433,34 +500,18 @@ function M.start(ev, st, info)
     t.finishCut = true
     log('W', TAG, ('no road after the finish: finish moved %.0f m back, STOP on the stage road'):format(want))
   end
-  -- ¿va de verdad por carretera? Los enlaces del organizador suelen estar dibujados a mano (rectas por el monte): cada
-  -- 15 m hasta pasado el STOP, la carretera del juego debe estar a menos de AFTER_ROAD_M. nil: no hay grafo cargado aquí
-  local function onRoadFrac(tr, upTo)
-    local n, ok, any = 0, 0, false
-    for d = 10, math.min(tr.total, upTo), 15 do
-      local x, y = geo.at(tr, d)
-      local la, lo = geo.toGeo(tr, x, y)
-      local gx, gy, gz = props.ground(la, lo)
-      if gx then
-        local n1, _, dd = props.nearestRoad(gx, gy, gz, 60)
-        n = n + 1
-        if n1 then any = true end
-        if dd and dd <= M.AFTER_ROAD_M then ok = ok + 1 end
-      end
-    end
-    if n == 0 or not any then return nil end
-    return ok / n
-  end
+  -- los enlaces del organizador suelen estar dibujados a mano (rectas por el monte): hasta pasado el STOP tiene que ir
+  -- por carretera de verdad
   local function checkAfter()
     if t.finishCut or not t.after then return end
     local need = (t.stopAt or dressing.STOP_AFTER_M) + 20
-    local fr = onRoadFrac(t.after, need)
+    local fr = onRoadFrac(t.after, 10, need)
     if fr == nil or fr >= 0.8 then return end
     log('W', TAG, ('after the finish: only %.0f%% on a road, looking for the real road'):format(fr * 100))
     local f, f0 = cpath[#cpath], refPoint(cpath, true, 15)
     local wr = walkRoads(f, f0)
     local nt = wr and geo.track(wr)
-    if nt and nt.total >= 60 and (onRoadFrac(nt, need) or 0) >= 0.8 then
+    if nt and nt.total >= 60 and (onRoadFrac(nt, 10, need) or 0) >= 0.8 then
       t.after, t._snapT, t.afterOff = nt, nil, nil
       t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, nt.total - 5))
       log('I', TAG, ('after the finish: roads, %.0f m, STOP at %.0f m'):format(nt.total, t.stopAt))

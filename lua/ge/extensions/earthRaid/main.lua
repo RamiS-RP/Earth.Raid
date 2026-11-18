@@ -268,6 +268,11 @@ function M.loadIndex()
 end
 
 -- El evento completo (con los trazados), leído una vez
+-- todos los eventos del índice (para la auditoría)
+function M.events()
+  if not S.index then M.loadIndex() end
+  return S.index and S.index.events or {}
+end
 function M.event(id)
   if S.loaded[id] then return S.loaded[id] end
   for _, e in ipairs(S.index and S.index.events or {}) do
@@ -1024,9 +1029,9 @@ function M.uiPlay(eventId, stageId, reverse)
   local lat, lon = nil, nil
   if a.position then lat, lon = a.position() end
   local far = not lat or catalog.dist(lat, lon, s.start[1], s.start[2]) > M.PLAY_TELEPORT_M
-  M.uiStart(eventId, stageId, reverse)
-  local st = stage.state()
-  if not (far and st and st.track) then return end
+  if not far then M.uiStart(eventId, stageId, reverse) return end
+  -- lejos: primero el viaje y las carreteras de la zona; el tramo se monta cuando el grafo está cargado allí (18-nov:
+  -- así la salida y el control horario se validan contra carreteras de verdad antes de montarse)
   local t = geo.track(clean.stage(s))
   local dx, dy = geo.dirAt(t, 0)
   local back = dressing.TC_BEFORE_M + M.TP_BEFORE_TC_M
@@ -1043,6 +1048,11 @@ function M.uiPlay(eventId, stageId, reverse)
     -- (el TC aún es aproximado: se calcula por la carretera real al montar la salida)
     near = { { s.start[1], s.start[2] } },
     dress = function()
+      if not stage.state() then
+        M.uiStart(eventId, stageId, reverse)
+        if not stage.state() then return 0 end
+        return 1
+      end
       stage.holdJobs(false)
       local pl, po = a.position()
       if pl then dressing.runJobsNear(pl, po, 2) end
@@ -1055,7 +1065,14 @@ function M.uiPlay(eventId, stageId, reverse)
       stage.retryStart()
       local tt = cur.track
       local atLat, atLon = dressing.lineAt(tt, 0, -(dressing.tcAt(tt) + M.TP_BEFORE_TC_M))
-      M.placeOnRoad(cur.tcLat, cur.tcLon, atLat, atLon)
+      if not M.placeOnRoad(cur.tcLat, cur.tcLon, atLat, atLon) then
+        -- sin carretera del juego por ahí: en la calzada del control (que siempre está en carretera), unos metros
+        -- antes, mirando al control
+        local bl, bo = dressing.lineAt(tt, 0, -(dressing.tcAt(tt) + 12))
+        if not (bl and M.placeOnRoad(cur.tcLat, cur.tcLon, bl, bo)) then
+          M.placeAt(cur.tcLat, cur.tcLon, cur.line and cur.line.lat or cur.tcLat, cur.line and cur.line.lon or cur.tcLon)
+        end
+      end
     end,
     done = function()
       stage.holdJobs(false)
@@ -1308,6 +1325,8 @@ M.RACE_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidStage.uilayout.json'
 M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
 local vhud = require('earthRaid/vhud')
 local guard = require('earthRaid/guard')
+local audit = require('earthRaid/audit')
+M.audit = audit
 local layoutT = 0
 local function raceLayout(dt)
   layoutT = layoutT + (dt or 0)
@@ -1339,7 +1358,8 @@ function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
-  if not loader.active() then
+  if audit.active() then pcall(audit.update, dtReal) end
+  if not loader.active() and not audit.active() then
     pcall(guard.update, stage, rally, function()
       M.toast(spanish() and 'Cambio de vehículo durante el tramo: tramo anulado.' or 'Vehicle changed during the stage: stage cancelled.', 8)
       pcall(M.uiCancelStage)
