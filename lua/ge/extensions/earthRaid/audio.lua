@@ -37,6 +37,9 @@ end
 function M.file(base)
   local f, len = find(M.PACK, loadMeta(), base)
   if f then return f, len end
+  -- un pack de voz real incompleto (Xpectro99: 52 grabaciones) no se mezcla con otra voz: lo que no tiene, no se dice
+  local vp = jsonReadFile(tostring(M.PACK) .. '/voicepack.json') or {}
+  if vp.raidEarthNoFallback then return nil end
   if M.PACK ~= M.FALLBACK then
     fbMeta = fbMeta or jsonReadFile(M.FALLBACK .. '/metadata.json') or {}
     return find(M.FALLBACK, fbMeta, base)

@@ -1307,6 +1307,7 @@ end
 M.RACE_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidStage.uilayout.json'
 M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
 local vhud = require('earthRaid/vhud')
+local guard = require('earthRaid/guard')
 local layoutT = 0
 local function raceLayout(dt)
   layoutT = layoutT + (dt or 0)
@@ -1338,6 +1339,12 @@ function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
+  if not loader.active() then
+    pcall(guard.update, stage, rally, function()
+      M.toast(spanish() and 'Cambio de vehículo durante el tramo: tramo anulado.' or 'Vehicle changed during the stage: stage cancelled.', 8)
+      pcall(M.uiCancelStage)
+    end)
+  end
   if loader.active() then
     local okLd, errLd = pcall(loader.update, dtReal or 0)
     if not okLd then log('W', TAG, 'loader: ' .. tostring(errLd)) loader.cancel() end
@@ -1400,7 +1407,7 @@ function M.onClientPostStartMission()
     end
   end
 end
-function M.onClientEndMission() S.earthLevel = false end
+function M.onClientEndMission() S.earthLevel = false pcall(guard.release) end
 function M.onBeamNGEarthTeleported()
   S.timer = M.CHECK_S
   if S.afterTp then S.afterTp.t = 0 end
@@ -1408,7 +1415,7 @@ function M.onBeamNGEarthTeleported()
 end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
-function M.onExtensionUnloaded() rally.stop() stage.stop() end
+function M.onExtensionUnloaded() pcall(guard.release) rally.stop() stage.stop() end
 function M.onVehicleResetted(vid)
   if not S.earthLevel then return end
   local v = getPlayerVehicle(0)

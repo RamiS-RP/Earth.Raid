@@ -72,7 +72,7 @@ function M.voicepacks()
       for _ in pairs(jsonReadFile(dir .. '/metadata.json') or {}) do notes = notes + 1 end
       -- fuera del selector los de broma (Clover, el gato del 1 de abril: idioma "Feline", 12 maullidos) y los incompletos
       local joke = d.enableAnimalCodrivers ~= nil and not tostring(d.language or ''):find('languages', 1, true)
-      if not joke and notes >= 120 then
+      if not joke and (notes >= 120 or d.raidEarthPartialOk) then
         out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
           style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes,
           language = tostring(d.language or ''):match('languages%.(%w+)%.name') or d.language }

@@ -7,6 +7,9 @@
 local M = {}
 
 local wasActive = false
+-- el color de las apps (sin uiColors.theme, rallyStageTiming/rallyStageProgress no se ven)
+local okC, UiColors = pcall(require, '/lua/ge/extensions/gameplay/rally/loop/uiColors')
+local colors = {}
 
 local function clockTime(secs)
   secs = math.floor((secs or 0) % 86400)
@@ -173,6 +176,9 @@ function M.update(stage, rally, api)
   end
   if data then
     data.timecardData = data.timecardData or {}
+    if okC and UiColors.updateForStage then pcall(UiColors.updateForStage, colors, false) end
+    if not colors.theme then colors.theme = '#1f8fff' end
+    data.uiColors = colors
     guihooks.queueStream('rallyLoop', data)
     wasActive = true
   elseif wasActive then

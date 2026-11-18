@@ -49,6 +49,7 @@ M.SHAPES = {
   hayBale2 = '/assets/meshes/props/race_event/equipment/s_haybaleround_alt_01.dae',
   barrel = '/assets/meshes/props/race_event/equipment/s_trafficbarrel_01.dae',
   plasticBarrier = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier_red.DAE',
+  plasticBarrierW = '/art/shapes/garage_and_dealership/Clutter/hr_plasticbarrier.DAE',
   workbench = '/art/shapes/garage_and_dealership/garage/s_garage_workbench_medium.dae',
   stool = '/art/shapes/garage_and_dealership/garage/s_metal_stool.dae',
 }
@@ -176,7 +177,7 @@ local function register(o, kind)
   if scenetree.MissionGroup then scenetree.MissionGroup:addObject(o) end
 end
 
-M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
+M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, plasticBarrierW = true, table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
   tireRack = true, workbench = true, stool = true, gazeboFrame = true }
 function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
 

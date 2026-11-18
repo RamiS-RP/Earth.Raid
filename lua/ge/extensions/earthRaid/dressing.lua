@@ -290,7 +290,7 @@ end
 
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
-M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
+M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
   cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
@@ -355,7 +355,7 @@ M.offRoad = offRoad
 -- ese sitio se comprueba otra vez cuando el jugador se acerca, y si cae en una calzada se saca fuera. Lo que ya se
 -- comprobó con la carretera cargada no se vuelve a mirar.
 M.RECHECK_M = 300
-M.SKIP_RECHECK = { plasticBarrier = true, barrel = true, line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
+M.SKIP_RECHECK = { plasticBarrier = true, plasticBarrierW = true, barrel = true, line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)
   if M.dry or not plat then return 0 end
@@ -809,7 +809,8 @@ local function barrierChain(t, from, to, sideSign)
   local n = 0
   for a2 = math.max(0, from), math.min(t.total, to), M.BARRIER_STEP_M do
     if n >= M.BARRIER_MAX then break end
-    place('plasticBarrier', t, a2, sideSign * (hwAt(t, a2) + 1.4), 0, 0)
+    -- el largo de la barrera (eje X del modelo) a lo largo del borde: giro 90; rojas y blancas alternas (18-nov)
+    place(n % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', t, a2, sideSign * (hwAt(t, a2) + 1.0), 90, 0)
     n = n + 1
   end
 end
@@ -926,13 +927,13 @@ function M.spectators(t, notes)
     M.crowdZones[#M.crowdZones + 1] = { at = mid - 30, side = sideSign, mid = mid }
     M.later(nt.at, function()
       local hw = hwAt(t, mid)
+      -- pegadas al borde para que se vean (18-nov): cinta a 2,5 m, mallas a 3,5 m, lonas detrás
       for k = -1, 1 do
-        place('specTape', t, mid, sideSign * (hw + 6), 0, k * 5 + 2.5, { noCollision = true })
+        place('specTape', t, mid, sideSign * (hw + 2.5), 0, k * 5 + 2.5, { noCollision = true })
       end
-      -- mallas de público del juego (rejillas de 2 m y la central), sin vallas publicitarias por el tramo
       local grids = { 'specGridB', 'specGridA', 'specGrid', 'specGridA', 'specGridB' }
-      for k, g in ipairs(grids) do place(g, t, mid, sideSign * (hw + 8), 0, (k - 3) * 2.1) end
-      tarpLine(t, mid, sideSign * (hw + 10), 3, 6)
+      for k, g in ipairs(grids) do place(g, t, mid, sideSign * (hw + 3.5), 0, (k - 3) * 2.1) end
+      tarpLine(t, mid, sideSign * (hw + 5.5), 3, 6)
       place('sndCrowd', t, mid, sideSign * (hw + 11), 0, 0)
     end)
     used = used + 1
@@ -1053,8 +1054,10 @@ function M.closures(t, from, to)
                   end
                   return (qx - nx) ^ 2 + (qy - ny) ^ 2 >= stageR * stageR
                 end
+                -- en la boca de la calle (18-nov, Pravia: aparecía decenas de metros calle arriba): como mucho 12 m más
                 local d, placed = math.max(rw + 3, lateral + 4), false
-                while d <= l * 0.85 and not placed do
+                local dMax = math.min(l * 0.85, d + 12)
+                while d <= dMax and not placed do
                   local cx, cy = nx + ex * d, ny + ey * d
                   -- y lejos del trazado del tramo (estacas y centro): nunca una cinta cruzando el tramo
                   local function farFromTrack(qx, qy)
@@ -1070,10 +1073,11 @@ function M.closures(t, from, to)
                     props.add(kind, lat0, lon0, px, py, 0, { noCollision = false })
                     -- y detrás, el corte como en los rallies del juego: dos barreras de plástico rojas y un bidón
                     if M.protection ~= false then
-                      for _, b in ipairs({ { -1.4, 'plasticBarrier' }, { 1.4, 'plasticBarrier' }, { 0, 'barrel' } }) do
+                      -- a lo ancho de la calle (el largo de la barrera, eje X, en la dirección de la cinta)
+                      for _, b in ipairs({ { -1.9, 'plasticBarrier' }, { 1.9, 'plasticBarrierW' }, { 0, 'barrel' } }) do
                         local bx, by = cx + ex * 2.2 + px * b[1], cy + ey * 2.2 + py * b[1]
                         local bl, bo = geo.toGeo(t, bx, by)
-                        props.add(b[2], bl, bo, px, py, 0)
+                        props.add(b[2], bl, bo, px, py, b[2] == 'barrel' and 0 or 90)
                       end
                     end
                     n, tapeCount, placed = n + 1, tapeCount + 1, true
