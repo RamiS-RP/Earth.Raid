@@ -131,6 +131,7 @@ function M.clear()
 end
 
 function M.forget(it) despawn(it) end
+function M.isLive(it) return live[it] ~= nil end
 function M.count() return count end
 
 -- restos de una recarga del addon: vehículos marcados como nuestros

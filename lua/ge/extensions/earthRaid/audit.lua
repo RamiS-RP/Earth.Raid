@@ -8,6 +8,7 @@ local TAG = 'earthRaid.audit'
 local props = require('earthRaid/props')
 local dressing = require('earthRaid/dressing')
 local geo = require('earthRaid/geo')
+local phys = require('earthRaid/phys')
 
 M.FILE = '/settings/earthRaid/audit.json'
 M.LINE_OK_M = 1.6            -- el centro de una línea, a menos de esto del eje de la carretera
@@ -80,7 +81,8 @@ local function measure(cx, cy, radius)
     if it.obj and it.kind then
       local q = it.obj:getPosition()
       if (q.x - cx) ^ 2 + (q.y - cy) ^ 2 < radius * radius then
-        if it.hidden then hidden = hidden + 1
+        -- (un cartel con física cerca del coche tiene el estático oculto: sigue contando, con su posición)
+        if it.hidden and not phys.isLive(it) then hidden = hidden + 1
         elseif it.line and it.lat2 then
           -- una línea pintada (DecalRoad de borde a borde): su centro en el eje y cruzada a la carretera
           local mx, my = a.toGame((it.lat + it.lat2) / 2, (it.lon + it.lon2) / 2, 0)
@@ -287,7 +289,7 @@ function M.update(dt)
       local gx1, gy1 = a.toGame(fla1, flo1, 0)
       local seenF = false
       for _, it in ipairs(props.all()) do
-        if it.obj and it.kind == 'finish' then
+        if it.obj and it.kind == 'finish' and (not it.hidden or phys.isLive(it)) then
           local q = it.obj:getPosition()
           if gx1 and (q.x - gx1) ^ 2 + (q.y - gy1) ^ 2 < 450 * 450 then seenF = true break end
         end
