@@ -956,7 +956,6 @@ function M.uiStart(eventId, stageId, reverse)
       local ok, err = stage.start(full, s, { number = number, count = count })
       if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
       stage.setLang(spanish() and 'es' or 'en')
-      ensureHud()
       S.target = { eventId = eventId, stageId = s.id }
       M.toast((spanish() and 'Tramo preparado: ' or 'Stage ready: ') .. s.title, 6)
       M.uiClose()
@@ -1075,7 +1074,7 @@ function M.uiStartRally(eventId, fromRun)
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
-  ensureHud()
+  -- (18-nov) ya no se añaden apps a las disposiciones del jugador: las del juego van en earthRaidLoop/earthRaidStage
   S.target = { eventId = eventId }
   local rs = rally.state()
   local start = rs.it.start
@@ -1126,6 +1125,29 @@ function M.sendHud() stage.sendHud() rally.sendHud() end
 -- ---- hooks del juego y de BeamNG.Earth -----------------------------------------------------------------------------
 
 
+-- Versiones anteriores metían nuestra app (EarthRaidHud) y las notas visuales en las disposiciones de apps del jugador
+-- (la de BeamNG.Earth, la radial...): se quitan, para no tocar el juego base
+local function cleanLayouts()
+  local L = rawget(_G, 'ui_appLayouts')
+  if not (L and L.getAvailableLayouts and L.removeApp) then return end
+  local ok, list = pcall(L.getAvailableLayouts)
+  if not ok or type(list) ~= 'table' then return end
+  local n = 0
+  for _, lay in pairs(list) do
+    local fn = type(lay) == 'table' and lay.filename
+    if fn and not fn:find('earthRaid', 1, true) then
+      for i = #(lay.apps or {}), 1, -1 do
+        local a = lay.apps[i]
+        if a.appName == M.HUD_APP or (a.appName == M.NATIVE_VISUAL and a.placement and a.placement.top == M.NOTES_TOP) then
+          if pcall(L.removeApp, fn, i - 1) then n = n + 1 end
+        end
+      end
+    end
+  end
+  if n > 0 then log('I', TAG, ('removed %d Raid.Earth apps from the player layouts'):format(n)) end
+end
+M.cleanLayouts = cleanLayouts
+
 function M.onExtensionLoaded()
   pcall(guide.restoreBlueLine)
   pcall(function()
@@ -1133,6 +1155,7 @@ function M.onExtensionLoaded()
     if n > 0 then log('I', TAG, 'removed ' .. n .. ' leftover objects') end
   end)
   M.loadIndex()
+  pcall(cleanLayouts)
   refresh()
   if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) end
   S.earthLevel = M.isEarthLevel()
@@ -1280,7 +1303,10 @@ end
 
 -- El diseño de apps de rally mientras hay un tramo o un rally en marcha (como el juego en sus rallies): cronómetro y
 -- notas, volante, pedales, fuerzas g, cuentakilómetros, daños; sin minimapa (manda el copiloto). Al terminar, el de antes.
+-- las disposiciones de apps del rally del juego (rallyModeStage y rallyModeLoop) con los créditos del mapa
 M.RACE_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidStage.uilayout.json'
+M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
+local vhud = require('earthRaid/vhud')
 local layoutT = 0
 local function raceLayout(dt)
   layoutT = layoutT + (dt or 0)
@@ -1291,16 +1317,19 @@ local function raceLayout(dt)
   local on = (stage.active() or rally.active()) and settings.get().raceHud
   local cur = L.getCurrentLayout()
   local curName = type(cur) == 'table' and cur.filename or nil
+  local want = vhud.wantsStageLayout(stage) and M.RACE_LAYOUT or M.LOOP_LAYOUT
   if on then
-    if curName ~= M.RACE_LAYOUT then
-      if not S.prevLayout then S.prevLayout = curName end
-      if not L.setCurrentLayout(M.RACE_LAYOUT) then
-        log('W', TAG, 'race layout not found: ' .. M.RACE_LAYOUT)
+    if curName ~= want then
+      if not S.prevLayout or S.prevLayout == M.RACE_LAYOUT or S.prevLayout == M.LOOP_LAYOUT then
+        if curName ~= M.RACE_LAYOUT and curName ~= M.LOOP_LAYOUT then S.prevLayout = curName end
+      end
+      if not L.setCurrentLayout(want) then
+        log('W', TAG, 'race layout not found: ' .. want)
         S.layoutFailed = true
       end
     end
   elseif S.prevLayout then
-    if curName == M.RACE_LAYOUT then pcall(L.setCurrentLayout, S.prevLayout) end
+    if curName == M.RACE_LAYOUT or curName == M.LOOP_LAYOUT then pcall(L.setCurrentLayout, S.prevLayout) end
     S.prevLayout = nil
   end
 end
@@ -1329,6 +1358,18 @@ function M.onUpdate(dtReal, dtSim)
     local ok, err = pcall(M.check)
     if not ok then log('W', TAG, 'check: ' .. tostring(err)) end
   end
+end
+
+-- las apps del rally del juego (vhud.lua): el stream 'rallyLoop' con nuestros datos, después de gameplay_rallyLoop
+function M.onGuiUpdate()
+  if not S.earthLevel then return end
+  local ok, err = pcall(vhud.update, stage, rally, api())
+  if not ok and not S.vhudErr then S.vhudErr = true log('W', TAG, 'vhud: ' .. tostring(err)) end
+end
+-- el botón de "interactuar" del juego (el icono del volante de las apps del rally): saltar la espera del control
+function M.onGameplayInteract()
+  if not S.earthLevel then return end
+  pcall(M.skipWait)
 end
 
 function M.onBeamNGEarthWorldReady()

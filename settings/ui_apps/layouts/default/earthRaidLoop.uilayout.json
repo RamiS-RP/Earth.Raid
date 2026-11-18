@@ -1,0 +1,139 @@
+{
+  "apps": [
+    {
+      "appName": "forcedInduction",
+      "placement": {
+        "bottom": "310px",
+        "height": "150px",
+        "left": "",
+        "position": "absolute",
+        "right": "20px",
+        "top": "",
+        "width": "150px"
+      },
+      "settings": {
+        "noCockpit": true
+      }
+    },
+    {
+      "appName": "simplePowertrainControl",
+      "placement": {
+        "bottom": "0px",
+        "height": "170px",
+        "left": "",
+        "position": "absolute",
+        "right": "260px",
+        "top": "",
+        "width": "230px"
+      },
+      "settings": {
+        "noCockpit": true
+      }
+    },
+    {
+      "appName": "damageApp",
+      "placement": {
+        "bottom": "0px",
+        "height": "280px",
+        "left": "0px",
+        "position": "absolute",
+        "right": "",
+        "top": "",
+        "width": "158px"
+      },
+      "settings": {
+        "noCockpit": true
+      }
+    },
+    {
+      "appName": "tacho2",
+      "appVersion": 1,
+      "placement": {
+        "bottom": "5px",
+        "height": "300px",
+        "right": "5px",
+        "width": "300px"
+      },
+      "settings": {
+        "noCockpit": true
+      }
+    },
+    {
+      "appName": "inputHints",
+      "appVersion": 8,
+      "placement": {
+        "bottom": "",
+        "height": "600px",
+        "left": "",
+        "position": "absolute",
+        "right": "0px",
+        "top": "0px",
+        "width": "450px"
+      }
+    },
+    {
+      "appName": "topLeftApps",
+      "appVersion": 3,
+      "placement": {
+        "bottom": "",
+        "height": "501px",
+        "left": "1467px",
+        "position": "absolute",
+        "right": "",
+        "top": "42px",
+        "width": "380px"
+      }
+    },
+    {
+      "appName": "rallyCountdown",
+      "placement": {
+        "bottom": "",
+        "height": "220px",
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": "85px",
+        "width": "450px",
+        "margin": "auto"
+      }
+    },
+    {
+      "appName": "rallyTimecard",
+      "placement": {
+        "bottom": "",
+        "height": "790px",
+        "left": "0px",
+        "position": "absolute",
+        "right": "",
+        "top": "105px",
+        "width": "290px"
+      }
+    },
+    {
+      "appName": "rallyDashboard",
+      "placement": {
+        "bottom": "",
+        "height": "80px",
+        "left": "0px",
+        "position": "absolute",
+        "right": "",
+        "top": "0px",
+        "width": "1060px"
+      }
+    },
+    {
+      "appName": "beamngEarthCredits",
+      "placement": {
+        "bottom": "0px",
+        "height": "60px",
+        "left": "170px",
+        "width": "520px",
+        "position": "absolute"
+      }
+    }
+  ],
+  "description": "Raid.Earth: the game Rally Loop layout (rallyModeLoop) plus the BeamNG.Earth map credits",
+  "title": "Raid.Earth - Rally",
+  "type": "earthRaidLoop",
+  "version": 6
+}

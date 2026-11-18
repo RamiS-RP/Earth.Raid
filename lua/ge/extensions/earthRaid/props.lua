@@ -24,7 +24,10 @@ M.SHAPES = {
   board1 = A .. 's_cooldown_board_01.dae', board2 = A .. 's_cooldown_board_02.dae', board3 = A .. 's_cooldown_board_03.dae',
   sensor = A .. 's_rally_start_sensor.dae', tree = A .. 's_rally_start_tree.dae',
   gazeboFrame = A .. 's_rally_gazebo_mod_frame_3x3.dae', gazeboCover = A .. 's_rally_gazebo_mod_cover_ngrc_3x3.dae',
-  table = A .. 's_rally_fold_table_01.dae', chair = A .. 's_rally_fold_chair_01.dae', cone = '/art/shapes/race/cone.dae',
+  table = A .. 's_rally_fold_table_01.dae',
+  -- el puesto de control vanilla (NGRC Rally Utah): portátil en la mesa y dos extintores
+  laptop = '/art/shapes/garage_and_dealership/garage/s_laptop.dae',
+  extinguisher = '/art/shapes/garage_and_dealership/Clutter/clutter_workshop_fire_extinguisher.dae', chair = A .. 's_rally_fold_chair_01.dae', cone = '/art/shapes/race/cone.dae',
   cornerR = A .. 's_corner_dir_right.dae', cornerL = A .. 's_corner_dir_left.dae',
   corner45R = A .. 's_corner_dir45_right.dae', corner45L = A .. 's_corner_dir45_left.dae',
   hairpinR = A .. 's_corner_dir135_right.dae', hairpinL = A .. 's_corner_dir225_left.dae',
@@ -34,7 +37,7 @@ M.SHAPES = {
   fenceRotopad = A .. 's_metal_fence_branding_rotopad.dae', cushion = A .. 's_safety_cushion_01.dae',
   fenceApm = A .. 's_metal_fence_branding_apm.dae', fenceApmSpecial = A .. 's_metal_fence_branding_apm_special.dae',
   specTarp = A .. 's_spectator_tarp_4m.dae', specTarp2 = A .. 's_spectator_tarp_4m_02.dae', specTarp3 = A .. 's_spectator_tarp_4m_03.dae',
-  specGridA = A .. 's_spectator_grid_a_2m.dae', cornerMarker = A .. 's_corner_marker.dae',
+  specGridA = A .. 's_spectator_grid_a_2m.dae', specGridB = A .. 's_spectator_grid_b_2m.dae', cornerMarker = A .. 's_corner_marker.dae',
   danger = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_other_danger.dae',
   -- el box del parque de asistencia
   bigToolbox = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_01.dae',

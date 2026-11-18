@@ -192,8 +192,50 @@ function M.snap(lat, lon, dx, dy)
     return la, lo, ux, uy
   end)
   if ok and cl then return cl, co, rx, ry end
+  -- 18-nov (Pravia): findClosestRoad daba la carretera de al lado (un cruce, una paralela) y el punto se quedaba en el
+  -- trazado del KMZ, desplazado: la línea de salida acababa medio fuera de la calzada. Se busca entre todas las
+  -- carreteras cargadas a menos de SNAP_FAR_M la más cercana que vaya en el sentido del tramo
+  local ok2, l2, o2, ux2, uy2 = pcall(function()
+    local x, y = props.ground(lat, lon)
+    if not x then return nil end
+    local ix = props.roadIndex()
+    if not ix then return nil end
+    local C = props.CELL_M
+    local best, bd = nil, M.SNAP_FAR_M ^ 2
+    local seen = {}
+    for gx = math.floor((x - M.SNAP_FAR_M) / C), math.floor((x + M.SNAP_FAR_M) / C) do
+      for gy = math.floor((y - M.SNAP_FAR_M) / C), math.floor((y + M.SNAP_FAR_M) / C) do
+        for _, sg in ipairs(ix.cells[gx .. ':' .. gy] or {}) do
+          if not sg.virtual and not seen[sg] then
+            seen[sg] = true
+            local sx, sy = sg.bx - sg.ax, sg.by - sg.ay
+            local L2 = sx * sx + sy * sy
+            if L2 > 0.01 then
+              local L = math.sqrt(L2)
+              local dot = (sx * dx + sy * dy) / L
+              if math.abs(dot) >= 0.5 then
+                local u = math.max(0, math.min(1, ((x - sg.ax) * sx + (y - sg.ay) * sy) / L2))
+                local cx, cy = sg.ax + sx * u, sg.ay + sy * u
+                local dd = (x - cx) ^ 2 + (y - cy) ^ 2
+                if dd < bd then
+                  local ux, uy = sx / L, sy / L
+                  if dot < 0 then ux, uy = -ux, -uy end
+                  best, bd = { cx, cy, ux, uy }, dd
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    if not best then return nil end
+    local la, lo = a.toGeo(best[1], best[2], 0)
+    return la, lo, best[3], best[4]
+  end)
+  if ok2 and l2 then return l2, o2, ux2, uy2 end
   return nil
 end
+M.SNAP_FAR_M = 22
 
 -- La línea en `along` + `fwd` (salida, meta, control): su centro en el eje de la carretera y su dirección
 function M.lineAt(t, along, fwd)
@@ -218,7 +260,7 @@ end
 -- ---- edificios: nada se pone si hay un edificio o un muro entre la carretera y su sitio --------------------------------
 M.AVOID = { hayBale = true, hayBale2 = true, fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
   specTarp = true, specTarp2 = true, specTarp3 = true, specTape = true, specGrid = true, gazebo3x3 = true, gazebo3x6 = true,
-  gazebo3x6b = true, table = true, chair = true, cushion = true, ambulance = true }
+  gazebo3x6b = true, table = true, chair = true, cushion = true, ambulance = true, extinguisher = true }
 M.PULL_IN = { start = true, finish = true, tc = true, tcEntry = true, finishEntry = true, stop = true, endArea = true,
   medical = true, medicalWarn = true, radio = true, radioWarn = true, board1 = true, board2 = true, board3 = true,
   danger = true, sensor = true, tree = true }
@@ -249,7 +291,7 @@ end
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
 M.CLEAR_M = { hayBale = 1.6, hayBale2 = 1.6, plasticBarrier = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
-  cushion = 0.8, ambulance = 1.6, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
+  cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
   if c == false then return nil end
@@ -670,26 +712,29 @@ function M.endKit(t, endAlong, out, hw, D, role)
   local both = twoWay(cla, clo)
   -- el reloj de fichar en la carpa de quien ficha en este sentido: el que sale aquí (TC) o el que llega (STOP)
   local clockLado = role == 'start' and -1 or 1
-  local lados = both and { 1, -1 } or { clockLado }
+  -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
+  -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
+  local _ = both
+  local lados = { clockLado }
   local g = 2.6
   for _, lado in ipairs(lados) do
     local side = out * lado * (hw + g)
     local sgn = side > 0 and 1 or -1
-    place('gazebo3x3', t, endAlong, side, sgn > 0 and 180 or 0, out * D)
-    place('table', t, endAlong, side - sgn * 0.5, sgn > 0 and 180 or 0, out * D)
-    place('chair', t, endAlong, side + sgn * 0.5, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, out * D)
-    -- de noche, una luz bajo cada carpa (de día no se nota)
+    local ty = sgn > 0 and 180 or 0
+    place('gazebo3x3', t, endAlong, side, ty, out * D)
+    place('table', t, endAlong, side - sgn * 0.9, ty, out * D + 0.6)
+    place('table', t, endAlong, side - sgn * 0.9, ty, out * D - 0.6)
+    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, out * D + 0.6, { dz = 0.75 })
+    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, out * D + 0.6)
+    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, out * D + 1.5)
+    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, out * D + 1.6)
+    -- de noche, una luz bajo la carpa (de día no se nota)
     place('lamp', t, endAlong, side, 0, out * D, { dz = 2.4 })
-    if lado == clockLado then
-      place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, out * D + 0.9)
-    end
+    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, out * D - 1.4)
   end
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
   centreCones(t, endAlong, out * D, -10, 10, 5)
-  -- detrás del puesto, el equipo de cronometraje y el médico
-  put('gazebo3x6', hw + 5, D + 11, nil, (out > 0) and 180 or 0)
-  put('gazebo3x6b', hw + 5, D + 19, nil, (out > 0) and 180 or 0)
-  put('lamp', hw + 5, D + 15, nil, 0, { dz = 2.6 })
+  -- el médico, con su ambulancia
   put('medical', -P, D + 8, 'out')
   put('ambulance', -(P + 2.6), D + 16, 'out')
 
@@ -742,23 +787,49 @@ function M.safety(t, hw, splitAt)
   end
 end
 
--- Salidas peligrosas: en las curvas lentas tras una recta (y en las horquillas), vallas publicitarias por el exterior
--- donde un coche se saldría, y un cojín de protección en el vértice de las horquillas (no se sabe dónde hay guardarraíl:
--- se ponen igual; si hay un muro o un edificio, place() no las pone)
+-- Salidas peligrosas (18-nov, como NGRC Rally Utah): por el exterior de las curvas lentas tras una recta, de las
+-- horquillas y de las que dan a un barranco, una cadena de barreras de plástico rojas (hr_plasticbarrier_red) cada
+-- 1,45 m siguiendo el borde; nunca en la calzada (place/offRoad). Las vallas publicitarias quedan solo en salida y meta
+-- (pesaban demasiado por el tramo).
 M.BARRIER_MIN_STRAIGHT_M = 120
+M.BARRIER_STEP_M = 1.45
+M.BARRIER_MAX = 24
+M.CLIFF_DROP_M = 3.5          -- el terreno a 6 m por fuera, esto por debajo de la carretera: barranco
+local function dropOutside(t, along, side)
+  local ok, d = pcall(function()
+    local la0, lo0 = at(t, along, 0)
+    local la1, lo1 = at(t, along, side)
+    local _, _, z0 = props.ground(la0, lo0)
+    local _, _, z1 = props.ground(la1, lo1)
+    if z0 and z1 then return z0 - z1 end
+  end)
+  return ok and d or 0
+end
+local function barrierChain(t, from, to, sideSign)
+  local n = 0
+  for a2 = math.max(0, from), math.min(t.total, to), M.BARRIER_STEP_M do
+    if n >= M.BARRIER_MAX then break end
+    place('plasticBarrier', t, a2, sideSign * (hwAt(t, a2) + 1.4), 0, 0)
+    n = n + 1
+  end
+end
 function M.barriers(t, notes)
   local prevEnd = 0
   for _, nt in ipairs(notes) do
     if nt.kind == 'corner' then
       local slow = nt.grade == 'hairpin' or nt.grade == 'square' or (type(nt.grade) == 'number' and nt.grade <= 2)
+      local fast = type(nt.grade) == 'number' and nt.grade >= 3
       local straight = nt.at - prevEnd
-      if slow and (straight >= M.BARRIER_MIN_STRAIGHT_M or nt.grade == 'hairpin') and nt.at > 150 and nt.endAt < t.total - 150 then
+      if nt.at > 150 and nt.endAt < t.total - 150 then
         local mid = (nt.at + nt.endAt) / 2
         local sideSign = nt.side == 'right' and -1 or 1
+        local byStraight = slow and (straight >= M.BARRIER_MIN_STRAIGHT_M or nt.grade == 'hairpin')
         M.later(nt.at, function()
           local hw = hwAt(t, mid)
-          fenceLine(t, mid, sideSign * (hw + 2.5), 5, 6)
-          if nt.grade == 'hairpin' then place('cushion', t, mid, sideSign * (hw + 1.6), 0, 0) end
+          local cliff = dropOutside(t, mid, sideSign * (hw + 6)) > M.CLIFF_DROP_M
+          if byStraight or (cliff and (slow or fast)) then
+            barrierChain(t, nt.at - 4, (nt.endAt or nt.at) + 8, sideSign)
+          end
         end)
       end
       prevEnd = nt.endAt or nt.at
@@ -857,11 +928,11 @@ function M.spectators(t, notes)
       local hw = hwAt(t, mid)
       for k = -1, 1 do
         place('specTape', t, mid, sideSign * (hw + 6), 0, k * 5 + 2.5, { noCollision = true })
-        place('specGrid', t, mid, sideSign * (hw + 8), 0, k * 4)
       end
-      -- y unas vallas publicitarias con su público detrás
-      fenceLine(t, mid, sideSign * (hw + 10), 4, 6)
-      tarpLine(t, mid, sideSign * (hw + 12), 3, 6)
+      -- mallas de público del juego (rejillas de 2 m y la central), sin vallas publicitarias por el tramo
+      local grids = { 'specGridB', 'specGridA', 'specGrid', 'specGridA', 'specGridB' }
+      for k, g in ipairs(grids) do place(g, t, mid, sideSign * (hw + 8), 0, (k - 3) * 2.1) end
+      tarpLine(t, mid, sideSign * (hw + 10), 3, 6)
       place('sndCrowd', t, mid, sideSign * (hw + 11), 0, 0)
     end)
     used = used + 1
@@ -891,7 +962,12 @@ function M.closures(t, from, to)
         -- la propia carretera del tramo sale del nodo hacia delante y hacia atrás: esas dos no se cortan nunca (el KMZ va
         -- desplazado de la carretera y en las curvas parecía una calle lateral: cintas en medio del tramo)
         local tdx, tdy = geo.dirAt(t, along)
-        local fwdBest, fwdDot, backBest, backDot = nil, 0.5, nil, 0.5
+        -- 18-nov (Pravia: cortes en mitad del tramo): solo los cruces de verdad (3 o más calles) llevan corte, y la
+        -- carretera del tramo es siempre la mejor alineada hacia delante y hacia atrás, por cerrada que sea la curva
+        local degree = 0
+        for _ in pairs(props.neighbors(name)) do degree = degree + 1 end
+        if degree < 3 then goto nextNode end
+        local fwdBest, fwdDot, backBest, backDot = nil, -2, nil, -2
         local fwdXY, backXY = nil, nil
         for other in pairs(props.neighbors(name)) do
           local on = m.nodes[other]
@@ -904,6 +980,42 @@ function M.closures(t, from, to)
               local dt = (ex * tdx + ey * tdy) / l
               if dt > fwdDot then fwdBest, fwdDot, fwdXY = other, dt, { ox, oy } end
               if -dt > backDot then backBest, backDot, backXY = other, -dt, { ox, oy } end
+            end
+          end
+        end
+        -- cruce donde el tramo gira y otra calle sigue recto (zona que confunde, 18-nov): flecha de dirección en la boca
+        -- de la que sigue recto, mirando a quien llega
+        if fwdXY and backXY and not doneKeys['arrow|' .. name] then
+          local ix, iy = nx - backXY[1], ny - backXY[2]
+          local il = math.sqrt(ix * ix + iy * iy)
+          local fx, fy = fwdXY[1] - nx, fwdXY[2] - ny
+          local fl = math.sqrt(fx * fx + fy * fy)
+          if il > 0.5 and fl > 0.5 then
+            ix, iy, fx, fy = ix / il, iy / il, fx / fl, fy / fl
+            local turn = ix * fx + iy * fy                 -- < 0.8: el tramo gira más de ~37 grados en el cruce
+            if turn < 0.8 then
+              for other in pairs(props.neighbors(name)) do
+                local on = m.nodes[other]
+                if on and other ~= fwdBest and other ~= backBest then
+                  local olat, olon = a.toGeo(on.pos.x, on.pos.y, on.pos.z)
+                  local ox, oy = geo.toLocal(t, olat, olon)
+                  local sx, sy = ox - nx, oy - ny
+                  local sl = math.sqrt(sx * sx + sy * sy)
+                  if sl > 0.5 and (sx * ix + sy * iy) / sl > 0.85 then
+                    doneKeys['arrow|' .. name] = true
+                    local right = (ix * fy - iy * fx) < 0
+                    -- en la esquina entre la calle que sigue recto y la salida del tramo (fuera de las dos calzadas)
+                    local bx2, by2 = sx / sl + fx, sy / sl + fy
+                    local bl2 = math.sqrt(bx2 * bx2 + by2 * by2)
+                    if bl2 < 0.1 then break end
+                    local rw2 = ((node.radius or 3) + 2.5) * 1.5
+                    local ax, ay = nx + bx2 / bl2 * rw2, ny + by2 / bl2 * rw2
+                    local al, ao = offRoad('cornerR', geo.toGeo(t, ax, ay))
+                    if al then props.add(right and 'cornerR' or 'cornerL', al, ao, ix, iy, -90) end
+                    break
+                  end
+                end
+              end
             end
           end
         end
@@ -944,7 +1056,14 @@ function M.closures(t, from, to)
                 local d, placed = math.max(rw + 3, lateral + 4), false
                 while d <= l * 0.85 and not placed do
                   local cx, cy = nx + ex * d, ny + ey * d
-                  if clearOfStage(cx + px * half, cy + py * half) and clearOfStage(cx - px * half, cy - py * half) then
+                  -- y lejos del trazado del tramo (estacas y centro): nunca una cinta cruzando el tramo
+                  local function farFromTrack(qx, qy)
+                    local _, lat2 = geo.project(t, qx, qy, i, 30, 30)
+                    return lat2 > stageR + 2
+                  end
+                  if clearOfStage(cx + px * half, cy + py * half) and clearOfStage(cx - px * half, cy - py * half)
+                    and farFromTrack(cx + px * half, cy + py * half) and farFromTrack(cx - px * half, cy - py * half)
+                    and farFromTrack(cx, cy) then
                     -- el origen en un extremo y el largo (-Y) a lo ancho: Y = perpendicular a la calle
                     local lat0, lon0 = geo.toGeo(t, cx + px * half, cy + py * half)
                     -- props.add mide el giro desde (dx, dy): pasamos la perpendicular como dirección y giro 0
@@ -968,6 +1087,7 @@ function M.closures(t, from, to)
         end
       end
     end
+    ::nextNode::
   end
   if n > 0 then log('I', TAG, ('closures: +%d tapes (%d total)'):format(n, tapeCount)) end
   return n
