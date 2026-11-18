@@ -40,7 +40,8 @@
 3. **UI:** hoja de tiempos y panel con los datos del servidor; tabla de clasificación; aviso «tu salida en 2 min».
 4. **Pruebas:** servidor local de BeamMP con dos clientes y después un servidor real.
 
-## Por decidir con el usuario
-- ¿Servidor propio o de la comunidad? ¿Cuántos jugadores?
-- ¿Intervalo de 1 o 2 min? ¿Rally completo o tramos sueltos?
-- ¿Clasificación global (servicio web) o solo la del servidor?
+## Decidido (18-nov)
+- Servidor propio del usuario, ya en marcha, para **20 jugadores** de momento. Se desarrolla en **beta**.
+- **Salidas cada 1 minuto** por defecto; el admin del servidor puede cambiarlo (comando o archivo de configuración del plugin).
+- **Dos clasificaciones:** la del servidor y una global (para cuando se use en otros servidores).
+- De momento es solo planificación; antes, pulir el generador de tramos.
