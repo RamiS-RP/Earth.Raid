@@ -18,6 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       skip: ${{ steps.ver.outputs.skip }}
     steps:
@@ -36,22 +37,22 @@ jobs:
           case "$TAG" in *-beta*) echo "beta=true" >> "$GITHUB_OUTPUT";; *) echo "beta=false" >> "$GITHUB_OUTPUT";; esac
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "branch" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
-      # Copiloto en español DENTRO del paquete (19-nov: antes era un mod aparte, earth_raid_voice_es.zip, y casi nadie
-      # lo instalaba): voz neuronal de Piper generada de tools/voicepack/es.json, en la carpeta de voicepacks del juego,
-      # que package.sh mete en earth_raid.zip con el resto de lua/. Si falla (sin red, sin modelo), la release sigue
-      # sin la voz y el copiloto usa las del juego.
-      - name: Co-driver voice (Spanish, Piper es_ES-davefx-medium) inside the mod
-        if: steps.ver.outputs.skip != 'true'
+      # Copiloto en español DENTRO del paquete: la voz (Piper, es_ES-davefx-medium, generada de tools/voicepack/es.json)
+      # está guardada en el repositorio (lua/ge/extensions/gameplay/rally/compositors/voicepacks/raidearth_es_davefx):
+      # la publicación no depende de descargar el modelo (19-nov: esa descarga dejó colgada una publicación).
+      # Solo se vuelve a generar si la carpeta no está (p. ej. tras cambiar es.json y borrarla), con tiempo límite.
+      - name: Co-driver voice (only if it is not in the repository)
+        if: steps.ver.outputs.skip != 'true' && hashFiles('lua/ge/extensions/gameplay/rally/compositors/voicepacks/raidearth_es_davefx/voicepack.json') == ''
         continue-on-error: true
+        timeout-minutes: 8
         run: |
           sudo apt-get update -y && sudo apt-get install -y ffmpeg
           pip install piper-tts
           B=https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium
-          curl -fsSL -o /tmp/es.onnx "$B/es_ES-davefx-medium.onnx"
-          curl -fsSL -o /tmp/es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
+          curl -fsSL --retry 3 --max-time 180 -o /tmp/es.onnx "$B/es_ES-davefx-medium.onnx"
+          curl -fsSL --retry 3 --max-time 60 -o /tmp/es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
           python tools/voicepack/make_voicepack.py --phrases tools/voicepack/es.json --engine piper --model /tmp/es.onnx \
             --id raidearth_es_davefx --persona "Copiloto Raid.Earth" --dialect es-ES --out .
-          curl -fsSL -o lua/ge/extensions/gameplay/rally/compositors/voicepacks/raidearth_es_davefx/MODEL_CARD.txt "$B/MODEL_CARD" || true
       - name: Package
         if: steps.ver.outputs.skip != 'true'
         run: sh tools/package.sh earth_raid.zip

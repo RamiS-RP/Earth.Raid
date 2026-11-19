@@ -1,0 +1,18 @@
+{
+  "persona": "Copiloto Raid.Earth",
+  "language": "ui.options.rally.languages.spanish.name",
+  "dialect": "es-ES",
+  "compositorStyle": "english/enthusiast",
+  "notebooks": [
+    "enthusiast",
+    "structured"
+  ],
+  "styleLabel": "ui.options.rally.styles.enthusiast.name",
+  "styleDetailLevel": 50,
+  "enableSpeedScaling": true,
+  "codriverTimingOffsetSeconds": 0.0,
+  "linkWordGapMs": 0,
+  "cornerGapMs": -30,
+  "phraseGapMs": 0,
+  "pacenoteGapMs": 200
+}
