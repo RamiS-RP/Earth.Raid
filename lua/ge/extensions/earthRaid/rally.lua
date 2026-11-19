@@ -433,8 +433,30 @@ local function hud(p)
     newBest = R.newBest, startName = R.it.startName })
 end
 
+-- En espera en la asistencia (la pantalla de inicio, antes de Iniciar): el reloj no corre; al soltar, la hora de
+-- salida (TC0) vuelve a ser dos minutos después de ahora y el horario se recalcula desde ahí
+function M.hold(on)
+  if not R then return end
+  if on then R.hold = true return end
+  if not R.hold then return end
+  R.hold = nil
+  local tm = os.date('*t')
+  local now = tm.hour * 3600 + tm.min * 60 + tm.sec
+  R.clock = now
+  R.startMin = math.floor(now / 60) + 2
+  schedule(R.it, R.startMin)
+  R.rows[1].due = R.startMin * 60
+  local i = 2
+  for _, item in ipairs(R.it.items) do
+    if R.rows[i] then R.rows[i].due = item.dueMin * 60 end
+    i = i + (item.stage and 2 or 1)
+  end
+end
+function M.held() return R ~= nil and R.hold == true end
+
 function M.update(dtSim, dtReal)
   if not R then return end
+  if R.hold then return end
   R.clock = R.clock + (dtSim or 0)
   local a = api()
   local p = a and a.ready and a.ready() and a.pose() or nil

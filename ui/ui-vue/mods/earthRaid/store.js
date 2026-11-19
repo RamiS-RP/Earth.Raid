@@ -4,8 +4,8 @@ import { ref } from "vue"
 
 export const state = ref(null)
 
-export function engineLua(script) {
-  if (window.bngApi && window.bngApi.engineLua) window.bngApi.engineLua(script)
+export function engineLua(script, cb) {
+  if (window.bngApi && window.bngApi.engineLua) (cb ? window.bngApi.engineLua(script, cb) : window.bngApi.engineLua(script))
 }
 
 // call("uiSelect", "id") -> earthRaid_main.uiSelect("id")
@@ -57,7 +57,7 @@ const TEXT = {
     early: "pronto", normal: "normal", late: "tarde",
     on: "Activado", off: "Desactivado", tries: "Intentos", best: "Mejor tiempo", last: "Últimos intentos",
     time: "Tiempo", penalty: "Penalización", split: "Parcial", vehicle: "Vehículo", noRuns: "Aún no has corrido este tramo.",
-    pickStage: "Elige un tramo", selected: "Seleccionado", source: "Fuente",
+    pickStage: "Elige un tramo", selected: "Seleccionado", source: "Fuente", stageSummary: "Resumen del tramo", distance: "Distancia", roadLbl: "Carretera", preNote: "El vehículo y la hora del día se pueden cambiar desde Conducción libre antes de iniciar.", map: "Mapa", mapHelp: "Tramos en rojo (el elegido en naranja), enlaces en azul. Pulsa un tramo del mapa para elegirlo.",
     rule1: "Ve a la salida siguiendo el GPS. Al llegar, coloca el morro en la línea verde y detente.",
     rule3: "Cuenta atrás de 10 s con el reloj de salida. Arrancar antes: salida en falso, +10 s.",
     rule4: "Recuperar el coche (R) en el tramo añade 5 segundos.",
@@ -107,7 +107,7 @@ const TEXT = {
     early: "early", normal: "normal", late: "late",
     on: "On", off: "Off", tries: "Attempts", best: "Best time", last: "Last attempts",
     time: "Time", penalty: "Penalty", split: "Split", vehicle: "Vehicle", noRuns: "You have not driven this stage yet.",
-    pickStage: "Pick a stage", selected: "Selected", source: "Source",
+    pickStage: "Pick a stage", selected: "Selected", source: "Source", stageSummary: "Stage summary", distance: "Distance", roadLbl: "Road", preNote: "The vehicle and the time of day can be changed from Freeroam before starting.", map: "Map", mapHelp: "Stages in red (the chosen one in orange), road sections in blue. Click a stage on the map to pick it.",
     rule1: "Follow the GPS to the start. Put the nose on the green line and stop.",
     rule3: "10 s countdown on the start clock. Moving early: false start, +10 s.",
     rule4: "Recovering the car (R) on a stage adds 5 seconds.",

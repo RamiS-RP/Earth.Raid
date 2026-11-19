@@ -545,7 +545,7 @@ local function buildModel()
     settings = settings.get(), voicepacks = settings.voicepacks(), today = os.date('%Y-%m-%d'),
     racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(), recMods = M.recommendedState(),
     importDir = M.IMPORT_DIR, packDirs = M.PACK_DIRS, imports = U.importOpen and M.importsModel() or nil,
-    importOpen = U.importOpen or false }
+    importOpen = U.importOpen or false, pre = S.pre and { kind = S.pre.kind, eventId = S.pre.eventId, stageId = S.pre.stageId, reverse = S.pre.reverse } or nil }
   local q = lower(U.q)
   local seen = { country = {}, type = {}, category = {}, surface = {}, status = {} }
   local f = U.filters
@@ -597,6 +597,11 @@ local function buildModel()
         hasReverse = M.hasReverse(full, s) }
     end
     sel.ssCount = n
+    -- los enlaces, para el mapa de la ficha (línea azul discontinua)
+    sel.liaisons = {}
+    for _, l in ipairs(full.liaisons or {}) do
+      if type(l.path) == 'table' and #l.path >= 2 then sel.liaisons[#sel.liaisons + 1] = { name = l.name, outline = outline(l.path) } end
+    end
     -- el rally completo: el orden de paso y lo que se tarda (para elegir desde qué tramo empezar)
     local okI, it = pcall(rally.itinerary, full, nil, tonumber(settings.get().liaisonKmh) or 60)
     if okI and it then
@@ -626,6 +631,11 @@ function M.publishState()
   if ok then guihooks.trigger('EarthRaidState', model) else log('W', TAG, 'model: ' .. tostring(model)) end
 end
 
+-- el coche quieto (la pantalla de inicio) / suelto
+local function freezeCar(on)
+  local v = getPlayerVehicle and getPlayerVehicle(0) or be:getPlayerVehicle(0)
+  if v then pcall(function() v:queueLuaCommand('controller.setFreeze(' .. (on and 1 or 0) .. ')') end) end
+end
 local function navigate(route)
   local r = rawget(_G, 'ui_router')
   if r and r.navigate then return pcall(r.navigate, route) end
@@ -977,6 +987,7 @@ function M.uiStart(eventId, stageId, reverse, graphReady)
 end
 
 function M.uiCancelStage()
+  if S.pre then S.pre = nil freezeCar(false) end
   if loader.active() then pcall(loader.cancel) stage.holdJobs(false) end
   if rally.active() then rally.stop() else stage.stop() end
   M.publishState()
@@ -991,9 +1002,9 @@ function M.uiRestartStage()
   local rev = base ~= sid
   M.uiCancelStage()
   local keep = M.PLAY_TELEPORT_M
-  M.PLAY_TELEPORT_M = 0
+  M.PLAY_TELEPORT_M, S.noPre = 0, true
   pcall(M.uiPlay, ev, base, rev)
-  M.PLAY_TELEPORT_M = keep
+  M.PLAY_TELEPORT_M, S.noPre = keep, nil
 end
 
 -- Rally completo: reiniciar desde el último control horario (la pasada en curso) o desde el principio
@@ -1036,7 +1047,11 @@ function M.uiPlay(eventId, stageId, reverse)
   local lat, lon = nil, nil
   if a.position then lat, lon = a.position() end
   local far = not lat or catalog.dist(lat, lon, s.start[1], s.start[2]) > M.PLAY_TELEPORT_M
-  if not far then M.uiStart(eventId, stageId, reverse) return end
+  if not far then
+    M.uiStart(eventId, stageId, reverse)
+    if stage.state() then M.preStart('stage', eventId, stageId, reverse) end
+    return
+  end
   -- lejos: primero el viaje y las carreteras de la zona; el tramo se monta cuando el grafo está cargado allí (18-nov:
   -- así la salida y el control horario se validan contra carreteras de verdad antes de montarse)
   local t = geo.track(clean.stage(s))
@@ -1086,7 +1101,9 @@ function M.uiPlay(eventId, stageId, reverse)
       stage.holdJobs(false)
       local cur = stage.state()
       if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
-      M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8)
+      -- la pantalla de inicio (resumen, normas, ajustes, Iniciar); el coche espera congelado
+      if cur then M.preStart('stage', eventId, stageId, reverse)
+      else M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
     end })
   if not ok then
     stage.holdJobs(false)
@@ -1132,14 +1149,60 @@ function M.uiStartRally(eventId, fromRun)
         local tw = first and first.stage and first.stage.start
         if S.box then M.placeAt(S.box.lat, S.box.lon, tw and tw[1] or S.box.faceLat, tw and tw[2] or S.box.faceLon)
         else M.placeOnRoad(start[1], start[2]) end
-      end })
-    M.toast((es and 'Rally completo: vas a la asistencia. Sales a las ' or 'Full rally: going to the service park. You leave at ')
-      .. rally.hhmm(rs.startMin * 60) .. (es and ' (Mayús+E: salir ya).' or ' (Shift+E: leave now).'), 10)
+      end,
+      done = function() if rally.active() then M.preStart('rally', eventId) end end })
+    rally.hold(true)
+    M.uiClose()
   else
-    M.toast((es and 'Rally completo: sales de la asistencia a las ' or 'Full rally: you leave the service park at ')
-      .. rally.hhmm(rs.startMin * 60) .. (es and ' (Mayús+E: salir ya).' or ' (Shift+E: leave now).'), 10)
+    M.preStart('rally', eventId)
+  end
+end
+
+-- ---- la pantalla de inicio (como la del modo rally del juego): tras la carga, con el coche parado en el box o antes
+-- del control, el resumen, las normas y los ajustes; Iniciar suelta el coche. Petición del usuario, 19-nov: "los
+-- Ajustes quitarlos de este menú y ponerlos en otro menú que aparece después de la pantalla de carga".
+function M.preStart(kind, eventId, stageId, reverse)
+  if S.noPre then return end
+  S.pre = { kind = kind, eventId = eventId, stageId = stageId, reverse = reverse == true }
+  freezeCar(true)
+  if kind == 'rally' then rally.hold(true) end
+  U.sel, U.open = eventId, true
+  navigate('earthRaidStart')
+  M.publishState()
+end
+-- Iniciar
+function M.uiPreGo()
+  local p = S.pre
+  if not p then M.uiClose() return end
+  S.pre = nil
+  freezeCar(false)
+  local es = spanish()
+  if p.kind == 'rally' then
+    local rs = rally.state()
+    -- la media de los enlaces se puede haber cambiado en la pantalla: el horario se rehace con ella
+    if rs and rs.opt and tonumber(rs.opt.liaisonKmh) ~= tonumber(settings.get().liaisonKmh) then
+      local full = M.event(p.eventId)
+      if full and rally.start(full, rs.fromRun, rs.hooks) then rally.state().lang = es and 'es' or 'en' rally.hold(true) end
+      rs = rally.state()
+    end
+    rally.hold(false)
+    if rs then
+      M.toast((es and 'Rally completo: sales de la asistencia a las ' or 'Full rally: you leave the service park at ')
+        .. rally.hhmm(rs.startMin * 60) .. (es and ' (Mayús+E: salir ya).' or ' (Shift+E: leave now).'), 10)
+    end
+  else
+    M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8)
   end
   M.uiClose()
+end
+-- la flecha de volver: se deja el tramo (o el rally) y se vuelve a la ficha del evento
+function M.uiPreBack()
+  if S.pre then S.pre = nil freezeCar(false) M.uiCancelStage() end
+  M.uiOpen()
+end
+-- la pantalla se cerró sin Iniciar (Esc): como volver, sin abrir el menú
+function M.uiPreLeft()
+  if S.pre then S.pre = nil freezeCar(false) M.uiCancelStage() end
 end
 function M.uiSkipLiaison()
   local ok = rally.skipLiaison()

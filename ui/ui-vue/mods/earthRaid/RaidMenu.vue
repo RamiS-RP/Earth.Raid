@@ -147,51 +147,12 @@
               <p class="dim small">{{ t("source") }}: {{ sel.source }}
                 <a v-if="sel.link" class="ilink" @click="call('uiOpenLink', sel.link)">{{ sel.link }}</a></p>
             </div>
-            <div class="col">
-              <h2 class="sect"><span class="slash small"></span>{{ t("settings") }}</h2>
-              <div class="set-label">{{ t("copilot") }}</div>
-              <div class="selector">
-                <button @click="cycleVoice(-1)">‹</button>
-                <div class="sel-val"><b>{{ voice.name }} - {{ voice.style }}</b><small>{{ voice.dialect }}<template v-if="voice.partial"> · {{ t("vpPartial") }}</template></small>
-                  <div class="dots"><span v-for="v in voices" :key="v.id" :class="{ on: v.id === voice.id }"></span></div>
-                </div>
-                <button @click="cycleVoice(1)">›</button>
+            <div class="col mapcol">
+              <h2 class="sect"><span class="slash small"></span>{{ t("map") }}</h2>
+              <div class="mapbox">
+                <StageMap :stages="stages" :liaisons="list(sel.liaisons)" :pick-id="mapPick" :run-id="runningId" :plate="plate" :lang="s.lang" @pick="id => { mode = 'stage'; pickId = id }" />
               </div>
-              <div class="set-label">{{ t("liaisonKmh") }}</div>
-              <div class="chips-row">
-                <button v-for="v in [40, 50, 60, 80, 100]" :key="v" class="chip" :class="{ on: set.liaisonKmh === v }" @click="call('uiSetSetting', 'liaisonKmh', v)">{{ v }} km/h</button>
-              </div>
-              <div class="set-label">{{ t("notesLead") }}</div>
-              <div class="chips-row">
-                <button v-for="o in [[6, 'early'], [4.5, 'normal'], [3, 'late']]" :key="o[0]" class="chip" :class="{ on: set.notesLeadS === o[0] }" @click="call('uiSetSetting', 'notesLeadS', o[0])">{{ t(o[1]) }}</button>
-              </div>
-              <div class="set-label">{{ t("notesSize") }}</div>
-              <div class="chips-row">
-                <button v-for="v in [0.55, 0.72, 0.9, 1.1]" :key="v" class="chip" :class="{ on: set.notesScale === v }" @click="call('uiSetSetting', 'notesScale', v)">{{ Math.round(v * 100) }} %</button>
-              </div>
-              <div class="set-label">{{ t("notesAlpha") }}</div>
-              <div class="chips-row">
-                <button v-for="v in [0.5, 0.72, 0.9, 1]" :key="v" class="chip" :class="{ on: set.notesOpacity === v }" @click="call('uiSetSetting', 'notesOpacity', v)">{{ Math.round(v * 100) }} %</button>
-              </div>
-              <div v-for="k in toggles" :key="k" class="toggle-row" @click="toggle(k)">
-                <span>{{ t(k) }}</span>
-                <span class="toggle" :class="{ on: set[k] }"><span class="knob"></span></span>
-              </div>
-              <div v-if="s && s.racingLineMod" class="toggle-row" @click="toggle('racingLine')">
-                <span>{{ t("racingLine") }}</span>
-                <span class="toggle" :class="{ on: set.racingLine }"><span class="knob"></span></span>
-              </div>
-              <div class="set-label">{{ t("recMods") }}</div>
-              <p class="recmod dim">{{ t("recModsHelp") }}</p>
-              <p v-for="r in (s && s.recMods) || []" :key="r.id" class="recmod">
-                <b>{{ r.name }}</b> — {{ t("rec_" + r.id) }}
-                <span :class="r.active ? 'ok' : 'warn'">· {{ r.active ? t("recActive") : r.installed ? t("recInactive") : t("recMissing") }}</span>
-                <a v-if="!r.installed" href="#" @click.prevent="call('uiOpenLink', r.url)">{{ t("recDownload") }}</a>
-              </p>
-              <div class="toggle-row" @click="toggle('recModsAuto')">
-                <span>{{ t("recModsAuto") }}</span>
-                <span class="toggle" :class="{ on: set.recModsAuto !== false }"><span class="knob"></span></span>
-              </div>
+              <p class="dim small maphelp">{{ t("mapHelp") }}</p>
             </div>
           </div>
 
@@ -351,6 +312,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useEvents } from "@/services/events"
 import RouteArt from "./RouteArt.vue"
+import StageMap from "./StageMap.vue"
 import { state, call, onState, typing, list, t, dist, km, clock, flag, dates } from "./store.js"
 
 const events_ = useEvents()
@@ -399,10 +361,18 @@ const rallyHere = computed(() => !!(s.value && s.value.rallyActive && sel.value 
 watch(rallyHere, v => { if (v) mode.value = "rally" }, { immediate: true })
 function startRally() { if (sel.value) call("uiStartRally", sel.value.id, fromRun.value || "nil") }
 
-const set = computed(() => (s.value && s.value.settings) || {})
-const voices = computed(() => list(s.value && s.value.voicepacks))
-const voice = computed(() => voices.value.find(v => v.id === set.value.voicepack) || voices.value[0] || { name: "—" })
-const toggles = ["raceHud", "visualNotes", "voice", "notesSafe", "falseStart", "recoveryPenalty", "noTraffic", "closures", "arrows", "cautions", "ambience", "sounds"]
+// el tramo resaltado en el mapa: el elegido (tramo suelto) o el de la pasada desde la que se empieza (rally)
+const mapPick = computed(() => {
+  if (mode.value === "rally") {
+    const it = itinerary.value.find(x => (fromRun.value ? x.run === fromRun.value : x === itinerary.value[0]))
+    return (it && it.stageId) || null
+  }
+  return pick.value ? pick.value.id : null
+})
+const runningId = computed(() => {
+  const a = s.value && s.value.stageActive
+  return a && sel.value && a.eventId === sel.value.id ? String(a.stageId).replace(/R$/, "") : null
+})
 
 function typed() { if (timer) clearTimeout(timer); timer = setTimeout(() => call("uiSearch", q.value), 200) }
 function clearQ() { q.value = ""; call("uiSearch", "") }
@@ -482,13 +452,6 @@ function saveMeta(i) { typing(false); call("uiImportMeta", i.key, JSON.stringify
 function openImported(i) { call("uiImportOpen", false); open(i.id) }
 function close() { call("uiClose") }
 function escape() { if (s.value && s.value.importOpen) call("uiImportOpen", false); else if (sel.value) back(); else close() }
-function toggle(k) { call("uiSetSetting", k, !set.value[k]) }
-function cycleVoice(dir) {
-  const vs = voices.value
-  if (!vs.length) return
-  const i = Math.max(0, vs.findIndex(v => v.id === voice.value.id))
-  call("uiSetSetting", "voicepack", vs[(i + dir + vs.length) % vs.length].id)
-}
 function plate(st) {
   const r = list(st.runs)
   return r.length ? "SS" + r.join("/") : "SD"
@@ -622,6 +585,9 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .tab.on { background: var(--or); }
 .rbody { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; padding: 0 16px; }
 .rbody.one { grid-template-columns: 1fr; }
+.mapcol { position: sticky; top: 0; align-self: start; display: flex; flex-direction: column; }
+.mapbox { height: 60vh; min-height: 380px; }
+.maphelp { margin: 6px 0 0; }
 .bul { margin: 4px 0 10px; padding-left: 20px; line-height: 1.55; }
 .stages-bul b { font-weight: 800; }
 .set-label { font-weight: 700; margin: 6px 0; }

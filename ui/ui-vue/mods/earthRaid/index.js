@@ -15,12 +15,20 @@ async function registerRoute() {
   try {
     if (!window.bngRoutes || !lua.extensions.ui_router_routeManager) return
     const RaidMenu = (await import("./RaidMenu.vue")).default
+    const StartScreen = (await import("./StartScreen.vue")).default
     const routes = [
       {
         path: "/earth-raid",
         name: "earthRaid",
         component: RaidMenu,
         meta: { luaRoute: { title: "Raid.Earth", backTarget: "play" } },
+      },
+      // la pantalla de inicio tras la carga (resumen, normas, ajustes, Iniciar); atrás: la ficha del evento
+      {
+        path: "/earth-raid-start",
+        name: "earthRaidStart",
+        component: StartScreen,
+        meta: { luaRoute: { title: "Raid.Earth", backTarget: "earthRaid" } },
       },
     ]
     window.bngRoutes.add([{ path: SOURCE, routes }])
