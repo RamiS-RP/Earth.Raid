@@ -283,6 +283,13 @@ function M.event(id)
         data._base = data._base or e._base or '/earthRaid/'
         data.logo = data.logo or e.logo
         data.description = data.description or e.description
+        -- tramos retirados del paquete (disabled: superespeciales sobre explanadas que el mapa no tiene como
+        -- carretera; no cumplen la norma de las líneas en la calzada)
+        if type(data.stages) == 'table' then
+          local keep = {}
+          for _, st in ipairs(data.stages) do if not st.disabled then keep[#keep + 1] = st end end
+          data.stages = keep
+        end
         S.loaded[id] = data
       end
       return S.loaded[id]
