@@ -176,19 +176,20 @@ function M.run(list)
     end
   end
   A = { list = list, i = 1, step = 'begin', t = 0, results = {}, startedAt = os.date('%Y-%m-%d %H:%M') }
-  pcall(function() if simTimeAuthority.getPause() then simTimeAuthority.pause(false) end end)
   pcall(function() mn.uiCancelStage() end)
   log('I', TAG, ('audit: %d stages'):format(#list))
   return true
 end
 function M.stop() if A then A.done = true save() end A = nil end
+function M.onTeleported() if A then A.teleported = true end end
 function M.active() return A ~= nil end
-function M.state() return A and { i = A.i, n = #A.list, step = A.step, results = #A.results, unpaused = A.unpaused } or nil end
+function M.state() return A and { i = A.i, n = #A.list, step = A.step, results = #A.results, pausedS = A.pausedS } or nil end
 
 function M.update(dt)
   if not A then return end
-  -- en pausa el juego no coloca el coche ni carga ni monta: la auditoría la quita y no cuenta ese tiempo (19-nov)
-  if simTimeAuthority.getPause() then simTimeAuthority.pause(false) A.unpaused = (A.unpaused or 0) + 1 return end
+  -- BeamNG.Earth pausa el juego mientras carga el terreno (depende del PC y la conexión): ese tiempo no cuenta y no
+  -- se toca nada (19-nov: quitar la pausa dejaba el coche cayendo por el mapa en bucle)
+  if simTimeAuthority.getPause() then A.pausedS = (A.pausedS or 0) + (dt or 0) return end
   A.t = A.t + (dt or 0)
   local mn, st = main(), stage()
   local item = A.list[A.i]
@@ -224,8 +225,6 @@ function M.update(dt)
     elseif A.t > 240 then A.res.problems[#A.res.problems + 1] = 'loading timed out' finishStage(A.res) return end
   elseif A.step == 'retryWait' then
     if A.t < 15 then return end
-    -- con el juego en pausa BeamNG.Earth no termina de colocar el coche y rechaza los viajes (19-nov)
-    pcall(function() if simTimeAuthority.getPause() then simTimeAuthority.pause(false) end end)
     local keep = mn.PLAY_TELEPORT_M
     mn.PLAY_TELEPORT_M = 0
     pcall(mn.uiPlay, item[1], item[2], item[3])
@@ -276,25 +275,31 @@ function M.update(dt)
     local fla, flo = geo.toGeo(t, fx, fy)
     A.finishLL = { fla, flo }
     st.holdJobs(true)
-    if not teleport(fla, flo) then A.res.problems[#A.res.problems + 1] = 'could not travel to the finish' finishStage(A.res) return end
-    A.step, A.t = 'finishSettle', 0
-  elseif A.step == 'finishSettle' then
-    -- el terreno tarda en cargar y el coche cae por debajo del mapa: mientras esté hundido, otra vez al suelo cada 5 s
-    A.regroundT = (A.regroundT or 0) + (dt or 0)
-    if A.regroundT >= 5 then
-      A.regroundT = 0
-      local v = be:getPlayerVehicle(0)
-      local x, y, z = props.ground(A.finishLL[1], A.finishLL[2])
-      if v and z then
-        local p = v:getPosition()
-        if p.z < z - 4 or p.z > z + 30 or (p.x - x) ^ 2 + (p.y - y) ^ 2 > 60 * 60 then teleport(A.finishLL[1], A.finishLL[2]) end
+    -- el viaje lo hace BeamNG.Earth (carga el terreno, pausa mientras tanto y deja el coche en el suelo)
+    A.teleported, A.tpTries = false, 0
+    A.step, A.t = 'finishTp', 0
+  elseif A.step == 'finishTp' then
+    local a = api()
+    if not A.tpSent then
+      local ok, err = a.teleport(A.finishLL[1], A.finishLL[2], 'audit')
+      if ok then A.tpSent = true A.t = 0
+      else
+        A.tpTries = A.tpTries + 1
+        if A.tpTries > 40 then A.res.problems[#A.res.problems + 1] = 'could not travel to the finish: ' .. tostring(err) finishStage(A.res) return end
+        A.t = -3   -- otra vez en 3 s
       end
+      return
     end
-    if A.t < M.SETTLE_S then return end
+    if (A.teleported and A.t > 2 and a.ready and a.ready()) or A.t > 180 then
+      A.tpSent = nil
+      A.step, A.t = 'finishSettle', 0
+    end
+  elseif A.step == 'finishSettle' then
+    if A.t < 8 then return end
     if st.jobsHeld then
       -- la meta se monta cuando el grafo de carreteras está cargado allí (como cuando se llega conduciendo)
       local S0 = st.state()
-      if S0 and A.t < M.SETTLE_S + 60 then
+      if S0 and A.t < 60 then
         local t0 = S0.track
         local fx0, fy0 = geo.at(t0, t0.total)
         local fla0, flo0 = geo.toGeo(t0, fx0, fy0)
@@ -307,7 +312,7 @@ function M.update(dt)
     local a = api()
     local pl, po = a.position()
     local left = pl and dressing.pendingJobsNear(pl, po) or 0
-    if left > 0 and A.t < M.SETTLE_S + M.JOBS_S then return end
+    if left > 0 and A.t < M.JOBS_S then return end
     -- la meta puede esperar a las carreteras (finishLater se repite): hasta que haya carteles de meta, o 150 s
     local S1 = st.state()
     if S1 and not A.built then
@@ -322,7 +327,7 @@ function M.update(dt)
           if gx1 and (q.x - gx1) ^ 2 + (q.y - gy1) ^ 2 < 450 * 450 then seenF = true break end
         end
       end
-      if not seenF and A.t < M.SETTLE_S + M.JOBS_S + 150 then return end
+      if not seenF and A.t < M.JOBS_S + 150 then return end
       A.built = A.t
     end
     if not A.built then A.built = A.t end
@@ -355,7 +360,6 @@ function M.update(dt)
     A.res.finishOnRoad = #onRoad
     A.res.after = t.after and math.floor(t.after.total) or 0
     A.res.finishCut = t.finishCut == true
-    A.regroundT = nil
     finishStage(A.res)
   end
 end

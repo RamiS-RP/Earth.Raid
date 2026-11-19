@@ -560,6 +560,11 @@ function M.start(ev, st, info)
     if (okC and verdict == 'unknown') or (okF and vF == 'unknown') then
       -- las carreteras tras la meta aún no están cargadas: la meta se monta cuando lo estén (si el coche no está ya
       -- encima), hasta 90 s (18-nov: el STOP de Rey Silo se montaba en el monte por montarse antes de tiempo)
+      -- (con el juego en pausa por la carga de BeamNG.Earth no se cuenta el intento)
+      if simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause() then
+        dressing.later(t.total, finishLater, t, 1.5)
+        return
+      end
       S.finishWait = (S.finishWait or 0) + 1
       local far = true
       pcall(function()

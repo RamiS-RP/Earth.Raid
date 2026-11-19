@@ -8,7 +8,9 @@ local TAG = 'earthRaid'
 local props = require('earthRaid/props')
 
 M.BEFORE_TC_M = 100
-M.TIMEOUT = { tp = 40, roads = 20, dress = 25, settle = 2 }
+-- (depende del PC y de la conexión del jugador: las carreteras pueden tardar; con el juego en pausa por la carga de
+-- BeamNG.Earth el tiempo no corre)
+M.TIMEOUT = { tp = 90, roads = 75, dress = 40, settle = 2 }
 M.ROAD_OK_M = 15             -- una carretera a menos de esto de cada punto: la zona está cargada
 M.PUMP_MS = 12               -- presupuesto para crear objetos por fotograma durante la carga
 
@@ -67,6 +69,7 @@ function M.begin(spec)
 end
 
 function M.active() return L ~= nil end
+function M.roadsOk() return L ~= nil and L.roadsOk == true end
 function M.onTeleported() if L then L.teleported = true L.tpT = 0 end end
 
 local function nextStep(s)
@@ -101,6 +104,8 @@ function M.cancel() if L then L.done = nil finish('cancelled') end end
 
 function M.update(dt)
   if not L then return end
+  -- BeamNG.Earth pausa el juego mientras carga el terreno tras un viaje: ese tiempo no cuenta para los plazos
+  if simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause() and L.step ~= 'tp' then return end
   L.t = L.t + (dt or 0)
   L.sendT = (L.sendT or 0) + (dt or 0)
   if L.sendT >= 0.2 then L.sendT = 0 send() end
@@ -118,6 +123,7 @@ function M.update(dt)
     L.frac = total > 0 and okN / total or 1
     if okN == total or L.t > M.TIMEOUT.roads then
       if okN < total then log('W', TAG, ('loading: roads %d/%d after %.0f s'):format(okN, total, L.t)) end
+      L.roadsOk = okN == total
       nextStep('dress')
     end
   elseif L.step == 'dress' then

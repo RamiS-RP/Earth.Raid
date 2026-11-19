@@ -1049,7 +1049,8 @@ function M.uiPlay(eventId, stageId, reverse)
     near = { { s.start[1], s.start[2] } },
     dress = function()
       if not stage.state() then
-        M.uiStart(eventId, stageId, reverse, true)
+        -- (si las carreteras no llegaron a tiempo, la salida no se valida contra un grafo vacío)
+        M.uiStart(eventId, stageId, reverse, loader.roadsOk())
         if not stage.state() then return 0 end
         return 1
       end
@@ -1436,6 +1437,7 @@ function M.onBeamNGEarthTeleported()
   S.timer = M.CHECK_S
   if S.afterTp then S.afterTp.t = 0 end
   loader.onTeleported()
+  pcall(audit.onTeleported)
 end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
