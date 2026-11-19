@@ -28,6 +28,7 @@ local TAG = 'earthRaid'
 
 M.STAGING_S = 60
 M.COUNTDOWN_S = 10
+M.PRECOUNT_MAX_S = 1.5    -- el aviso de antes de la cuenta atrás, como mucho esto de largo
 M.FALSE_START_S = 10
 M.STAGING_PENALTY_S = 10
 M.RECOVERY_S = 5
@@ -1116,7 +1117,10 @@ function M.update(dtSim, dtReal)
     if S.stagingLeft <= M.COUNTDOWN_S and S.staged then
       S.phase, S.countdown, S.noseAtArm, S.saidCount = 'countdown', M.COUNTDOWN_S, nose, {}
       audio.clear()
-      if S.opt.voice then audio.say({ 'system_precountdown' }) end
+      -- «preparados»: solo si es un aviso corto. En algún voicepack grabado (Xpectro99: 4,3 s) esa grabación ya trae
+      -- su propia cuenta atrás, que sonaba a destiempo y se cortaba al llegar la de verdad (19-nov)
+      local preLen = audio.length('system_precountdown')
+      if S.opt.voice and preLen and preLen <= M.PRECOUNT_MAX_S then audio.say({ 'system_precountdown' }) end
     elseif S.stagingLeft <= 0 then
       -- sin colocar a la hora: penalización y el minuto de espera vuelve a empezar
       penalise('staging', M.STAGING_PENALTY_S)

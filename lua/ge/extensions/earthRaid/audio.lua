@@ -72,6 +72,12 @@ function M.say(bases, front)
   end
 end
 
+-- lo que dura una grabación (s), o nil si el voicepack no la tiene
+function M.length(base)
+  local f, len = M.file(base)
+  return f and len or nil
+end
+
 function M.clear() queue = {} playing = nil playUntil = 0 end
 
 function M.update(dtReal)

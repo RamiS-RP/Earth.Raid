@@ -26,6 +26,11 @@ M.EXIT_ROAD_M = 70   -- la carretera de salida, como mucho a esta distancia del 
 M.BUILDINGS_WAIT_S = 5
 M.PAIR_M = 6.2       -- entre boxes (una carpa 3x6 por coche, girada 90°: el coche queda a lo largo)
 M.MAX_BOXES = 4      -- (a futuro: según los jugadores inscritos en el evento)
+M.BIG_EXTRA = 4      -- en un aparcamiento grande (caben todos), estos boxes más, para llenar (19-nov)
+M.NO_PARK_M = 45     -- sin coches de tráfico aparcados a menos de esto de un box (19-nov: solo los de rally)
+-- El box, como en los rallies del juego (19-nov, colocado a mano por el usuario con el editor): el coche entra de
+-- morro y sale marcha atrás; los extintores al fondo de la carpa, no delante cortando el paso
+M.EXT_BACK_M = 2.0
 M.BUDGET_MS = 6
 
 local function terrainZ(x, y)
@@ -499,7 +504,7 @@ function M.active(h) return h ~= nil and h.phase ~= 'done' end
 -- asfalto pintado, nunca en el talud del borde), orientados como las plazas
 -- Coches de rally aparcados en los boxes vecinos al del jugador (19-nov, ambiente): { [índice de box] = {modelo, config} }
 -- Son vehículos de verdad solo cerca del coche (phys.lua): como mucho M.PARK_CARS.
-M.PARK_CARS = 2
+M.PARK_CARS = 2       -- (3 con la fila grande)
 M.surface = 'asphalt'
 function M.parkedCars(n, mine)
   local out = {}
@@ -507,7 +512,7 @@ function M.parkedCars(n, mine)
   if not okS or st.ambience == false or st.parkCars == false then return out end
   local slots = {}
   for _, i in ipairs({ mine - 1, mine + 1, mine - 2, mine + 2 }) do
-    if i >= 1 and i <= n and #slots < M.PARK_CARS then slots[#slots + 1] = i end
+    if i >= 1 and i <= n and #slots < (n > M.MAX_BOXES and M.PARK_CARS + 1 or M.PARK_CARS) then slots[#slots + 1] = i end
   end
   local okP, list = pcall(function() return require('earthRaid/phys').pickRallyCars(#slots, M.surface) end)
   if not okP then return out end
@@ -547,7 +552,8 @@ local function buildOnStalls(site)
     local al = (p[1] - site.x) * hx + (p[2] - site.y) * hy
     if al - lastAlong >= M.PAIR_M then picks[#picks + 1] = p lastAlong = al end
   end
-  while #picks > M.MAX_BOXES do table.remove(picks, #picks % 2 == 0 and 1 or #picks) end
+  local maxBoxes = #picks >= M.MAX_BOXES + M.BIG_EXTRA and M.MAX_BOXES + M.BIG_EXTRA or M.MAX_BOXES
+  while #picks > maxBoxes do table.remove(picks, #picks % 2 == 0 and 1 or #picks) end
   if #picks == 0 then return nil end
   -- las plazas de los boxes dejan de ser plazas de aparcamiento (si no, el juego aparca coches dentro de las carpas):
   -- se vuelven a registrar las filas de la tesela sin ellas (parking.onRows, la entrada pública del módulo)
@@ -559,7 +565,7 @@ local function buildOnStalls(site)
       local keep, dropped = {}, 0
       for _, r in ipairs(t.rows or {}) do
         local near = false
-        for _, p in ipairs(picks) do if (r[1] - p[1]) ^ 2 + (r[2] - p[2]) ^ 2 < 5.5 ^ 2 then near = true break end end
+        for _, p in ipairs(picks) do if (r[1] - p[1]) ^ 2 + (r[2] - p[2]) ^ 2 < M.NO_PARK_M ^ 2 then near = true break end end
         if near then dropped = dropped + 1 else keep[#keep + 1] = r end
       end
       if dropped > 0 then pk.onRows(t.anchor, key, keep) end
@@ -584,13 +590,13 @@ local function buildOnStalls(site)
     -- dos extintores delante y un cono pequeño a rayas
     put(k, 0, 0, 90)
     -- en los boxes de al lado del tuyo, un coche de rally aparcado (ambiente)
-    if cars[i] then put('rallyCar', 0, 0, 0, { vehicle = cars[i] }) end
-    put('extinguisher', 3.2, -1.2, 40)
-    put('extinguisher', 3.2, -0.6, 250)
+    if cars[i] then put('rallyCar', 0, 0, 180, { vehicle = cars[i] }) end
+    put('extinguisher', -M.EXT_BACK_M - 0.05, -0.7, 40)
+    put('extinguisher', -M.EXT_BACK_M, -0.95, 250)
     put('coneS', 4.6, 1.3, 0)
     if i == mine then
       local la, lo = a.toGeo(p[1], p[2], p[3])
-      local fla, flo = a.toGeo(p[1] + fx * 12, p[2] + fy * 12, p[3])
+      local fla, flo = a.toGeo(p[1] - fx * 12, p[2] - fy * 12, p[3])       -- de morro: mirando al fondo
       box = { lat = la, lon = lo, faceLat = fla, faceLon = flo }
     end
     if i == 1 then put('coneS', 4.6, -3.4, 0) end
@@ -613,7 +619,8 @@ function M.build(site)
   local sideSign = (ex * rx + ey * ry) > 0 and -1 or 1
   -- (la fila entera dentro de las plazas: el fondo de las carpas a 1,5 m del borde de las plazas, no en el talud)
   local rowSide = sideSign * (site.wid / 2 - 8)
-  local n = math.max(1, math.min(M.MAX_BOXES, math.floor((site.len - 4) / M.PAIR_M)))
+  local fit = math.floor((site.len - 4) / M.PAIR_M)
+  local n = math.max(1, math.min(fit >= M.MAX_BOXES + M.BIG_EXTRA and M.MAX_BOXES + M.BIG_EXTRA or M.MAX_BOXES, fit))
   local along0 = -(n - 1) * M.PAIR_M / 2
   -- el pasillo: ¿hacia dónde se sale? el extremo de la fila más cercano a la salida
   local exitAlong = ex * hx + ey * hy
@@ -631,12 +638,12 @@ function M.build(site)
     local along = along0 + (i - 1) * M.PAIR_M
     local k = kinds[(i - 1) % #kinds + 1]
     put(k, along, rowSide, 90)
-    if cars[i] then put('rallyCar', along, rowSide, 0, { vehicle = cars[i] }) end
-    put('extinguisher', along + 1.2, rowSide + sideSign * 3.2, 40)
-    put('extinguisher', along + 0.6, rowSide + sideSign * 3.2, 250)
+    if cars[i] then put('rallyCar', along, rowSide, 180, { vehicle = cars[i] }) end
+    put('extinguisher', along + 0.7, rowSide + sideSign * (M.EXT_BACK_M + 0.05), 40)
+    put('extinguisher', along + 0.95, rowSide + sideSign * M.EXT_BACK_M, 250)
     if i == mine then
       local la, lo = a.toGeo(site.x + hx * along + rx * rowSide, site.y + hy * along + ry * rowSide, z)
-      local fla, flo = a.toGeo(site.x + hx * along + rx * (rowSide - sideSign * 12), site.y + hy * along + ry * (rowSide - sideSign * 12), z)
+      local fla, flo = a.toGeo(site.x + hx * along + rx * (rowSide + sideSign * 12), site.y + hy * along + ry * (rowSide + sideSign * 12), z)
       box = { lat = la, lon = lo, faceLat = fla, faceLon = flo }
     end
   end
