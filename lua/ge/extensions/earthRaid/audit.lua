@@ -279,9 +279,16 @@ function M.update(dt)
     if not teleport(fla, flo) then A.res.problems[#A.res.problems + 1] = 'could not travel to the finish' finishStage(A.res) return end
     A.step, A.t = 'finishSettle', 0
   elseif A.step == 'finishSettle' then
-    if A.t > M.SETTLE_S * 0.6 and not A.reground then
-      A.reground = true
-      teleport(A.finishLL[1], A.finishLL[2])
+    -- el terreno tarda en cargar y el coche cae por debajo del mapa: mientras esté hundido, otra vez al suelo cada 5 s
+    A.regroundT = (A.regroundT or 0) + (dt or 0)
+    if A.regroundT >= 5 then
+      A.regroundT = 0
+      local v = be:getPlayerVehicle(0)
+      local x, y, z = props.ground(A.finishLL[1], A.finishLL[2])
+      if v and z then
+        local p = v:getPosition()
+        if p.z < z - 4 or p.z > z + 30 or (p.x - x) ^ 2 + (p.y - y) ^ 2 > 60 * 60 then teleport(A.finishLL[1], A.finishLL[2]) end
+      end
     end
     if A.t < M.SETTLE_S then return end
     if st.jobsHeld then
@@ -348,7 +355,7 @@ function M.update(dt)
     A.res.finishOnRoad = #onRoad
     A.res.after = t.after and math.floor(t.after.total) or 0
     A.res.finishCut = t.finishCut == true
-    A.reground = nil
+    A.regroundT = nil
     finishStage(A.res)
   end
 end
