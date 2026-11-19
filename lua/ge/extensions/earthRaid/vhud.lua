@@ -55,7 +55,7 @@ local function fromStage(S, R, api)
   local d = { showStageApps = true, missionName = S.title, showDebugInfo = false }
   d.stageData = { currentSSTime = nil, isActive = false, isComplete = false, label = label, stageHeader = S.title, unit = 'km',
     completion = { distM = 0, distPct = 0, totalDistM = t.total },
-    splits = S.splitAt and { { pathnodeId = 1, splitLabel = 'Split 1', time = S.splitTime } } or {} }
+    splits = S.splitAt and { { pathnodeId = 1, splitLabel = 'Split 1', time = S.splitTime } } or nil }
   local sc = baseSchedule()
   sc.totalSSCount = S.stageCount
   d.countdownData = { countdown = nil, state = nil }
@@ -150,7 +150,7 @@ local function fromRally(R, cur, a)
   end
   d.scheduleData = sc
   d.stageData = { currentSSTime = nil, isActive = false, isComplete = false, label = nil, unit = 'km',
-    completion = { distM = 0, distPct = 0, totalDistM = 0 }, splits = {} }
+    completion = { distM = 0, distPct = 0, totalDistM = 0 } }
   d.countdownData = { countdown = nil, state = nil }
   local early = R.phase == 'service' or R.early
   d.rallyClock = { wallClockSecs = R.clock, wallClockTime = clockTime(R.clock), epochTime = os.time(), day = 1,

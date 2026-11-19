@@ -1023,7 +1023,7 @@ function M.uiRestartStage()
   M.uiCancelStage()
   local keep = M.PLAY_TELEPORT_M
   M.PLAY_TELEPORT_M, S.noPre = 0, true
-  pcall(M.uiPlay, ev, base, rev)
+  pcall(M.uiPlay, ev, base, rev, true)
   M.PLAY_TELEPORT_M, S.noPre = keep, nil
 end
 
@@ -1035,7 +1035,7 @@ function M.uiRestartRally(fromLastTc)
   local item = R.it and R.it.items and R.it.items[R.idx]
   local run = fromLastTc and item and item.run or nil
   M.uiCancelStage()
-  if evId then M.uiStartRally(evId, run) end
+  if evId then M.uiStartRally(evId, run, true) end
 end
 
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
@@ -1054,10 +1054,20 @@ function M.loadingText(full, s, es)
   return #parts > 0 and table.concat(parts, ' · ') or nil
 end
 M.PLAY_TELEPORT_M = 1000     -- más lejos que esto de la salida: con teletransporte y carga; si no, se empieza ahí mismo
-function M.uiPlay(eventId, stageId, reverse)
-  -- un tramo cada vez: si hay otro en marcha, una carga a medias o una pantalla de inicio abierta, se abandona y se
-  -- empieza este (antes: aviso y el menú se quedaba "bugeado" sin iniciar nada, 19-nov)
-  if S.pre or stage.state() or loader.active() or rally.active() then pcall(M.uiCancelStage) pcall(props.clear) end
+-- ¿hay algo en marcha? (tramo, rally, carga, pantalla de inicio)
+function M.busy()
+  return (S.pre or stage.state() or loader.active() or rally.active()) and true or false
+end
+-- Un evento cada vez (19-nov): con otro en marcha no se empieza ninguno hasta abandonarlo. `force` solo lo usan los
+-- reinicios y la auditoría, que ya han cancelado lo anterior.
+local function refuseIfBusy(force)
+  if force or not M.busy() then return false end
+  M.toast(spanish() and 'Ya hay un evento en marcha: abandónalo (Esc → Raid.Earth → Abandonar) antes de empezar otro.'
+    or 'An event is already running: retire from it (Esc → Raid.Earth → Retire) before starting another.', 8)
+  return true
+end
+function M.uiPlay(eventId, stageId, reverse, force)
+  if refuseIfBusy(force) then return end
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   local s = stageOf(full, stageId, reverse)
@@ -1127,7 +1137,8 @@ function M.uiPlay(eventId, stageId, reverse)
   if not ok then stage.holdJobs(false) M.toast('Raid.Earth: ' .. tostring(err), 6) end
 end
 
-function M.uiStartRally(eventId, fromRun)
+function M.uiStartRally(eventId, fromRun, force)
+  if refuseIfBusy(force) then return end
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   if S.pre or loader.active() then pcall(M.uiCancelStage) end

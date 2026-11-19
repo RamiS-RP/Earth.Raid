@@ -461,7 +461,7 @@ function isRunning(st) {
   return !!(st && a && sel.value && a.eventId === sel.value.id && (a.stageId === st.id || a.stageId === st.id + "R"))
 }
 // un tramo en marcha (de este evento o de otro): se preselecciona y no se puede iniciar otro
-const anyActive = computed(() => !!(s.value && s.value.stageActive))
+const anyActive = computed(() => !!(s.value && (s.value.stageActive || s.value.rallyActive || s.value.pre)))
 const activeLabel = computed(() => (s.value && s.value.stageActive && s.value.stageActive.title) || "")
 function selectActive() {
   const a = s.value && s.value.stageActive

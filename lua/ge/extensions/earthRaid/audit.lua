@@ -204,7 +204,7 @@ function M.update(dt)
     A.res = { event = item[1], stage = item[2], problems = {}, cut = 0 }
     local keep = mn.PLAY_TELEPORT_M
     mn.PLAY_TELEPORT_M = 0
-    local ok, err = pcall(mn.uiPlay, item[1], item[2], item[3])
+    local ok, err = pcall(mn.uiPlay, item[1], item[2], item[3], true)
     mn.PLAY_TELEPORT_M = keep
     if not ok then A.res.problems[#A.res.problems + 1] = 'uiPlay: ' .. tostring(err) finishStage(A.res) return end
     A.step, A.t = 'loading', 0
@@ -227,7 +227,7 @@ function M.update(dt)
     if A.t < 15 then return end
     local keep = mn.PLAY_TELEPORT_M
     mn.PLAY_TELEPORT_M = 0
-    pcall(mn.uiPlay, item[1], item[2], item[3])
+    pcall(mn.uiPlay, item[1], item[2], item[3], true)
     mn.PLAY_TELEPORT_M = keep
     A.step, A.t = 'loading', 0
   elseif A.step == 'startSettle' then
