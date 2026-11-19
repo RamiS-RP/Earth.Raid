@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.ver.outputs.skip }}
-      beta: ${{ steps.ver.outputs.beta }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,9 +36,31 @@ jobs:
           case "$TAG" in *-beta*) echo "beta=true" >> "$GITHUB_OUTPUT";; *) echo "beta=false" >> "$GITHUB_OUTPUT";; esac
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null && [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "branch" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
+      # Copiloto en español DENTRO del paquete (19-nov: antes era un mod aparte, earth_raid_voice_es.zip, y casi nadie
+      # lo instalaba): voz neuronal de Piper generada de tools/voicepack/es.json, en la carpeta de voicepacks del juego,
+      # que package.sh mete en earth_raid.zip con el resto de lua/. Si falla (sin red, sin modelo), la release sigue
+      # sin la voz y el copiloto usa las del juego.
+      - name: Co-driver voice (Spanish, Piper es_ES-davefx-medium) inside the mod
+        if: steps.ver.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y ffmpeg
+          pip install piper-tts
+          B=https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium
+          curl -fsSL -o /tmp/es.onnx "$B/es_ES-davefx-medium.onnx"
+          curl -fsSL -o /tmp/es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
+          python tools/voicepack/make_voicepack.py --phrases tools/voicepack/es.json --engine piper --model /tmp/es.onnx \
+            --id raidearth_es_davefx --persona "Copiloto Raid.Earth" --dialect es-ES --out .
+          curl -fsSL -o lua/ge/extensions/gameplay/rally/compositors/voicepacks/raidearth_es_davefx/MODEL_CARD.txt "$B/MODEL_CARD" || true
       - name: Package
         if: steps.ver.outputs.skip != 'true'
         run: sh tools/package.sh earth_raid.zip
+      - name: Voices in the package
+        if: steps.ver.outputs.skip != 'true'
+        run: |
+          N=$(unzip -l earth_raid.zip | grep -c "compositors/voicepacks/.*\.ogg$" || true)
+          echo "co-driver audio files in earth_raid.zip: $N"
+          [ "$N" -gt 0 ] || echo "::warning::earth_raid.zip has no co-driver voice (the voice step failed): the game's co-drivers will be used"
       - name: Check layout (mod folders at the zip root)
         if: steps.ver.outputs.skip != 'true'
         run: |
@@ -56,38 +77,3 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ steps.ver.outputs.beta == 'true' }}
           make_latest: ${{ steps.ver.outputs.beta == 'true' && 'false' || 'true' }}
-  # Copiloto en español: voicepack generado con Piper (voz neuronal) a partir de tools/voicepack/es.json.
-  # Se adjunta a la misma release como earth_raid_voice_es.zip (un mod aparte, opcional). Si falla, la release sigue.
-  voice_es:
-    needs: build
-    if: needs.build.outputs.skip != 'true' && needs.build.outputs.beta != 'true'
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Version
-        id: ver
-        run: |
-          V=$(grep -oE "M.VERSION = '[0-9.]+'" lua/ge/extensions/earthRaid/main.lua | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
-          TAG="${{ github.event.release.tag_name }}"; [ -z "$TAG" ] && [ "${{ github.ref_type }}" = "tag" ] && TAG="${{ github.ref_name }}"; [ -z "$TAG" ] && TAG="v$V"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      - name: Tools
-        run: |
-          sudo apt-get update -y && sudo apt-get install -y ffmpeg
-          pip install piper-tts
-      - name: Voice model (Piper es_ES-davefx-medium)
-        run: |
-          B=https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium
-          curl -fsSL -o es.onnx "$B/es_ES-davefx-medium.onnx"
-          curl -fsSL -o es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
-          curl -fsSL -o MODEL_CARD.txt "$B/MODEL_CARD" || true
-      - name: Build voicepack
-        run: |
-          python tools/voicepack/make_voicepack.py --phrases tools/voicepack/es.json --engine piper --model es.onnx \
-            --id raidearth_es_davefx --persona "Copiloto Raid.Earth" --dialect es-ES --out build_voice \
-            --zip earth_raid_voice_es.zip
-          cp MODEL_CARD.txt build_voice/ 2>/dev/null || true
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          files: earth_raid_voice_es.zip

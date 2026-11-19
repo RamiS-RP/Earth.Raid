@@ -6,3 +6,5 @@ tools/catalog/out/
 __pycache__/
 .DS_Store
 Thumbs.db
+# Voz del copiloto generada al publicar (workflow release.yml): no se guarda en el repositorio
+lua/ge/extensions/gameplay/rally/compositors/voicepacks/raidearth_es_davefx/

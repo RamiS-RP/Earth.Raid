@@ -12,10 +12,52 @@ M.MIN_SPAN_M = 120
 M.MAX_SPAN_M = 3000
 M.STEP_M = 10              -- la recta que sustituye al zigzag, con un punto cada esto
 
+M.HOOK_END_M = 80           -- un gancho solo se busca en los primeros y los últimos metros del trazado...
+M.HOOK_DEG = 150           -- ... y es un vértice donde la línea se vuelve sobre sí misma (giro de casi 180°)
+
 local sqrt, cos, rad, max, min, floor = math.sqrt, math.cos, math.rad, math.max, math.min, math.floor
+
+-- Ganchos en los extremos (Villaviciosa, Sierra Morena SS9: la línea del organizador empieza 33 m hacia atrás y
+-- vuelve sobre sí misma): la dirección de salida quedaba al revés, y con ella el semáforo, el "colocado" y la
+-- distancia a la línea. Se quita la punta del gancho; la salida y la meta siguen en el primer y el último punto.
+-- En mitad del tramo no se toca nada: allí un giro así es una horquilla de verdad. Puro. MARK:hooks-v1
+function M.hooks(path)
+  local removed = 0
+  local function turnAt(a, b, c)
+    local k = cos(rad(b[1]))
+    local ux, uy = (b[2] - a[2]) * k, b[1] - a[1]
+    local vx, vy = (c[2] - b[2]) * k, c[1] - b[1]
+    local lu, lv = sqrt(ux * ux + uy * uy), sqrt(vx * vx + vy * vy)
+    if lu * 111195 < 0.5 or lv * 111195 < 0.5 then return 0, lu * 111195 end
+    local cs = max(-1, min(1, (ux * vx + uy * vy) / (lu * lv)))
+    return math.deg(math.acos(cs)), lu * 111195
+  end
+  local function pass(p)
+    -- desde el principio de p: quita la primera punta de gancho a menos de HOOK_END_M
+    local run = 0
+    for i = 2, #p - 1 do
+      local deg, len = turnAt(p[i - 1], p[i], p[i + 1])
+      run = run + len
+      if run > M.HOOK_END_M then return false end
+      if deg >= M.HOOK_DEG then table.remove(p, i) return true end
+    end
+    return false
+  end
+  local out = {}
+  for i, q in ipairs(path) do out[i] = q end
+  for _ = 1, 4 do if #out >= 3 and pass(out) then removed = removed + 1 else break end end
+  local rev = {}
+  for i = #out, 1, -1 do rev[#rev + 1] = out[i] end
+  for _ = 1, 4 do if #rev >= 3 and pass(rev) then removed = removed + 1 else break end end
+  if removed == 0 then return path, 0 end
+  out = {}
+  for i = #rev, 1, -1 do out[#out + 1] = rev[i] end
+  return out, removed
+end
 
 -- path {lat, lon}... -> path limpio, y cuántos metros de zigzag se han quitado
 function M.path(path)
+  path = M.hooks(path)
   local n = #path
   if n < 4 then return path, 0 end
   local lat0 = path[1][1]

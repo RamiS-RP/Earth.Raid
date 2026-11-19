@@ -14,7 +14,7 @@
         </div>
         <BngButton :accent="ACCENTS.main" @click="call('uiRestartRally', true)">{{ t("restartFromTc") }}</BngButton>
         <BngButton :accent="ACCENTS.secondary" @click="call('uiRestartRally', false)">{{ t("restartRally") }}</BngButton>
-        <BngButton :accent="ACCENTS.attention" @click="call('uiCancelStage'); refresh()">{{ t("abandonRally") }}</BngButton>
+        <BngButton :accent="ACCENTS.attention" @click="call('uiAbandon'); refresh()">{{ t("abandonRally") }}</BngButton>
       </template>
       <!-- tramo suelto: reiniciar o abandonar -->
       <template v-else-if="active">
@@ -24,7 +24,7 @@
           <div class="dim small" v-if="activeEvent">{{ activeEvent.name }}</div>
         </div>
         <BngButton :accent="ACCENTS.main" @click="call('uiRestartStage')">{{ t("restartStage") }}</BngButton>
-        <BngButton :accent="ACCENTS.attention" @click="call('uiCancelStage'); refresh()">{{ t("abandonStage") }}</BngButton>
+        <BngButton :accent="ACCENTS.attention" @click="call('uiAbandon'); refresh()">{{ t("abandonStage") }}</BngButton>
       </template>
       <p v-else class="dim">{{ t("pauseIdle") }}</p>
       <BngButton v-if="!active && !rallyOn" :accent="ACCENTS.main" @click="open()">{{ t("pauseOpen") }}</BngButton>

@@ -2,7 +2,9 @@
   <!-- Raid.Earth: pantalla de carga al iniciar un tramo o un rally, copia del estilo de la del juego
        (ui-vue/src/common/modules/loading/views/LoadingScreen.vue): iconos que se rellenan de naranja de abajo arriba,
        barra inclinada, estado en cursiva, historial y barra de DATOS abajo. A la derecha, la imagen del evento. -->
-  <Transition name="erl-fade">
+  <!-- MARK:cover-v1 — aparece en 0,2 s (el juego no mueve nada hasta que tapa) y, mientras está (y mientras se va),
+       las apps del juego (minimapa incluido) quedan ocultas: body.er-loading -->
+  <Transition name="erl-fade" @after-leave="appsBack">
     <div v-if="ld && ld.on" class="erl-screen">
       <div class="erl-bg"></div>
       <div class="erl-right" v-if="ld.logo">
@@ -31,12 +33,28 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue"
+import { computed, onBeforeUnmount, ref } from "vue"
 import { useEvents } from "@/services/events"
 import { icons } from "@/common/components/base"
 
 const ld = ref(null)
-useEvents().on("EarthRaidLoading", d => { ld.value = d })
+// las apps de pantalla fuera mientras hay pantalla de carga: vuelven cuando ha terminado de irse
+const BODY_CLASS = "er-loading"
+const STYLE_ID = "earthRaid-loading-style"
+if (!document.getElementById(STYLE_ID)) {
+  const st = document.createElement("style")
+  st.id = STYLE_ID
+  st.textContent = "body.er-loading .ui-apps-overlay, body.er-loading .app-uiapps-overlay-wrapper, " +
+    "body.er-loading .ui-angular-app-slot { visibility: hidden !important; }"
+  document.head.appendChild(st)
+}
+function appsBack() { document.body.classList.remove(BODY_CLASS) }
+useEvents().on("EarthRaidLoading", d => {
+  if (d && d.on) document.body.classList.add(BODY_CLASS)
+  else if (!ld.value || !ld.value.on) appsBack()
+  ld.value = d
+})
+onBeforeUnmount(appsBack)
 
 const es = computed(() => !ld.value || ld.value.lang === "es")
 
@@ -59,12 +77,12 @@ const iconRow = computed(() => {
 })
 
 const TEXT = {
-  es: { tp: "Viajando a la zona de salida…", roads: "Cargando carreteras…", dress: "Montando controles, salida y público…",
+  es: { leave: "Un momento…", tp: "Viajando a la zona de salida…", roads: "Cargando carreteras…", dress: "Montando controles, salida y público…",
     place: "Colocando el coche…", settle: "Preparando la salida…" },
-  en: { tp: "Travelling to the start area…", roads: "Loading roads…", dress: "Setting up controls, start and crowd…",
+  en: { leave: "One moment…", tp: "Travelling to the start area…", roads: "Loading roads…", dress: "Setting up controls, start and crowd…",
     place: "Placing the car…", settle: "Getting ready…" },
 }
-const status = computed(() => (ld.value && TEXT[es.value ? "es" : "en"][ld.value.step]) || "")
+const status = computed(() => (ld.value && (ld.value.status || TEXT[es.value ? "es" : "en"][ld.value.step])) || "")
 </script>
 
 <style scoped>
@@ -110,7 +128,7 @@ const status = computed(() => (ld.value && TEXT[es.value ? "es" : "en"][ld.value
 }
 .erl-tips-title { font-style: italic; font-size: 1.75em; font-weight: bold; }
 .erl-tips-text { font-size: 1.125em; margin-left: 0.5em; max-width: 52em; }
-.erl-fade-enter-active { transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
-.erl-fade-leave-active { transition: opacity 1.2s cubic-bezier(0.23, 1, 0.32, 1); }
+.erl-fade-enter-active { transition: opacity 0.2s ease-out; }
+.erl-fade-leave-active { transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1); }
 .erl-fade-enter-from, .erl-fade-leave-to { opacity: 0; }
 </style>

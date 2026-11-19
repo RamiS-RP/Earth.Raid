@@ -13,13 +13,30 @@ M.BEFORE_TC_M = 100
 M.TIMEOUT = { tp = 90, roads = 75, dress = 40, settle = 2 }
 M.ROAD_OK_M = 15             -- una carretera a menos de esto de cada punto: la zona está cargada
 M.PUMP_MS = 12               -- presupuesto para crear objetos por fotograma durante la carga
+-- La pantalla primero (19-nov, el usuario: "teleporta el coche antes de cargar y se ve raro"): nada se mueve ni se
+-- quita hasta que la pantalla de carga tapa el juego. MARK:cover-v1
+M.COVER_S = 0.4              -- la pantalla aparece en 0,2 s; con margen, a esto ya es opaca
+M.LEAVE_S = 0.8              -- abandonar: lo que se queda la pantalla tras limpiar el tramo
+M.TP_RETRY_S = 25            -- BeamNG.Earth rechaza el viaje mientras carga el suelo: se reintenta hasta esto
 
 local L                      -- la carga en curso
+local shownAt                -- desde cuándo está puesta la pantalla (os.clock), o nil
 local function api() return rawget(_G, 'beamngEarth_api') end
 
 M.STEPS = { 'tp', 'roads', 'dress', 'place', 'settle' }
 local function send()
-  if not L then guihooks.trigger('EarthRaidLoading', { on = false }) return end
+  if not L then shownAt = nil guihooks.trigger('EarthRaidLoading', { on = false }) return end
+  shownAt = shownAt or os.clock()
+  if L.only then
+    -- solo tapar (abandonar, o el principio de un reinicio): la barra según el tiempo, con su propio texto
+    local p = math.floor(math.min(1, L.frac or 0) * 100)
+    local ic = {}
+    for _, s in ipairs(M.STEPS) do ic[s] = p end
+    guihooks.trigger('EarthRaidLoading', { on = true, title = L.title, event = L.event, logo = L.logo, step = 'leave',
+      status = L.status, progress = math.min(1, L.frac or 0), lang = L.lang, description = L.description, icons = ic,
+      history = {} })
+    return
+  end
   local idx = 1
   for i, s in ipairs(M.STEPS) do if s == L.step then idx = i end end
   -- cada icono (como la pantalla de carga del juego): 100 lo hecho, el paso en curso según su avance
@@ -53,22 +70,59 @@ end
 
 -- spec: { title, event, logo, lang, tpLat, tpLon (a dónde llevar primero), near = { {lat, lon}... } (puntos que deben
 -- tener carretera; un tercer valor, el radio en m: una asistencia en un aparcamiento puede estar lejos del asfalto), dress = function(dt) -> pendientes (monta; 0 cuando ya está), place = function() (coloca el coche),
--- done = function() }
+-- done = function(), fail = function(err) (el viaje no se pudo hacer) }
+-- Primero la pantalla (paso 'cover'); el viaje sale cuando ya tapa el juego. Si ya estaba puesta (un reinicio), al momento.
 function M.begin(spec)
   local a = api()
   if not (a and a.teleport) then return false, 'BeamNG.Earth no está cargado' end
+  local covered = shownAt ~= nil and (os.clock() - shownAt) >= M.COVER_S
   L = spec
-  L.step, L.t, L.frac = 'tp', 0, 0
+  L.step, L.t, L.frac = 'cover', covered and M.COVER_S or 0, 0
   freeze(true)
-  local ok, err = a.teleport(spec.tpLat, spec.tpLon, spec.title)
-  if not ok then L = nil freeze(false) send() return false, err end
-  L.teleported = false
   send()
   log('I', TAG, 'loading: ' .. tostring(spec.title))
   return true
 end
 
+-- Solo la pantalla: se pone, y cuando tapa el juego se ejecuta spec.run (quitar el tramo, o reiniciarlo: si run empieza
+-- una carga con M.begin, la pantalla sigue con ella sin parpadeo). spec: { title, event, logo, lang, status, run }
+function M.cover(spec)
+  if L then
+    -- ya hay una pantalla puesta: se hace ya, debajo de ella
+    if spec.run then pcall(spec.run) end
+    return true
+  end
+  L = spec
+  L.only = true
+  L.step, L.t, L.frac = 'cover', 0, 0
+  send()
+  return true
+end
+
+local function fail(err)
+  local f = L and L.fail
+  L = nil
+  freeze(false)
+  send()
+  log('W', TAG, 'loading: travel refused: ' .. tostring(err))
+  if f then pcall(f, err) end
+end
+
+-- el viaje, ya con la pantalla puesta
+local function travel()
+  local a = api()
+  local ok, err = a.teleport(L.tpLat, L.tpLon, L.title)
+  if ok then
+    L.step, L.t, L.frac, L.teleported = 'tp', 0, 0, false
+    send()
+    return
+  end
+  L.refusedAt = L.refusedAt or L.t
+  if L.t - L.refusedAt >= M.TP_RETRY_S then fail(err) else L.retryAt = L.t + 1 end
+end
+
 function M.active() return L ~= nil end
+function M.covering() return L ~= nil and L.only == true end
 function M.roadsOk() return L ~= nil and L.roadsOk == true end
 function M.onTeleported() if L then L.teleported = true L.tpT = 0 end end
 
@@ -91,10 +145,12 @@ end
 local function finish(why)
   if not L then return end
   local done, keep = L.done, L.keepFrozen
-  -- con keepFrozen el coche sigue congelado: quien recibe done (la pantalla de inicio) lo suelta al darle a Iniciar
-  if not (keep and done) then freeze(false) end
-  -- la cámara detrás del coche, mirando la carretera (tras el teletransporte se queda donde estaba)
-  pcall(function() if core_camera and core_camera.resetCamera then core_camera.resetCamera(0) end end)
+  if not L.only then
+    -- con keepFrozen el coche sigue congelado: quien recibe done (la pantalla de inicio) lo suelta al darle a Iniciar
+    if not (keep and done) then freeze(false) end
+    -- la cámara detrás del coche, mirando la carretera (tras el teletransporte se queda donde estaba)
+    pcall(function() if core_camera and core_camera.resetCamera then core_camera.resetCamera(0) end end)
+  end
   log('I', TAG, 'loading finished' .. (why and (' (' .. why .. ')') or ''))
   L = nil
   -- primero la pantalla de inicio y después se quita la de carga: sin hueco en el que el coche se pueda mover
@@ -102,17 +158,36 @@ local function finish(why)
   send()
 end
 
-function M.cancel() if L then L.done = nil finish('cancelled') end end
+-- (la pantalla de solo tapar no se cancela: quien la puso está en mitad de su run)
+function M.cancel() if L and not L.only then L.done = nil finish('cancelled') end end
 
 function M.update(dt)
   if not L then return end
   -- BeamNG.Earth pausa el juego mientras carga el terreno tras un viaje: ese tiempo no cuenta para los plazos
-  if simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause() and L.step ~= 'tp' then return end
+  if simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause() and L.step ~= 'tp' and L.step ~= 'cover' then return end
   L.t = L.t + (dt or 0)
   L.sendT = (L.sendT or 0) + (dt or 0)
   if L.sendT >= 0.2 then L.sendT = 0 send() end
   if not L then return end
   local a = api()
+  if L.step == 'cover' then
+    if L.t < M.COVER_S then return end
+    if L.only then
+      if L.run then
+        local me, run = L, L.run
+        L.run = nil
+        local okR, errR = pcall(run)
+        if not okR then log('W', TAG, 'loading cover: ' .. tostring(errR)) end
+        if L ~= me then return end           -- run ha empezado una carga: la pantalla sigue con ella
+        L.t = M.COVER_S
+      end
+      L.frac = (L.t - M.COVER_S) / M.LEAVE_S
+      if L.t >= M.COVER_S + M.LEAVE_S then finish('cover') end
+    elseif not L.retryAt or L.t >= L.retryAt then
+      travel()
+    end
+    return
+  end
   if L.step == 'tp' then
     -- el aviso del teletransporte y el mundo listo (BeamNG.Earth deja el coche en el suelo con algo de retraso)
     if L.teleported then L.tpT = (L.tpT or 0) + dt end

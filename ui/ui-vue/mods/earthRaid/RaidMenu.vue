@@ -179,7 +179,7 @@
           <!-- con un tramo en marcha, en el sitio de Iniciar está Cancelar (no se puede iniciar otro a la vez) -->
           <div v-if="mode === 'stage' && anyActive" class="go-row bottom">
             <button class="go-btn" @click="call('uiRestartStage')">{{ t("restartStage") }}</button>
-            <button class="go-btn danger" @click="call('uiCancelStage')">{{ t("abandonStage") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
+            <button class="go-btn danger" @click="call('uiAbandon')">{{ t("abandonStage") }}<template v-if="!isRunning(pick)"> · {{ activeLabel }}</template></button>
           </div>
           <button v-else-if="mode === 'stage'" class="go-btn bottom" :disabled="!pick || !s.pos" @click="startPick">{{ t("start") }}</button>
           <button v-else class="go-btn bottom" :disabled="!s.pos || !itinerary.length || rallyHere || anyActive" @click="startRally">{{ rallyHere ? t("rallyRunning", { l: s.rallyActive.label || '' }) : t("startRally") }}</button>
@@ -206,7 +206,7 @@
             </div>
             <div class="sactions" v-if="rallyHere">
               <button class="btn" @click="call('uiSkipLiaison')">{{ t("skipLiaison") }}</button>
-              <button class="btn danger" @click="call('uiCancelStage')">{{ t("abandon") }}</button>
+              <button class="btn danger" @click="call('uiAbandon')">{{ t("abandon") }}</button>
             </div>
           </template>
           <template v-else>

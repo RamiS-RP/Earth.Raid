@@ -1013,29 +1013,55 @@ function M.uiCancelStage()
   M.publishState()
 end
 
+-- La pantalla de carga primero, y debajo de ella lo que se ve raro si se hace a la vista (quitar los objetos, cambiar
+-- las apps, mover el coche): abandonar y reiniciar (19-nov). MARK:cover-v1
+local function coverSpec(statusEs, statusEn, run)
+  local es = spanish()
+  local st, rs = stage.state(), rally.active() and rally.state() or nil
+  local evId = (st and st.eventId) or (rs and rs.ev and rs.ev.id) or (S.pre and S.pre.eventId)
+  local full = evId and M.event(evId) or nil
+  return { title = (st and st.title) or (full and full.name) or 'Raid.Earth', event = full and full.name or nil,
+    logo = full and full._base and full.logo and (full._base .. full.logo) or nil, lang = es and 'es' or 'en',
+    description = full and M.loadingText(full, nil, es) or nil, status = es and statusEs or statusEn, run = run }
+end
+
+-- Abandonar (los botones del menú): con la pantalla puesta, se quita todo
+function M.uiAbandon()
+  if not M.busy() then M.publishState() return end
+  if loader.active() then M.uiCancelStage() return end
+  loader.cover(coverSpec('Abandonando el evento…', 'Retiring from the event…', function() M.uiCancelStage() end))
+end
+
 -- Reiniciar el tramo en marcha: otra vez desde 100 m antes del TC, con su pantalla de carga (como "reintentar" del juego)
 function M.uiRestartStage()
   local st = stage.state()
-  if not st then return end
+  if not st or loader.active() then return end
   local ev, sid = st.eventId, tostring(st.stageId)
   local base = sid:gsub('R$', '')
   local rev = base ~= sid
-  M.uiCancelStage()
-  local keep = M.PLAY_TELEPORT_M
-  M.PLAY_TELEPORT_M, S.noPre = 0, true
-  pcall(M.uiPlay, ev, base, rev, true)
-  M.PLAY_TELEPORT_M, S.noPre = keep, nil
+  local spec = coverSpec('Reiniciando el tramo…', 'Restarting the stage…', function()
+    M.uiCancelStage()
+    S.noPre = true
+    pcall(M.uiPlay, ev, base, rev, true)
+    S.noPre = nil
+  end)
+  M.uiClose()
+  loader.cover(spec)
 end
 
 -- Rally completo: reiniciar desde el último control horario (la pasada en curso) o desde el principio
 function M.uiRestartRally(fromLastTc)
   local R = rally.state()
-  if not R then return end
+  if not R or loader.active() then return end
   local evId = R.ev and R.ev.id
   local item = R.it and R.it.items and R.it.items[R.idx]
   local run = fromLastTc and item and item.run or nil
-  M.uiCancelStage()
-  if evId then M.uiStartRally(evId, run, true) end
+  local spec = coverSpec('Reiniciando el rally…', 'Restarting the rally…', function()
+    M.uiCancelStage()
+    if evId then M.uiStartRally(evId, run, true) end
+  end)
+  M.uiClose()
+  loader.cover(spec)
 end
 
 -- Rally completo desde la pasada fromRun (nil: desde el principio): TC0 en la asistencia, enlaces, controles y tramos
@@ -1083,9 +1109,15 @@ function M.uiPlay(eventId, stageId, reverse, force)
   local road = M.roadFromStart(full, s)
   if road then tlat, tlon = geo.toGeo(road, geo.at(road, math.min(back, road.total))) end
   local es = spanish()
+  local noPre = S.noPre == true      -- reinicio: sin la pantalla de inicio (se mira ahora: done llega mucho después)
   stage.holdJobs(true)
   local ok, err = loader.begin({
-    title = s.title, event = full.name, lang = es and 'es' or 'en', keepFrozen = true,
+    title = s.title, event = full.name, lang = es and 'es' or 'en', keepFrozen = not noPre,
+    fail = function(e)
+      stage.holdJobs(false)
+      M.toast((es and 'No se puede viajar ahora: ' or 'Cannot travel now: ') .. tostring(e), 6)
+      M.publishState()
+    end,
     logo = full._base and full.logo and (full._base .. full.logo) or nil,
     description = M.loadingText(full, s, es),
     tpLat = tlat, tpLon = tlon,
@@ -1124,7 +1156,7 @@ function M.uiPlay(eventId, stageId, reverse, force)
       local cur = stage.state()
       if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
       -- la pantalla de inicio (resumen, normas, ajustes, Iniciar); el coche espera congelado
-      if cur and not S.noPre then M.preStart('stage', eventId, stageId, reverse)
+      if cur and not noPre then M.preStart('stage', eventId, stageId, reverse)
       else
         freezeCar(false)
         if cur then M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
@@ -1133,15 +1165,17 @@ function M.uiPlay(eventId, stageId, reverse, force)
   if not ok then
     stage.holdJobs(false)
     M.toast((es and 'No se puede viajar ahora: ' or 'Cannot travel now: ') .. tostring(err), 6)
+  else
+    -- el menú (y el de pausa) fuera ya, debajo de la pantalla de carga: con el juego en pausa la carga no avanza
+    M.uiClose()
   end
-  if not ok then stage.holdJobs(false) M.toast('Raid.Earth: ' .. tostring(err), 6) end
 end
 
 function M.uiStartRally(eventId, fromRun, force)
   if refuseIfBusy(force) then return end
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
-  if S.pre or loader.active() then pcall(M.uiCancelStage) end
+  if S.pre or (loader.active() and not loader.covering()) then pcall(M.uiCancelStage) end
   stage.stop()
   -- los objetos de la carrera anterior (boxes, TC0 del parque) fuera: si no, al reiniciar quedaban dos TC juntos
   pcall(props.clear)
@@ -1159,6 +1193,11 @@ function M.uiStartRally(eventId, fromRun, force)
   if start and lat then
     -- al parque de asistencia con carga: el box se monta y el coche aparece en él, no en el monte
     loader.begin({ title = es and 'Parque de asistencia' or 'Service park', event = full.name, lang = es and 'es' or 'en', keepFrozen = true,
+      fail = function(e)
+        pcall(rally.stop)
+        M.toast((es and 'No se puede viajar ahora: ' or 'Cannot travel now: ') .. tostring(e), 6)
+        M.publishState()
+      end,
       logo = full._base and full.logo and (full._base .. full.logo) or nil, tpLat = start[1], tpLon = start[2],
       description = M.loadingText(full, nil, es),
       near = { { start[1], start[2], 150 } },

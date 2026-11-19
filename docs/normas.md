@@ -23,6 +23,8 @@ El tramo de referencia es **Obejo** (43 Rally Sierra Morena 2026), comprobado en
   - STOP 150-300 m después de la meta.
   - Radio y médico con preaviso a 100 m, en los dos sentidos.
 - **Cintas de corte:** nunca en la carretera del tramo. Sus estacas quedan a más de radio + 1,2 m de ella.
+- **Dirección de salida y de meta (`clean.hooks`):** un gancho en los primeros o los últimos 80 m del trazado (la línea se vuelve sobre sí misma, giro ≥ 150°: Villaviciosa empezaba 33 m hacia atrás) se quita antes de montar nada. Si no, la salida queda mirando al revés: semáforo de espaldas, línea por delante del punto 0 y «colocado» imposible. En mitad del tramo no se toca: allí es una horquilla.
+- **Pantalla de carga primero (`loader.cover`):** al iniciar, reiniciar o abandonar, nada se mueve ni se quita hasta que la pantalla tapa el juego; mientras está, las apps de pantalla (minimapa incluido) quedan ocultas.
 - **Teletransporte:** a la calzada, 100 m antes del TC y mirando hacia él.
 - **Notas del copiloto:** el grado sale del radio mínimo en 24 m. En marcha, las curvas se vuelven a medir sobre la carretera real del juego.
 - **Reloj LED:** la hora real y la cuenta atrás hasta la hora de salida fijada en el TC.

@@ -1,26 +1,76 @@
 # Earth.Raid (Raid.Earth)
 
+**Español** · [English](README.en.md)
+
 Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de **BeamNG.Earth**: los mismos tramos, con sus controles horarios, sus enlaces y su señalización según el reglamento de la FIA, y un copiloto que canta las notas.
 
 > Proyecto en desarrollo (alfa). Se buscan probadores y colaboradores: mira [Colaborar](#colaborar).
 
-*English summary [below](#english).*
+![Rally completo en marcha: carnet de ruta, siguiente control y reloj del evento](docs/img/05-rally-time-card.jpg)
+
+## Así se juega
+
+### 1. Los eventos, en el menú de pausa
+
+Raid.Earth tiene su propia pestaña en el menú de pausa (**Esc → Raid.Earth**), junto a BeamNG.Earth y BeamMP. La lista enseña cada evento con su logo, lugar, campeonato y fechas, cuántos tramos tiene, los kilómetros cronometrados y a qué distancia estás. Desde ahí también se importan rutas y se cambian los ajustes.
+
+![Pestaña Raid.Earth del menú de pausa con la lista de eventos](docs/img/01-pause-menu-events.jpg)
+
+### 2. La ficha del evento
+
+Resumen del rally, distancias de tramos y enlaces, normas y un mapa con los tramos en rojo y los enlaces en azul (se puede elegir un tramo pulsándolo en el mapa). A la derecha, cada tramo con su dibujo, longitud, superficie, distancia a la salida y tu mejor tiempo.
+
+- **Tramo suelto o rally completo.**
+- **Sentido normal o tramo inverso**: el montaje es el mismo en los dos sentidos.
+- **Iniciar** (viaje con pantalla de carga) o **GPS a la salida** para ir conduciendo.
+
+![Ficha del Rally Islas Canarias: resumen, mapa y lista de tramos](docs/img/02-event-sheet.jpg)
+
+### 3. La carga
+
+Al iniciar, reiniciar o abandonar, primero aparece la pantalla de carga y, con ella puesta, pasa todo lo demás: el coche viaja a la zona de salida, BeamNG.Earth carga el terreno y las carreteras, se montan los controles, la salida y el público, y se coloca el coche. Nada se mueve a la vista y las apps de pantalla (minimapa incluido) quedan ocultas hasta que termina.
+
+![Pantalla de carga con el logo del evento y los pasos de la carga](docs/img/03-loading-screen.jpg)
+
+### 4. La pantalla de inicio
+
+Tras la carga, con el coche parado en el box de asistencia o antes del control horario, eliges cómo quieres correr:
+
+- **Copiloto**: voz (los copilotos del juego y el copiloto en español que trae el mod), antelación de las notas, notas visuales y notas prudentes (un grado más cerradas).
+- **Pantalla y líneas**: la trazada del mod Racing Line en vez de la línea azul del GPS.
+- **Sanciones**: salida en falso y penalización al recuperar el coche.
+- **Modo hardcore**: sin reparar ni restablecer el coche, sin líneas, sin notas en pantalla ni minimapa; solo la voz del copiloto y el HUD mínimo.
+
+![Pantalla de inicio: resumen del rally y ajustes del copiloto, sanciones y modo hardcore](docs/img/04-start-screen.jpg)
+
+### 5. El rally
+
+La interfaz es la del modo rally del propio juego, alimentada con los datos del evento real:
+
+- **Reloj del evento, tu tiempo e instrucciones**: a qué control tienes que llegar y entre qué minutos, con 10 s de penalización por cada minuto de adelanto o retraso.
+- **Siguiente control**: distancia y límite de velocidad del enlace.
+- **Carnet de ruta (Time Card)**: hora prevista, hora real y estado de cada control, tiempo de cada tramo, total y penalizaciones.
+- **Parque de asistencia** con boxes y el TC0 a la salida; se puede salir antes con *Skip Clock* (Mayús+E).
+
+En el tramo: control horario con parada, colocación en la línea de salida, cuenta atrás en el reloj LED, crono con parciales, meta lanzada y control STOP.
 
 ## Qué hace
 
 - **Catálogo de eventos** cerca de donde estás, con radio configurable y filtros por país, tipo, categoría, superficie y estado (en curso, próximos, celebrados).
-- **Tramo suelto o rally completo**: enlaces entre tramos con su tiempo asignado, controles horarios (TC) con tarjeta de tiempos, penalizaciones por retraso, asistencia y resultados.
+- **Tramo suelto o rally completo**: enlaces entre tramos con su tiempo asignado, controles horarios (TC) con carnet de ruta, penalizaciones, asistencia y resultados. Solo un evento a la vez: para empezar otro hay que abandonar el que está en marcha.
 - **Montaje estándar en todos los tramos**, el mismo en los dos sentidos (el tramo inverso usa los mismos objetos):
-  - **TC y STOP:** aviso amarillo, cartel rojo y puesto de control a 150 m de la línea, con carpas a cada lado en doble sentido, mesa, silla, reloj LED para fichar, luz de noche y generador.
-  - **Salida y meta:** carteles de los dos sentidos a ambos lados de los sensores, semáforo con reloj y cuenta atrás, líneas pintadas con spray de borde a borde y fin de zona.
-  - **Zonas de seguridad:** aviso de meta lanzada a 100 m, tablillas 3-2-1, radio y médico.
-  - **Ambiente:** vallas publicitarias, público y sonido.
+  - **TC y STOP:** aviso amarillo, cartel rojo y puesto de control a 150 m de la línea, con carpa, mesa, silla, reloj LED para fichar, luz de noche y generador.
+  - **Salida y meta:** carteles a ambos lados de los sensores, semáforo con reloj y cuenta atrás, líneas pintadas con spray de borde a borde y fin de zona.
+  - **Zonas de seguridad:** aviso de meta lanzada a 100 m, tablillas 3-2-1, radio y médico con ambulancia.
+  - **Ambiente:** vallas publicitarias, público, sonido, cortes de calles en los cruces y pacas en las escapatorias.
   - **Regla fija:** nada en la calzada salvo conos en el eje.
-- **Copiloto**: notas visuales y de voz con los copilotos del juego. Las curvas se vuelven a medir sobre la carretera real mientras conduces. Se puede ajustar la antelación, el tamaño y la opacidad, o activar notas prudentes.
-- **Pantalla de rally**: cronómetro y progreso, notas, cuentarrevoluciones, fuerzas g, cuentakilómetros, volante y pedales, y sin minimapa.
+- **Trazados corregidos solos**: zigzags de líneas dibujadas a mano, archivos mal georreferenciados (desplazados de la carretera) y ganchos al principio o al final que dejarían la salida mirando al revés.
+- **Copiloto**: notas visuales y de voz. Las curvas se vuelven a medir sobre la carretera real mientras conduces.
+- **Objetos con física cerca del coche**: carteles, conos y cintas se caen o se rompen al tocarlos, como en los rallies del juego.
 - **Importar rutas** desde el menú (⤓ Importar):
   - **Formatos:** KMZ, KML, GPX, GeoJSON y OSM XML, con su logo, un enlace a la fuente y la ficha del evento.
   - **Reconocimiento automático:** tramos, pasadas, enlaces, controles, meta lanzada, STOP, radios, saltos y chicanes, por los nombres que usan los mapas de los organizadores.
+- **Sin trampas**: cambiar de vehículo durante un tramo lo anula.
 
 ## Requisitos
 
@@ -33,29 +83,46 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 **Versiones:** la **estable** (rama `main`, release normal) es la que instala Add-ons y la que se recomienda a los jugadores. La **beta** (rama `beta`, *pre-release* `vX.Y.Z-beta.N`) es para desarrolladores y probadores: descárgala a mano desde Releases.
 
-**Rallies incluidos:** 43 Rally Sierra Morena 2026, Rally Islas Canarias, Rally de Ourense y Rallye Cristian López 2026 (en `earthRaid/packs/`). Puedes añadir más desde el menú (⤓ Importar).
+**Eventos incluidos** (en `earthRaid/packs/`):
+
+| Evento | Tramos |
+|---|---|
+| 43 Rally Sierra Morena 2026 (ERC / S-CER) | 7 |
+| Rally Islas Canarias – Rally of Spain (WRC) | 8, más shakedown y test |
+| 17º Rally de Asturias Histórico – Carlos Sainz Tribute | 6 |
+| Rallye Cristian López 2026 | 4 |
+| Trans Sierra Nevada | 16 sectores y rutas |
+| Rally de Ourense (S-CER) | solo el test |
+
+Puedes añadir más desde el menú (⤓ Importar).
 
 **A mano:**
 1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiS-RP/Earth.Raid/releases) (o créalo con `tools/package.sh`).
 2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
    - El zip debe tener `lua/`, `ui/`, `scripts/`… en su raíz. Un zip con una carpeta dentro (p. ej. `raid-earth/lua/…`, el que da *Code → Download ZIP* de GitHub) **no funciona**: el mod sale en la lista pero no aparece el menú.
-3. Entra en BeamNG.Earth. Raid.Earth tiene su propia pestaña en el menú de pausa (**Esc** → **Raid.Earth**), junto a BeamNG.Earth y BeamMP. Si quieres un atajo, asígnalo en Opciones → Controles → «Raid.Earth: open the events menu».
+3. Entra en BeamNG.Earth y abre **Esc → Raid.Earth**. Si quieres un atajo, asígnalo en Opciones → Controles → «Raid.Earth: open the events menu».
 4. Ten **una sola copia**: si instalaste desde Add-ons (`earth_raid-1.zip`) y además a mano (`earth_raid.zip`), borra una. Dos copias a la vez se pisan.
+
+## Copiloto y voces
+
+- **Dentro del mod:** el **Copiloto Raid.Earth** en español (voz neuronal generada con [Piper](https://github.com/rhasspy/piper), modelo `es_ES-davefx-medium`, a partir de `tools/voicepack/es.json`). Va en el propio `earth_raid.zip` de cada release: no hay que instalar nada más. Si tenías el antiguo `earth_raid_voice_es.zip`, puedes borrarlo.
+- **Los del juego:** cualquier copiloto de BeamNG.drive (Alex Kihurani, dirtwheel, HighDef…) aparece también en el selector.
+- **Otras voces o idiomas:** traduce `es.json` y ejecuta `tools/voicepack/make_voicepack.py` (Piper, voces de Windows o espeak-ng). Cualquier voicepack con el formato del juego aparece en la pantalla de inicio → Copiloto.
+- Si empaquetas el mod a mano con `tools/package.sh`, la voz solo va dentro si la has generado antes en la carpeta del repositorio (`--out .`).
 
 ## Mods recomendados (para una mejor experiencia)
 
 No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:**
 
 1. Entra en cada enlace de la tabla (es la web oficial de BeamNG).
-2. Pulsa  **Suscribe** (Suscribirse). Para instalar automaticamente, o **manual** **Download** (Descargar). Se descarga un archivo `.zip`.
-   2.1. Copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods`
-   (o abre el juego → menú principal → **Mods** → **Abrir carpeta de mods**).
+2. Pulsa **Subscribe** (se instala solo) o **Download** (se descarga un `.zip`).
+   - Si lo descargas, copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods` (o abre el juego → menú principal → **Mods** → **Abrir carpeta de mods**).
 3. Abre el juego. **Raid.Earth activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Raid.Earth → Ajustes → «Activar solos los mods recomendados descargados»).
 4. Para comprobarlo: Raid.Earth → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
 
 | Mod | Para qué sirve |
 |---|---|
-| [Racing Line Mod](https://www.beamng.com/resources/racing-line-mod.39806/) | Dibuja la trazada ideal **dentro del tramo** (de la salida a la meta), en lugar de la línea azul del GPS. Fuera del tramo (hacia el control horario y hacia la salida) siempre se usa la línea azul del GPS del juego. Se puede apagar en Ajustes; si no lo tienes, verás la línea azul. |
+| [Racing Line Mod](https://www.beamng.com/resources/racing-line-mod.39806/) | Dibuja la trazada ideal **dentro del tramo** (de la salida a la meta), en lugar de la línea azul del GPS. Fuera del tramo (hacia el control horario y hacia la salida) siempre se usa la línea azul del GPS del juego. Se puede apagar en los ajustes; si no lo tienes, verás la línea azul. |
 | [Hands on the Wheel](https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/) | Pone las manos del piloto en el volante (vista interior más real). |
 | [EnvyFFB](https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/) | Force feedback del volante más realista (si juegas con volante). |
 | [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Faros y antinieblas realistas: imprescindible en tramos de noche. |
@@ -64,8 +131,6 @@ No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:
 **Idioma:** Raid.Earth usa el idioma del juego (por ahora español o inglés).
 
 **Superficies:** cada tramo lleva su superficie FIA: asfalto, tierra (grava), nieve o mixto. Al importar una ruta, elígela en el formulario o déjala en *Automática* (se lee de los nombres: «tierra», «grava», «nieve»...). En pistas y caminos de tierra que el juego no tiene como carretera, el propio trazado del tramo cuenta como calzada, así que no se pone nada encima.
-
-**Copiloto en español:** cada release trae también `earth_raid_voice_es.zip` (voz generada con Piper a partir de `tools/voicepack/es.json`). Cópialo a `mods/` como el otro y elige el copiloto en Ajustes. Para otros idiomas o voces: traduce `es.json` y ejecuta `tools/voicepack/make_voicepack.py` (Piper, voces de Windows o espeak-ng); cualquier voicepack con el formato del juego aparece en Ajustes → Copiloto.
 
 ## Añadir un rally
 
@@ -101,25 +166,26 @@ Lo que no rellenes se deduce del archivo: el nombre, los tramos y sus pasadas, l
 
 | Carpeta | Contenido |
 |---|---|
-| `lua/ge/extensions/earthRaid/` | La lógica: `main` (menú, catálogo, importación), `stage` (fases del tramo), `rally` (rally completo), `dressing` (montaje de objetos), `props` (objetos del juego), `pacenotes` (notas), `importer` (formatos de mapas), `startclock` (reloj LED), `settings`… |
-| `ui/` | El menú (Vue) y la app del HUD. |
-| `settings/ui_apps/layouts/` | La pantalla de rally. |
-| `earthRaid/` | El catálogo que trae el mod (vacío: cada jugador importa sus rutas). |
-| `art/sound/earthRaid/` | Sonidos de ambiente (sintéticos, se pueden cambiar). |
+| `lua/ge/extensions/earthRaid/` | La lógica: `main` (menú, catálogo, importación), `loader` (pantalla de carga), `stage` (fases del tramo), `rally` (rally completo), `servicepark` (parque de asistencia), `dressing` (montaje de objetos), `props` y `phys` (objetos del juego, con y sin física), `clean` (limpieza de trazados), `pacenotes` (notas), `importer` (formatos de mapas), `startclock` (reloj LED), `vhud` (interfaz de rally del juego), `guard` (sin trampas), `audit` (auditoría de tramos), `settings`… |
+| `ui/` | El menú, la pantalla de carga y la de inicio (Vue) y la app del HUD. |
+| `settings/ui_apps/layouts/` | Las pantallas de rally (tramo, enlace y hardcore). |
+| `earthRaid/packs/` | Los eventos que trae el mod. Los que importa cada jugador van a `settings/earthRaid/packs/imported/`. |
+| `art/` | Sonidos de ambiente y prefabs de vallas. |
 | `tools/catalog/` | Scripts para construir paquetes de eventos fuera del juego. |
-| `docs/` | Normas del montaje y plan de trabajo. |
+| `tools/voicepack/` | El generador de voces de copiloto. |
+| `docs/` | Normas del montaje, plan de BeamMP y capturas. |
 
 ## Hoja de ruta
 
 - **Búsqueda automática de rallies de todo el mundo** con la información pública disponible: calendarios, recorridos publicados por los organizadores y datos abiertos. Es la parte en la que más ayuda hace falta.
 - **Mapas de rallies (rally-maps.com):** solo con el permiso de su responsable, que se pedirá antes de nada.
-- **Más eventos:** raids y el Dakar, con navegación por roadbook.
-- **Juego en línea:** cortes de carretera persistentes en BeamMP.Earth.
-- **Más contenido:** voz en español y grabaciones reales de público.
+- **Más eventos:** raids y el Dakar, con navegación por roadbook, y regularidad a velocidad media impuesta.
+- **Juego en línea:** cortes de carretera persistentes en BeamMP.Earth ([plan](docs/plan-beammp.md)).
+- **Más contenido:** estrellas y clasificación local, iconos en el mapa de BeamNG.Earth, grabaciones reales de público.
 
 ## Licencia
 
-Código bajo licencia [MIT](LICENSE). Los recorridos, logos y datos de cada rally pertenecen a sus organizadores y no se incluyen en el repositorio.
+Código bajo licencia [MIT](LICENSE). Los recorridos, nombres y logos de cada rally pertenecen a sus organizadores; importa y distribuye solo lo que tengas derecho a usar.
 
 ## Colaborar
 
@@ -127,39 +193,4 @@ Las incidencias y las propuestas son bienvenidas en *Issues*. Para enviar códig
 
 1. Abre una incidencia contando qué quieres cambiar.
 2. Sigue las [normas del montaje](docs/normas.md): son las que mantienen todos los tramos con la misma calidad.
-3. Prueba en el juego. Revisa el registro (`beamng.log`) buscando avisos de `earthRaid`.
-
-## English
-
-**Raid.Earth** brings real rallies, raids and the Dakar to BeamNG.drive on top of the real-world map of BeamNG.Earth.
-
-- **Stages and timing:** real stages with time controls, road sections, flying finish and STOP.
-- **Signage:** FIA-style signage, the same layout in both directions of a stage.
-- **Co-driver:** pacenotes measured on the real road.
-- **Rally HUD:** a dedicated screen layout for stages.
-- **Route importer:** KMZ, KML, GPX, GeoJSON and OSM, with a logo, a source link and event details.
-
-Install it from BeamNG.Earth → Add-ons → Add from GitHub → `RamiS-RP/Earth.Raid`, or copy `earth_raid.zip` from Releases (unzipped NO: as is) into `mods/`, and open it from its own tab in the pause menu (**Esc → Raid.Earth**). Contributors are welcome, especially for the worldwide automatic rally discovery from public data.
-
-### Recommended mods (for a better experience)
-
-They are optional, but rallying feels much better with them. **Step by step:**
-
-1. Open each link in the table (it is BeamNG's official website).
-2. Click **Download**. You get a `.zip` file.
-3. Copy that `.zip` **as it is, without unzipping it**, into your mods folder: `Documents\BeamNG.drive\<version>\mods`
-   (or start the game → main menu → **Mods** → **Open mods folder**).
-4. Start the game. **Raid.Earth turns on by itself** the recommended mods it finds downloaded (to stop that, switch off Raid.Earth → Settings → "Turn on downloaded recommended mods automatically").
-5. To check: Raid.Earth → Settings → **Recommended mods**: each one says *enabled*, *downloaded* or *not installed*.
-
-| Mod | What it does |
-|---|---|
-| [Racing Line Mod](https://www.beamng.com/resources/racing-line-mod.39806/) | Draws the ideal racing line **inside the stage** (from the start to the finish) instead of the blue GPS line. Outside the stage (to the time control and to the start line) the game's blue GPS line is always used. It can be switched off in Settings; without the mod you get the blue line. |
-| [Hands on the Wheel](https://www.beamng.com/threads/hands-on-the-wheel-driver-immersion-mod-beta-0-5-0.111759/) | Puts the driver's hands on the steering wheel (a more real cockpit view). |
-| [EnvyFFB](https://www.beamng.com/resources/envyffb-drift-force-feedback.40147/) | More realistic steering-wheel force feedback (if you play with a wheel). |
-| [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Realistic headlights and fog lights: a must for night stages. |
-| [Smoke Dust FX](https://www.beamng.com/resources/smoke-dust-fx.39628/) | Realistic smoke and dust, above all on gravel stages. |
-
-**Language:** Raid.Earth follows the game's language (Spanish or English for now).
-
-**Surfaces:** every stage is labelled with its FIA surface: tarmac, gravel, snow or mixed. When you import a route, pick it in the form or leave it on *Automatic* (it is read from the names: "tierra", "gravel", "snow"...). On gravel tracks and paths the game has no road for, the stage line itself counts as the road, so nothing is placed on it.
+3. Trabaja sobre la rama `beta` y prueba en el juego. Revisa el registro (`beamng.log`) buscando avisos de `earthRaid`.
