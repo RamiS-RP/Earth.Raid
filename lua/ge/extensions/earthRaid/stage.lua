@@ -354,6 +354,51 @@ function M.start(ev, st, info)
   local opt = settings.get()
   local cpath = clean.stage(st)
   local t = geo.track(cpath)
+  -- ¿grafo cargado en la salida? lo dice el cargador tras el viaje; si no (rally completo, tramo cercano), se mira si
+  -- hay alguna carretera del juego a menos de 150 m de la salida
+  info = info or {}
+  if info.graphReady == nil then
+    local okG, g = pcall(function()
+      local la, lo = geo.toGeo(t, t.pts[1][1], t.pts[1][2])
+      local gx, gy, gz = props.ground(la, lo)
+      return gx and props.nearestRoad(gx, gy, gz, 150) ~= nil
+    end)
+    info.graphReady = okG and g == true
+  end
+  -- Trazado desplazado (19-nov, Canarias ss01 a 50 m de la carretera, Cristian López ss01 a 20 m): si al principio
+  -- del tramo hay una carretera del juego paralela a una distancia constante (mismo vector en todas las muestras),
+  -- el archivo del organizador está mal georreferenciado y se corrige todo el trazado con ese vector
+  if info and info.graphReady then
+    local okO, moved = pcall(function()
+      local vx, vy, n = {}, {}, 0
+      for d = 0, math.min(t.total, 240), 20 do
+        local x, y = geo.at(t, d)
+        local la, lo = geo.toGeo(t, x, y)
+        local gx, gy, gz = props.ground(la, lo)
+        if gx then
+          local n1, n2, dd, cx, cy = props.nearestRoad(gx, gy, gz, 90)
+          if n1 and dd and cx then n = n + 1 vx[n], vy[n] = cx - gx, cy - gy end
+        end
+      end
+      if n < 6 then return nil end
+      local mx, my = 0, 0
+      for i = 1, n do mx, my = mx + vx[i], my + vy[i] end
+      mx, my = mx / n, my / n
+      local mag = math.sqrt(mx * mx + my * my)
+      if mag < 8 then return nil end
+      local spread = 0
+      for i = 1, n do spread = math.max(spread, math.sqrt((vx[i] - mx) ^ 2 + (vy[i] - my) ^ 2)) end
+      if spread > 6 then return nil end
+      for i = 1, #t.pts do t.pts[i][1], t.pts[i][2] = t.pts[i][1] + mx, t.pts[i][2] + my end
+      t.offsetFix = { mx, my }
+      return mag
+    end)
+    if okO and moved then
+      cpath = {}
+      for i, p in ipairs(t.pts) do cpath[i] = { geo.toGeo(t, p[1], p[2]) } end
+      log('W', TAG, ('stage path %.0f m off the game road everywhere: whole path shifted onto it'):format(moved))
+    elseif not okO then log('W', TAG, 'offset fix: ' .. tostring(moved)) end
+  end
   -- la carretera tras la meta: ya si es un enlace del organizador; si no, al montar la meta (grafo cargado allí)
   local function findAfter()
     -- (otra vez al acercarse si el de antes era corto: el grafo de carreteras no estaba cargado allí)

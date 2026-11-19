@@ -354,7 +354,7 @@ M.offRoad = offRoad
 -- Repaso continuo (norma del usuario: "en todo momento"): lo colocado antes de que el juego cargara la carretera de
 -- ese sitio se comprueba otra vez cuando el jugador se acerca, y si cae en una calzada se saca fuera. Lo que ya se
 -- comprobó con la carretera cargada no se vuelve a mirar.
-M.RECHECK_M = 300
+M.RECHECK_M = 600
 M.SKIP_RECHECK = { line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)

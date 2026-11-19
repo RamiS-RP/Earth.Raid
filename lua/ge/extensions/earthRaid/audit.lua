@@ -246,7 +246,7 @@ function M.update(dt)
     local t = S.track
     local a = api()
     local tx, ty = a.toGame(S.tcLat, S.tcLon, 0)
-    local lines, onRoad = measure(tx, ty, 400)
+    local lines, onRoad = measure(tx, ty, 300)
     A.res.cut = (t.cutStart or 0)
     A.res.startInfo = t.startInfo
     local seen = {}
@@ -339,7 +339,7 @@ function M.update(dt)
     local fx, fy = geo.at(t, t.total)
     local fla, flo = geo.toGeo(t, fx, fy)
     local gx, gy = a.toGame(fla, flo, 0)
-    local lines, onRoad = measure(gx, gy, 450)
+    local lines, onRoad = measure(gx, gy, 300)
     local seen = {}
     for _, l in ipairs(lines) do
       local nearFinish = gx and (l.x - gx) ^ 2 + (l.y - gy) ^ 2 < 30 * 30
