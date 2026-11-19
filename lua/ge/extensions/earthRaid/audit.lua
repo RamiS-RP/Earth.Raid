@@ -187,9 +187,9 @@ function M.state() return A and { i = A.i, n = #A.list, step = A.step, results =
 
 function M.update(dt)
   if not A then return end
+  -- en pausa el juego no coloca el coche ni carga ni monta: la auditoría la quita y no cuenta ese tiempo (19-nov)
+  if simTimeAuthority.getPause() then simTimeAuthority.pause(false) A.unpaused = (A.unpaused or 0) + 1 return end
   A.t = A.t + (dt or 0)
-  -- en pausa el juego no coloca el coche ni carga: la auditoría la quita (19-nov; algo la ponía a ratos)
-  if simTimeAuthority.getPause() then simTimeAuthority.pause(false) A.unpaused = (A.unpaused or 0) + 1 end
   local mn, st = main(), stage()
   local item = A.list[A.i]
   if not item then
