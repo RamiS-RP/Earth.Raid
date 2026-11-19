@@ -183,11 +183,13 @@ function M.run(list)
 end
 function M.stop() if A then A.done = true save() end A = nil end
 function M.active() return A ~= nil end
-function M.state() return A and { i = A.i, n = #A.list, step = A.step, results = #A.results } or nil end
+function M.state() return A and { i = A.i, n = #A.list, step = A.step, results = #A.results, unpaused = A.unpaused } or nil end
 
 function M.update(dt)
   if not A then return end
   A.t = A.t + (dt or 0)
+  -- en pausa el juego no coloca el coche ni carga: la auditoría la quita (19-nov; algo la ponía a ratos)
+  if simTimeAuthority.getPause() then simTimeAuthority.pause(false) A.unpaused = (A.unpaused or 0) + 1 end
   local mn, st = main(), stage()
   local item = A.list[A.i]
   if not item then
