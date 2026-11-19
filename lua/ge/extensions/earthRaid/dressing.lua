@@ -290,7 +290,7 @@ end
 
 -- Norma (16-nov): en la calzada solo conos en el eje. Distancia mínima del centro de cada objeto a la línea de borde
 -- (el radio de la carretera más cercana del juego, sea la del tramo o una que cruce); nil: puede ir en la calzada
-M.CLEAR_M = { hayBale = 1.4, hayBale2 = 1.4, meshBarricade = 0.5, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
+M.CLEAR_M = { hayBale = 1.4, hayBale2 = 1.4, meshBarricade = 0.5, plasticBarrier = 0.8, plasticBarrierW = 0.8, barrel = 0.6, cone = false, coneS = false, coneY = false, tapeY = false, markY = false, lamp = 2.0, sndCrowd = false, sndCheer = false, sndGenerator = false, gazebo3x3 = 2.0, gazebo3x6 = 2.0, gazebo3x6b = 2.0, table = 0.9, chair = 0.9, tree = 0.8,
   cushion = 0.8, ambulance = 1.6, extinguisher = 0.3, laptop = false, specTape = 1.5, specGrid = 1.5, specGridA = 1.5, specGridB = 1.5, specTapeBigA = 1.5, specTapeBigB = 1.5, specTapeBigCenter = 1.5, specTarpAngle = 1.5, meshBarricade = 1.5, specTarp = 2.0, specTarp2 = 2.0, specTarp3 = 2.0 }
 local function clearOf(kind)
   local c = M.CLEAR_M[kind]
@@ -355,7 +355,7 @@ M.offRoad = offRoad
 -- ese sitio se comprueba otra vez cuando el jugador se acerca, y si cae en una calzada se saca fuera. Lo que ya se
 -- comprobó con la carretera cargada no se vuelve a mirar.
 M.RECHECK_M = 600
-M.SKIP_RECHECK = { line = true, cone = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
+M.SKIP_RECHECK = { line = true, cone = true, coneS = true, coneY = true, tapeY = true, markY = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)
   if M.dry or not plat then return 0 end
@@ -537,8 +537,8 @@ function M.serviceBox(lat, lon, towardLat, towardLon)
   put('workbench', 3.9, 1.0, 180)
   put('stool', 3.4, -0.4, 0)
   put('tireRack', -3.9, 1.2, 0)
-  put('cone', -4.2, -1.6, 0)
-  put('cone', 4.2, -1.6, 0)
+  put('coneS', -4.2, -1.6, 0)
+  put('coneS', 4.2, -1.6, 0)
   local la, lo = a.toGeo(cx, cy, z)
   local fla, flo = a.toGeo(cx + hx * 10, cy + hy * 10, z)
   return { lat = la, lon = lo, faceLat = fla, faceLon = flo }
@@ -621,7 +621,7 @@ end
 local function centreCones(t, along, fwd, from, to, step)
   local la, lo = at(t, along, 0, fwd)
   if not twoWay(la, lo) then return end
-  for k = from, to, step do place('cone', t, along, 0, 0, fwd + k) end
+  for k = from, to, step do place('coneS', t, along, 0, 0, fwd + k) end
 end
 
 -- Puesto de control: carpa 3x3 fuera de la calzada (su borde a 1 m del asfalto); debajo, la mesa del lado de la
@@ -670,6 +670,51 @@ local function endPlacer(t, endAlong, out)
   end, yawFor
 end
 
+-- El puesto de control horario (TC) a D m por fuera del punto endAlong, en el marco de endPlacer (out = -1: quien
+-- ficha viaja en el sentido +fwd del trazado). clockLado: en qué lado va la carpa con el reloj (-1: derecha de quien
+-- ficha). full: también el STOP y los carteles de cuenta atrás de quien llega (el extremo de un tramo); sin ello es un
+-- TC de enlace (el TC0 a la salida del parque de asistencia).
+function M.tcPost(t, endAlong, out, hw, D, clockLado, full)
+  local put = endPlacer(t, endAlong, out)
+  local S, P = hw + M.SIGN_SIDE_M, hw + M.SIDE_PAD_M
+  paintLine(t, endAlong, hw, out * D, full and 'stop' or 'tc')
+  put('tcEntry', -P, D + M.TC_ENTRY_M, 'in')
+  put('tc', -S, D + M.PAIR_FWD_M, 'in')
+  if full then
+    for i, b in ipairs({ 'board3', 'board2', 'board1' }) do
+      local d = D * i / 4
+      put(b, P, d, 'out')
+      put(b, -P, d, 'out')
+    end
+    put('stop', S, D - M.PAIR_FWD_M, 'out')
+  end
+  local cla, clo = at(t, endAlong, 0, out * D)
+  local both = twoWay(cla, clo)
+  -- el reloj de fichar en la carpa de quien ficha en este sentido: el que sale aquí (TC) o el que llega (STOP)
+  -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
+  -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
+  local _ = both
+  local lados = { clockLado }
+  local g = 2.6
+  for _, lado in ipairs(lados) do
+    local side = out * lado * (hw + g)
+    local sgn = side > 0 and 1 or -1
+    local ty = sgn > 0 and 180 or 0
+    place('gazebo3x3', t, endAlong, side, ty, out * D)
+    place('table', t, endAlong, side - sgn * 0.9, ty, out * D + 0.6)
+    place('table', t, endAlong, side - sgn * 0.9, ty, out * D - 0.6)
+    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, out * D + 0.6, { dz = 0.75 })
+    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, out * D + 0.6)
+    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, out * D + 1.5)
+    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, out * D + 1.6)
+    -- de noche, una luz bajo la carpa (de día no se nota)
+    place('lamp', t, endAlong, side, 0, out * D, { dz = 2.4 })
+    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, out * D - 1.4)
+  end
+  put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
+  centreCones(t, endAlong, out * D, -10, 10, 5)
+end
+
 M.END_FENCE_IN_M, M.END_FENCE_OUT_M = 30, 25
 -- role: 'start' (aquí sale el tramo que se corre) o 'finish' (aquí llega). Devuelve el semáforo / reloj de este extremo.
 function M.endKit(t, endAlong, out, hw, D, role)
@@ -706,41 +751,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
   end
 
   -- el puesto de control a D m por fuera: TC de quien sale, STOP de quien llega
-  paintLine(t, endAlong, hw, out * D, 'stop')
-  put('tcEntry', -P, D + M.TC_ENTRY_M, 'in')
-  put('tc', -S, D + M.PAIR_FWD_M, 'in')
-  for i, b in ipairs({ 'board3', 'board2', 'board1' }) do
-    local d = D * i / 4
-    put(b, P, d, 'out')
-    put(b, -P, d, 'out')
-  end
-  put('stop', S, D - M.PAIR_FWD_M, 'out')
-  local cla, clo = at(t, endAlong, 0, out * D)
-  local both = twoWay(cla, clo)
-  -- el reloj de fichar en la carpa de quien ficha en este sentido: el que sale aquí (TC) o el que llega (STOP)
-  local clockLado = role == 'start' and -1 or 1
-  -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
-  -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
-  local _ = both
-  local lados = { clockLado }
-  local g = 2.6
-  for _, lado in ipairs(lados) do
-    local side = out * lado * (hw + g)
-    local sgn = side > 0 and 1 or -1
-    local ty = sgn > 0 and 180 or 0
-    place('gazebo3x3', t, endAlong, side, ty, out * D)
-    place('table', t, endAlong, side - sgn * 0.9, ty, out * D + 0.6)
-    place('table', t, endAlong, side - sgn * 0.9, ty, out * D - 0.6)
-    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, out * D + 0.6, { dz = 0.75 })
-    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, out * D + 0.6)
-    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, out * D + 1.5)
-    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, out * D + 1.6)
-    -- de noche, una luz bajo la carpa (de día no se nota)
-    place('lamp', t, endAlong, side, 0, out * D, { dz = 2.4 })
-    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, out * D - 1.4)
-  end
-  put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
-  centreCones(t, endAlong, out * D, -10, 10, 5)
+  M.tcPost(t, endAlong, out, hw, D, role == 'start' and -1 or 1, true)
   -- el médico, con su ambulancia
   put('medical', -P, D + 8, 'out')
   put('ambulance', -(P + 2.6), D + 16, 'out')
@@ -959,6 +970,13 @@ function M.cautions(t, hazards, hw)
         local hw2 = hwAt(t, d2)
         place('danger', t, d2, hw2 + M.SIDE_PAD_M, 180)
         place('danger', t, d2, -(hw2 + M.SIDE_PAD_M), 180)
+      end
+      -- el peligro en sí (carretera abrupta, mal generada): conos grandes amarillos a rayas y cinta amarilla en las dos
+      -- cunetas (el amarillo es de peligros y obras; el naranja, del trazado). Nunca sobre la calzada
+      for _, sd in ipairs({ 1, -1 }) do
+        local hwh = hwAt(t, h.at) + 1.0
+        for _, off in ipairs({ -12, -6, 0 }) do place('coneY', t, math.max(0, h.at + off), sd * hwh, 0) end
+        place('markY', t, math.max(0, h.at - 10), sd * (hwh + 0.8), 90)
       end
     end)
   end

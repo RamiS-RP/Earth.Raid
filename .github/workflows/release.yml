@@ -2,7 +2,7 @@
 # Dos canales:
 #   - estable: rama main -> release vX.Y.Z (la "latest": la que instalan los jugadores con Add-ons de BeamNG.Earth)
 #   - beta:    rama beta -> pre-release vX.Y.Z-beta.N (para desarrolladores y probadores; no sustituye a la estable)
-# El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiroRP/earth.raid) descarga ese .zip de la última release.
+# El instalador de add-ons de BeamNG.Earth (Add from GitHub: RamiS-RP/Earth.Raid) descarga ese .zip de la última release.
 # Se lanza: al subir a main un cambio de versión (M.VERSION en main.lua), al publicar una etiqueta v* o una release
 # desde la web, o a mano (Actions → release → Run workflow).
 name: release

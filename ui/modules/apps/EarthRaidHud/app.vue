@@ -154,9 +154,6 @@ const loadStep = computed(() => {
 })
 events.on("EarthRaidHud", data => {
   d.value = data
-  // tamaño y opacidad de las notas visuales del juego (ajustes del jugador)
-  if (data && data.notesScale) document.documentElement.style.setProperty("--er-notes-scale", String(data.notesScale))
-  if (data && data.notesOpacity) document.documentElement.style.setProperty("--er-notes-opacity", String(data.notesOpacity))
 })
 events.on("EarthRaidRally", data => { r.value = data })
 events.on("EarthRaidClockView", v => { view.value = v || { show: false } })
@@ -418,8 +415,6 @@ const frameStyle = computed(() => {
 .erh-load .lbar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
 .erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
-// la app de notas del juego (RallyVisualPacenotes): más pequeña y algo transparente, para no tapar la carretera
-.pacenotes-app { opacity: var(--er-notes-opacity, 0.72); transform: scale(var(--er-notes-scale, 0.72)); transform-origin: top center; }
 .spen { position: absolute; left: 10px; top: 436px; padding: 4px 10px; background: rgba(26, 29, 34, 0.82); color: #fff; font-size: 14px; font-weight: 700; }
 .slimpen { position: absolute; left: 10px; top: 900px; width: 270px; background: rgba(26, 29, 34, 0.82); padding: 6px 8px; }
 </style>

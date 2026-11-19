@@ -29,14 +29,14 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 ## Instalar
 
-**Desde BeamNG.Earth (recomendado):** menú de pausa → BeamNG.Earth → **Add-ons** → *Add from GitHub* → `RamiroRP/earth.raid` → **Add**. Se instala el `earth_raid.zip` de la última release.
+**Desde BeamNG.Earth (recomendado):** menú de pausa → BeamNG.Earth → **Add-ons** → *Add from GitHub* → `RamiS-RP/Earth.Raid` → **Add**. Se instala el `earth_raid.zip` de la última release.
 
 **Versiones:** la **estable** (rama `main`, release normal) es la que instala Add-ons y la que se recomienda a los jugadores. La **beta** (rama `beta`, *pre-release* `vX.Y.Z-beta.N`) es para desarrolladores y probadores: descárgala a mano desde Releases.
 
 **Rallies incluidos:** 43 Rally Sierra Morena 2026, Rally Islas Canarias, Rally de Ourense y Rallye Cristian López 2026 (en `earthRaid/packs/`). Puedes añadir más desde el menú (⤓ Importar).
 
 **A mano:**
-1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiroRP/earth.raid/releases) (o créalo con `tools/package.sh`).
+1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiS-RP/Earth.Raid/releases) (o créalo con `tools/package.sh`).
 2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
    - El zip debe tener `lua/`, `ui/`, `scripts/`… en su raíz. Un zip con una carpeta dentro (p. ej. `raid-earth/lua/…`, el que da *Code → Download ZIP* de GitHub) **no funciona**: el mod sale en la lista pero no aparece el menú.
 3. Entra en BeamNG.Earth. Raid.Earth tiene su propia pestaña en el menú de pausa (**Esc** → **Raid.Earth**), junto a BeamNG.Earth y BeamMP. Si quieres un atajo, asígnalo en Opciones → Controles → «Raid.Earth: open the events menu».
@@ -139,7 +139,7 @@ Las incidencias y las propuestas son bienvenidas en *Issues*. Para enviar códig
 - **Rally HUD:** a dedicated screen layout for stages.
 - **Route importer:** KMZ, KML, GPX, GeoJSON and OSM, with a logo, a source link and event details.
 
-Install it from BeamNG.Earth → Add-ons → Add from GitHub → `RamiroRP/earth.raid`, or copy `earth_raid.zip` from Releases (unzipped NO: as is) into `mods/`, and open it from its own tab in the pause menu (**Esc → Raid.Earth**). Contributors are welcome, especially for the worldwide automatic rally discovery from public data.
+Install it from BeamNG.Earth → Add-ons → Add from GitHub → `RamiS-RP/Earth.Raid`, or copy `earth_raid.zip` from Releases (unzipped NO: as is) into `mods/`, and open it from its own tab in the pause menu (**Esc → Raid.Earth**). Contributors are welcome, especially for the worldwide automatic rally discovery from public data.
 
 ### Recommended mods (for a better experience)
 

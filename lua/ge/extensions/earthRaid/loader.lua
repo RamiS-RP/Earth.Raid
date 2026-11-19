@@ -90,14 +90,16 @@ end
 
 local function finish(why)
   if not L then return end
-  local done = L.done
-  freeze(false)
+  local done, keep = L.done, L.keepFrozen
+  -- con keepFrozen el coche sigue congelado: quien recibe done (la pantalla de inicio) lo suelta al darle a Iniciar
+  if not (keep and done) then freeze(false) end
   -- la cámara detrás del coche, mirando la carretera (tras el teletransporte se queda donde estaba)
   pcall(function() if core_camera and core_camera.resetCamera then core_camera.resetCamera(0) end end)
   log('I', TAG, 'loading finished' .. (why and (' (' .. why .. ')') or ''))
   L = nil
-  send()
+  -- primero la pantalla de inicio y después se quita la de carga: sin hueco en el que el coche se pueda mover
   if done then pcall(done) end
+  send()
 end
 
 function M.cancel() if L then L.done = nil finish('cancelled') end end

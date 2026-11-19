@@ -19,30 +19,38 @@ M.DEFAULTS = {
   arrows = true,                 -- flechas antes de las curvas cerradas
   cautions = true,               -- carteles de peligro antes de saltos y crestas
   radiusKm = 50,                 -- "cerca de ti": eventos a menos de esto (catálogo y propuesta al llegar a la zona)
-  liaisonKmh = 60,               -- rally completo: media para el tiempo asignado a cada enlace
-  raceHud = true,                -- diseño de apps de rally durante los tramos (sin minimapa)
+  raceHud = true,                -- (fijo) diseño de apps de rally durante los tramos: ya no es un ajuste del jugador
+  hardcore = false,              -- modo hardcore: sin reparar/restablecer, sin líneas, notas en pantalla ni minimapa: solo la voz
   notesLeadS = 4.5,              -- segundos de antelación con que se canta cada nota
-  notesScale = 0.72,             -- tamaño de las notas visuales
-  notesOpacity = 0.72,           -- opacidad de las notas visuales
   notesSafe = false,             -- notas prudentes: cada curva un grado más cerrada
 }
-M.NUMBERS = { radiusKm = { 5, 20000 }, liaisonKmh = { 20, 150 }, notesLeadS = { 2, 9 }, notesScale = { 0.4, 1.3 },
-  notesOpacity = { 0.3, 1 } }
+M.NUMBERS = { radiusKm = { 5, 20000 }, notesLeadS = { 2, 9 } }
 
-local cache = nil
+local raw = nil
+local eff = nil
 
+-- Los ajustes vigentes. El HUD de rally es siempre el del juego (no es un ajuste: vanilla no lo tiene). El modo hardcore
+-- (la voz del copiloto y nada más) apaga por encima las ayudas sin tocar lo guardado.
+M.HARDCORE_OFF = { visualNotes = false, racingLine = false, arrows = false, cautions = false }
 function M.get()
-  if cache then return cache end
-  local d = jsonReadFile(M.FILE)
-  cache = {}
-  for k, v in pairs(M.DEFAULTS) do cache[k] = v end
-  if type(d) == 'table' then for k, v in pairs(d) do if M.DEFAULTS[k] ~= nil then cache[k] = v end end end
-  return cache
+  if eff then return eff end
+  if not raw then
+    local d = jsonReadFile(M.FILE)
+    raw = {}
+    for k, v in pairs(M.DEFAULTS) do raw[k] = v end
+    if type(d) == 'table' then for k, v in pairs(d) do if M.DEFAULTS[k] ~= nil then raw[k] = v end end end
+    raw.raceHud = true
+  end
+  eff = {}
+  for k, v in pairs(raw) do eff[k] = v end
+  if raw.hardcore then for k, v in pairs(M.HARDCORE_OFF) do eff[k] = v end eff.voice = true end
+  return eff
 end
 
 function M.set(key, value)
-  local s = M.get()
-  if M.DEFAULTS[key] == nil then return false end
+  M.get()
+  local s = raw
+  if M.DEFAULTS[key] == nil or key == 'raceHud' then return false end
   if type(M.DEFAULTS[key]) == 'boolean' then value = value == true end
   if type(M.DEFAULTS[key]) == 'number' then
     value = tonumber(value)
@@ -51,12 +59,19 @@ function M.set(key, value)
     if r then value = math.max(r[1], math.min(r[2], value)) end
   end
   s[key] = value
+  eff = nil
   pcall(jsonWriteFile, M.FILE, s, true)
   return true
 end
 
 local NAMES = { enthusiast = 'Entusiasta', casual = 'Casual' }
-local DIALECTS = { ['en-US'] = 'Inglés americano', ['en-GB'] = 'Inglés británico' }
+local DIALECTS = { ['en-US'] = 'Inglés americano', ['en-GB'] = 'Inglés británico', ['es-ES'] = 'Español', ['es-MX'] = 'Español (México)' }
+-- el origen de la voz en español: grabada por una persona o generada (TTS), pedido del usuario, 19-nov
+local function dialectLabel(dialect, real)
+  local d = DIALECTS[dialect] or dialect
+  if tostring(dialect):sub(1, 2) == 'es' then d = d .. (real and ' Voz Real' or ' TTS') end
+  return d
+end
 
 -- copilotos con audio propio: { id, name, style, dialect }
 function M.voicepacks()
@@ -73,8 +88,10 @@ function M.voicepacks()
       -- fuera del selector los de broma (Clover, el gato del 1 de abril: idioma "Feline", 12 maullidos) y los incompletos
       local joke = d.enableAnimalCodrivers ~= nil and not tostring(d.language or ''):find('languages', 1, true)
       if not joke and (notes >= 120 or d.raidEarthPartialOk) then
+        -- voz grabada por una persona (Xpectro99) o generada (TTS): lo dice la ficha del paquete
+        local real = d.raidEarthReal == true or d.raidEarthNoFallback == true
         out[#out + 1] = { id = dir:match('[^/]+$'), dir = dir, name = d.persona or dir:match('[^/]+$'),
-          style = NAMES[style] or style, dialect = DIALECTS[dialect] or dialect, notes = notes,
+          style = NAMES[style] or style, dialect = dialectLabel(dialect, real), notes = notes, real = real,
           language = tostring(d.language or ''):match('languages%.(%w+)%.name') or d.language }
       end
     end

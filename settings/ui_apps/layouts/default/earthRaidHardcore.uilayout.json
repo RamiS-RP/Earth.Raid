@@ -1,0 +1,68 @@
+{
+ "apps": [
+  {
+   "appName": "tacho2",
+   "appVersion": 1,
+   "placement": {
+    "bottom": "5px",
+    "height": "300px",
+    "right": "5px",
+    "width": "300px"
+   },
+   "settings": {
+    "noCockpit": true
+   }
+  },
+  {
+   "appName": "rallyCountdown",
+   "placement": {
+    "bottom": "",
+    "height": "220px",
+    "left": 0,
+    "position": "absolute",
+    "right": 0,
+    "top": "82px",
+    "width": "450px",
+    "margin": "auto"
+   }
+  },
+  {
+   "appName": "rallyStageTiming",
+   "placement": {
+    "bottom": "",
+    "height": "427px",
+    "left": "0px",
+    "position": "absolute",
+    "right": "",
+    "top": "0px",
+    "width": "288px"
+   }
+  },
+  {
+   "appName": "beamngEarthCredits",
+   "placement": {
+    "bottom": "0px",
+    "height": "60px",
+    "left": "170px",
+    "width": "520px",
+    "position": "absolute"
+   }
+  },
+  {
+   "appName": "rallyTimecard",
+   "placement": {
+    "bottom": "",
+    "height": "790px",
+    "left": "0px",
+    "position": "absolute",
+    "right": "",
+    "top": "105px",
+    "width": "290px"
+   }
+  }
+ ],
+ "description": "Raid.Earth: hardcore mode, the minimum HUD (speed, start countdown, stage time and time card; no pacenote screens, minimap or aids)",
+ "title": "Raid.Earth - Hardcore",
+ "type": "earthRaidHardcore",
+ "version": 1
+}

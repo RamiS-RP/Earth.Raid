@@ -204,7 +204,7 @@ local function lang() local ok, l = pcall(function() return Lua:getSelectedLangu
 function M.start(ev, fromRun, hooks)
   M.stop()
   local opt = settings.get()
-  local it, err = M.itinerary(ev, fromRun, tonumber(opt.liaisonKmh) or 60)
+  local it, err = M.itinerary(ev, fromRun, M.LIAISON_AVG_KMH)
   if not it then return false, err end
   local tm = os.date('*t')
   local now = tm.hour * 3600 + tm.min * 60 + tm.sec
@@ -258,10 +258,34 @@ end
 -- Salida de la asistencia (TC0): el reloj corre y empieza el primer enlace
 local function leaveService()
   local r0 = row('TC0')
-  r0.actual, r0.status = R.clock, 'ok'
+  if not r0.actual then r0.actual, r0.status = R.clock, 'ok' end
   R.phase = 'liaison'
   stage.trafficBack()
   setGps()
+end
+
+-- El TC0 a la salida del parque de asistencia (servicepark.tc0): se ficha ahí, a tu minuto, como en los demás
+-- controles (adelanto o retraso: 10 s por minuto); sin él, se sale solo a la hora
+function M.setTc0(lat, lon)
+  if not R then return end
+  R.tc0 = lat and { lat, lon } or nil
+  if R.tc0 and R.phase == 'service' then
+    local a = api()
+    if a and a.gpsSet then pcall(a.gpsSet, lat, lon, 'TC0') end
+  end
+end
+local function checkInTc0()
+  local r0 = row('TC0')
+  local off = math.floor(R.clock / 60) - R.startMin
+  r0.actual = R.clock
+  if off == 0 then r0.status = 'ok'
+  else
+    r0.status = off > 0 and 'late' or 'early'
+    local s = math.abs(off) * M.PENALTY_PER_MIN
+    r0.penalty = s
+    penalise('TC0', s, off > 0 and 'late' or 'early')
+  end
+  leaveService()
 end
 
 function M.begin()
@@ -420,10 +444,15 @@ local function hud(p)
   if cur and (R.phase == 'liaison' or R.phase == 'service') then
     local g = a and a.gps and a.gps()
     local d = (g and g.remaining) or (p and dist(p.lat, p.lon, cur.pos[1], cur.pos[2]))
-    local lim = a and a.speedLimit and a.speedLimit()
-    next = { label = cur.label, distM = d, dueMin = cur.dueMin, limitKmh = lim and lim.ms and math.floor(lim.ms * 3.6 + 0.5) or nil,
+    -- como en el rally del juego: 120 km/h en los enlaces, 30 en el parque de asistencia (no se configura)
+    next = { label = cur.label, distM = d, dueMin = cur.dueMin, limitKmh = R.phase == 'service' and M.SERVICE_KMH or M.LIAISON_KMH,
       stageTitle = cur.stage and cur.stage.title, liaisonKm = cur.liaison.lengthM / 1000, minutes = cur.liaison.minutes,
       real = cur.liaison.real, early = R.early, final = cur.final }
+    -- en la asistencia con TC0 a la salida: el control que toca es ese, a tu minuto de salida
+    if R.phase == 'service' and R.tc0 then
+      next.label, next.dueMin, next.stageTitle = 'TC0', R.startMin, nil
+      next.distM = p and dist(p.lat, p.lon, R.tc0[1], R.tc0[2]) or nil
+    end
   end
   local rows = {}
   for _, r in ipairs(R.rows) do rows[#rows + 1] = r end
@@ -454,6 +483,9 @@ function M.hold(on)
 end
 function M.held() return R ~= nil and R.hold == true end
 
+-- como en el rally del juego: límite 120 km/h en los enlaces y 30 en la asistencia, fijos (no se configuran); los tiempos
+-- de los enlaces se asignan a una media de 100 km/h
+M.LIAISON_KMH, M.SERVICE_KMH, M.LIAISON_AVG_KMH = 120, 30, 100
 function M.update(dtSim, dtReal)
   if not R then return end
   if R.hold then return end
@@ -461,8 +493,24 @@ function M.update(dtSim, dtReal)
   local a = api()
   local p = a and a.ready and a.ready() and a.pose() or nil
   local cur = item()
-  -- en la asistencia: a tu minuto de TC0 se sale solo
-  if R.phase == 'service' and R.clock >= R.startMin * 60 then leaveService() end
+  -- en la asistencia: con TC0 a la salida del parque se ficha ahí (parado en el punto); sin él, a tu minuto se sale solo
+  if R.phase == 'service' then
+    if R.tc0 then
+      if p and not p.camera then
+        local d = dist(p.lat, p.lon, R.tc0[1], R.tc0[2])
+        if d < M.TC_ZONE_M and (p.speed or 0) < 0.6 then
+          local early = math.floor(R.clock / 60) < R.startMin
+          R.early = early
+          if not early then
+            R.holdT = R.holdT + dtSim
+            if R.holdT >= M.TC_HOLD_S then R.holdT, R.early = 0, false checkInTc0() end
+          end
+        else
+          R.holdT, R.early = 0, false
+        end
+      end
+    elseif R.clock >= R.startMin * 60 then leaveService() end
+  end
   if R.phase == 'liaison' and cur and p and not p.camera then
     -- el punto de fichaje, tal como lo ancla el tramo al eje de la carretera
     local sst = R.built == R.idx and stage.state()

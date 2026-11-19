@@ -141,9 +141,8 @@ local function fromRally(R, cur, a)
     sc.eventWallClockStart = hhmm(cur.dueMin * 60)
     sc.eventWallClockEnd = hhmm(cur.dueMin * 60 + 60)
     sc.canIncurLatePenalty = true
-    local lim = a and a.speedLimit and a.speedLimit()
-    local k = lim and lim.ms and math.floor(lim.ms * 3.6 / 10 + 0.5) * 10 or nil
-    if not k or k <= 0 then k = cur.limitKmh or 90 end
+    -- el límite del rally del juego: 120 en el enlace, 30 en la asistencia
+    local k = cur.limitKmh or 120
     sc.speedLimit, sc.speedLimitDisplay = k, tostring(k)
     sc.isSpeeding = speedNow() * 3.6 > k + 5
     local g = a and a.gps and a.gps()

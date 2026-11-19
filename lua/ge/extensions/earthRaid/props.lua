@@ -28,6 +28,9 @@ M.SHAPES = {
   -- el puesto de control vanilla (NGRC Rally Utah): portátil en la mesa y dos extintores
   laptop = '/art/shapes/garage_and_dealership/garage/s_laptop.dae',
   extinguisher = '/art/shapes/garage_and_dealership/Clutter/clutter_workshop_fire_extinguisher.dae', chair = A .. 's_rally_fold_chair_01.dae', cone = '/art/shapes/race/cone.dae',
+  -- cono pequeño naranja a rayas (casetas, tráfico) y cono grande amarillo a rayas (peligros): estáticos de lejos, con su
+  -- configuración de vehículo (cones/small_orange_white_single, large_yellow_black_double) cerca; cinta amarilla solo vehículo
+  coneS = '/art/shapes/race/cone.dae', coneY = '/art/shapes/race/cone.dae', tapeY = A .. 's_spectator_tape_5m.dae', markY = A .. 's_spectator_tape_5m.dae',
   cornerR = A .. 's_corner_dir_right.dae', cornerL = A .. 's_corner_dir_left.dae',
   corner45R = A .. 's_corner_dir45_right.dae', corner45L = A .. 's_corner_dir45_left.dae',
   hairpinR = A .. 's_corner_dir135_right.dae', hairpinL = A .. 's_corner_dir225_left.dae',
@@ -230,7 +233,7 @@ local function create(kind, opts)
     if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
     else M.collisionDirty = true end
   end
-  if kind == 'ambulance' then pcall(function() o:setHidden(true) end) end
+  if kind == 'ambulance' or phys.PHYS_ONLY[kind] then pcall(function() o:setHidden(true) end) end
   register(o, kind)
   if prefab and o.load then pcall(function() o:load() end) end
   return o

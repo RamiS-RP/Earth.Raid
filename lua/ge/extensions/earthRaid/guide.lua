@@ -56,13 +56,16 @@ M.RL_FILE = '/settings/earthRaid/blueline.json'
 
 local function blueLine(show)
   pcall(function()
+    -- lo guardado en disco (un cierre a mitad de tramo, o una recarga del módulo) vale más que lo que hay ahora: si ya
+    -- estaba oculta por nosotros, lo "actual" es false y se perdería para siempre la preferencia del jugador (19-nov:
+    -- el GPS azul desaparecido)
+    if not rl.saved and FS:fileExists(M.RL_FILE) then
+      local ok, d = pcall(jsonReadFile, M.RL_FILE)
+      if ok and type(d) == 'table' then rl.saved = d end
+    end
     if not show and not rl.saved then
       rl.saved = { gm = settings.getValue('showNavigationGroundmarkers'), ar = settings.getValue('showNavigationArrows') }
       pcall(jsonWriteFile, M.RL_FILE, rl.saved)
-    end
-    if show and not rl.saved and FS:fileExists(M.RL_FILE) then
-      local ok, d = pcall(jsonReadFile, M.RL_FILE)
-      if ok and type(d) == 'table' then rl.saved = d end
     end
     if show then pcall(function() FS:removeFile(M.RL_FILE) end) end
     if show and rl.saved then
@@ -77,6 +80,9 @@ local function blueLine(show)
     if gm and gm.onSettingsChanged then gm.onSettingsChanged() end
   end)
 end
+
+-- modo hardcore: ni la línea azul ni las flechas del GPS mientras dure el tramo o el rally
+function M.hideNav(on) blueLine(not on) end
 
 -- en la salida del tramo (tras poner la ruta del GPS): on = ajuste del jugador
 function M.racingLine(on)

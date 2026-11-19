@@ -16,7 +16,7 @@ M.SPAWN_EVERY_S = 0.45        -- uno cada tanto: crear un vehículo cuesta de 10
 M.SCAN_EVERY_S = 0.25         -- la búsqueda del más cercano, no en cada fotograma
 -- con física solo lo que el coche puede tocar de verdad: conos en la calzada, cintas, lo del puesto de control y la
 -- meta (zona lenta) y la ambulancia; el resto de carteles del tramo queda estático (18-nov, rendimiento)
-M.PHYS_KINDS = { cone = true, tape = true, tape6 = true, tape10 = true, ambulance = true, start = true, finish = true,
+M.PHYS_KINDS = { cone = true, coneS = true, coneY = true, tapeY = true, markY = true, tape = true, tape6 = true, tape10 = true, ambulance = true, start = true, finish = true,
   stop = true, tc = true, tcEntry = true, finishEntry = true, endArea = true }
 M.enabled = true
 
@@ -28,6 +28,8 @@ M.MAP = {
   medical = { 'rallysigns', 'medical_point' }, medicalWarn = { 'rallysigns', 'medical_warning' },
   board1 = { 'rallysigns', 'cooldown_1' }, board2 = { 'rallysigns', 'cooldown_2' }, board3 = { 'rallysigns', 'cooldown_3' },
   cone = { 'cones', 'large' },
+  coneS = { 'cones', 'small_orange_white_single' }, coneY = { 'cones', 'large_yellow_black_double' },
+  tapeY = { 'rallytape', 'hazardtape' }, markY = { 'rallytape', 'coursemarker_4m' },
   -- en cada punto médico, una ambulancia aparcada (la de tráfico simple: ligera, sin motor que simular)
   ambulance = { 'simple_traffic', 'van_ambulance_parked' },
   tape = { 'rallytape', 'roadclosed_8m' }, tape6 = { 'rallytape', 'roadclosed_6m' }, tape10 = { 'rallytape', 'roadclosed_10m' },
@@ -35,7 +37,7 @@ M.MAP = {
 -- giro extra (grados) entre la orientación del modelo estático y la del vehículo
 M.YAW_FIX = { rallysigns = 0, cones = 0, rallytape = 0, simple_traffic = 0 }
 -- sin modelo estático visible: solo existen como vehículo
-M.PHYS_ONLY = { ambulance = true }
+M.PHYS_ONLY = { ambulance = true, tapeY = true, markY = true }
 
 local live = {}               -- item -> { vid }
 local count = 0

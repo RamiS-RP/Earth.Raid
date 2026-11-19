@@ -19,7 +19,7 @@ M.BUILD_S = 12               -- y un momento más para que se creen los objetos
 M.LINE_KINDS = { line = true }
 M.BOARD_KINDS = { tc = true, start = true, finish = true, stop = true }   -- carteles: junto a la calzada
 M.BOARD_OK_M = 3.0           -- un cartel, a menos de esto del borde de la calzada
-M.ROAD_OK = { cone = true, line = true, laptop = true, sensor = true, tc = true, start = true, finish = true, stop = true,
+M.ROAD_OK = { cone = true, coneS = true, line = true, laptop = true, sensor = true, tc = true, start = true, finish = true, stop = true,
   finishEntry = true, tcEntry = true, sndCrowd = true, sndCheer = true, sndGenerator = true, lamp = true }
 
 local A = nil   -- la auditoría en marcha

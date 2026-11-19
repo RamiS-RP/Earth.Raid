@@ -19,6 +19,7 @@ local catalog = require('earthRaid/catalog')
 local clean = require('earthRaid/clean')
 local dressing = require('earthRaid/dressing')
 local loader = require('earthRaid/loader')
+local servicepark = require('earthRaid/servicepark')
 local props = require('earthRaid/props')
 local geo = require('earthRaid/geo')
 local stage = require('earthRaid/stage')
@@ -246,7 +247,17 @@ function M.importAll(force)
   return list
 end
 
+-- Tramos retirados provisionalmente (earthRaid/disabled.json: evento -> tramo -> motivo), además de los `disabled` del
+-- propio archivo del evento: valen aunque el paquete importado se regenere
+local function isDisabled(evId, st)
+  if st.disabled then return true end
+  S.disabledMap = S.disabledMap or jsonReadFile('/earthRaid/disabled.json') or {}
+  local m = S.disabledMap[evId]
+  return type(m) == 'table' and m[st.id] ~= nil
+end
+
 function M.loadIndex()
+  S.disabledMap = nil
   local byId, order = {}, {}
   S.loaded = {}
   addPack(byId, order, '/earthRaid/', 'base')
@@ -262,6 +273,15 @@ function M.loadIndex()
   local imported = #(S.imports or {})
   local events = {}
   for _, id in ipairs(order) do events[#events + 1] = byId[id] end
+  -- tramos retirados del paquete (disabled): también fuera de las fichas y los recuentos, no solo del rally
+  for _, ev in ipairs(events) do
+    local kept, dropped, km, n = {}, false, 0, 0
+    for _, st in ipairs(type(ev.stages) == 'table' and ev.stages or {}) do
+      if isDisabled(ev.id, st) then dropped = true
+      else kept[#kept + 1] = st if st.kind == 'ss' then km, n = km + (tonumber(st.km) or 0) * math.max(1, type(st.runs) == 'table' and #st.runs or 1), n + 1 end end
+    end
+    if dropped then ev.stages, ev.stageCount, ev.stageKm = kept, n, math.floor(km * 10 + 0.5) / 10 end
+  end
   S.index = { events = events }
   log('I', TAG, ('catalogue: %d event(s), %d imported'):format(#events, imported))
   return #events
@@ -287,7 +307,7 @@ function M.event(id)
         -- carretera; no cumplen la norma de las líneas en la calzada)
         if type(data.stages) == 'table' then
           local keep = {}
-          for _, st in ipairs(data.stages) do if not st.disabled then keep[#keep + 1] = st end end
+          for _, st in ipairs(data.stages) do if not isDisabled(id, st) then keep[#keep + 1] = st end end
           data.stages = keep
         end
         S.loaded[id] = data
@@ -603,7 +623,7 @@ local function buildModel()
       if type(l.path) == 'table' and #l.path >= 2 then sel.liaisons[#sel.liaisons + 1] = { name = l.name, outline = outline(l.path) } end
     end
     -- el rally completo: el orden de paso y lo que se tarda (para elegir desde qué tramo empezar)
-    local okI, it = pcall(rally.itinerary, full, nil, tonumber(settings.get().liaisonKmh) or 60)
+    local okI, it = pcall(rally.itinerary, full, nil, rally.LIAISON_AVG_KMH)
     if okI and it then
       sel.itinerary = {}
       local lkm, stkm = 0, 0
@@ -1035,23 +1055,15 @@ function M.loadingText(full, s, es)
 end
 M.PLAY_TELEPORT_M = 1000     -- más lejos que esto de la salida: con teletransporte y carga; si no, se empieza ahí mismo
 function M.uiPlay(eventId, stageId, reverse)
-  -- un tramo cada vez: con uno en marcha hay que cancelarlo antes
-  if stage.state() or loader.active() then
-    M.toast(spanish() and 'Ya hay un tramo en marcha: cancélalo antes de iniciar otro.' or 'A stage is already running: cancel it first.', 5)
-    return
-  end
+  -- un tramo cada vez: si hay otro en marcha, una carga a medias o una pantalla de inicio abierta, se abandona y se
+  -- empieza este (antes: aviso y el menú se quedaba "bugeado" sin iniciar nada, 19-nov)
+  if S.pre or stage.state() or loader.active() or rally.active() then pcall(M.uiCancelStage) pcall(props.clear) end
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
   local s = stageOf(full, stageId, reverse)
   if not s then return end
-  local lat, lon = nil, nil
-  if a.position then lat, lon = a.position() end
-  local far = not lat or catalog.dist(lat, lon, s.start[1], s.start[2]) > M.PLAY_TELEPORT_M
-  if not far then
-    M.uiStart(eventId, stageId, reverse)
-    if stage.state() then M.preStart('stage', eventId, stageId, reverse) end
-    return
-  end
+  -- siempre con la pantalla de carga (aunque ya estés al lado): se colocan los objetos y, listo, aparece al instante
+  -- la pantalla de inicio con el coche parado
   -- lejos: primero el viaje y las carreteras de la zona; el tramo se monta cuando el grafo está cargado allí (18-nov:
   -- así la salida y el control horario se validan contra carreteras de verdad antes de montarse)
   local t = geo.track(clean.stage(s))
@@ -1063,7 +1075,7 @@ function M.uiPlay(eventId, stageId, reverse)
   local es = spanish()
   stage.holdJobs(true)
   local ok, err = loader.begin({
-    title = s.title, event = full.name, lang = es and 'es' or 'en',
+    title = s.title, event = full.name, lang = es and 'es' or 'en', keepFrozen = true,
     logo = full._base and full.logo and (full._base .. full.logo) or nil,
     description = M.loadingText(full, s, es),
     tpLat = tlat, tpLon = tlon,
@@ -1102,8 +1114,11 @@ function M.uiPlay(eventId, stageId, reverse)
       local cur = stage.state()
       if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
       -- la pantalla de inicio (resumen, normas, ajustes, Iniciar); el coche espera congelado
-      if cur then M.preStart('stage', eventId, stageId, reverse)
-      else M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
+      if cur and not S.noPre then M.preStart('stage', eventId, stageId, reverse)
+      else
+        freezeCar(false)
+        if cur then M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
+      end
     end })
   if not ok then
     stage.holdJobs(false)
@@ -1115,8 +1130,11 @@ end
 function M.uiStartRally(eventId, fromRun)
   local a, full = api(), M.event(eventId)
   if not (a and full) then return end
+  if S.pre or loader.active() then pcall(M.uiCancelStage) end
   stage.stop()
-  S.box = nil
+  -- los objetos de la carrera anterior (boxes, TC0 del parque) fuera: si no, al reiniciar quedaban dos TC juntos
+  pcall(props.clear)
+  S.box, S.park = nil, nil
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
@@ -1126,18 +1144,29 @@ function M.uiStartRally(eventId, fromRun)
   local start = rs.it.start
   local lat, lon = a.position()
   local es = spanish()
-  if start and lat and catalog.dist(lat, lon, start[1], start[2]) > M.SERVICE_TELEPORT_M then
+  -- siempre con la pantalla de carga: el parque (boxes, TC0) se monta en ella aunque ya estés al lado
+  if start and lat then
     -- al parque de asistencia con carga: el box se monta y el coche aparece en él, no en el monte
-    loader.begin({ title = es and 'Parque de asistencia' or 'Service park', event = full.name, lang = es and 'es' or 'en',
+    loader.begin({ title = es and 'Parque de asistencia' or 'Service park', event = full.name, lang = es and 'es' or 'en', keepFrozen = true,
       logo = full._base and full.logo and (full._base .. full.logo) or nil, tpLat = start[1], tpLon = start[2],
       description = M.loadingText(full, nil, es),
       near = { { start[1], start[2], 150 } },
       dress = function()
-        -- el box (carpa, herramientas) junto a la asistencia, una vez
-        if not S.box then
-          local first = rs.it and rs.it.items and rs.it.items[1]
-          local tw = first and first.stage and first.stage.start
-          S.box = dressing.serviceBox(start[1], start[2], tw and tw[1], tw and tw[2]) or false
+        -- el parque de asistencia: en la mejor explanada cerca del punto del organizador (un aparcamiento, un
+        -- descampado con salida a la carretera, llano: servicepark.lua), con sus boxes y el TC0 a la salida; si no
+        -- hay sitio, el box de siempre junto a la asistencia
+        local first = rs.it and rs.it.items and rs.it.items[1]
+        local tw = first and first.stage and first.stage.start
+        if S.box == nil then
+          if not S.park then S.park = servicepark.search(start[1], start[2], tw and tw[1], tw and tw[2]) or false end
+          if S.park and not servicepark.step(S.park, 8) then return 1 end
+          local site = S.park and S.park.site
+          if site then
+            S.box = servicepark.build(site) or false
+            local ok, tc = pcall(servicepark.tc0, site, dressing)
+            if ok and tc then rally.setTc0(tc.lat, tc.lon) else log('W', TAG, 'TC0: ' .. tostring(tc)) end
+          end
+          if not S.box then S.box = dressing.serviceBox(start[1], start[2], tw and tw[1], tw and tw[2]) or false end
         end
         local pl, po = a.position()
         if pl then dressing.runJobsNear(pl, po, 2) end
@@ -1147,10 +1176,10 @@ function M.uiStartRally(eventId, fromRun)
         -- de cara al primer control horario (norma 17-nov: orientado hacia el siguiente TC)
         local first = rs.it and rs.it.items and rs.it.items[1]
         local tw = first and first.stage and first.stage.start
-        if S.box then M.placeAt(S.box.lat, S.box.lon, tw and tw[1] or S.box.faceLat, tw and tw[2] or S.box.faceLon)
+        if S.box then M.placeAt(S.box.lat, S.box.lon, S.box.faceLat or (tw and tw[1]), S.box.faceLon or (tw and tw[2]))
         else M.placeOnRoad(start[1], start[2]) end
       end,
-      done = function() if rally.active() then M.preStart('rally', eventId) end end })
+      done = function() if rally.active() and not S.noPre then M.preStart('rally', eventId) else freezeCar(false) end end })
     rally.hold(true)
     M.uiClose()
   else
@@ -1179,12 +1208,6 @@ function M.uiPreGo()
   local es = spanish()
   if p.kind == 'rally' then
     local rs = rally.state()
-    -- la media de los enlaces se puede haber cambiado en la pantalla: el horario se rehace con ella
-    if rs and rs.opt and tonumber(rs.opt.liaisonKmh) ~= tonumber(settings.get().liaisonKmh) then
-      local full = M.event(p.eventId)
-      if full and rally.start(full, rs.fromRun, rs.hooks) then rally.state().lang = es and 'es' or 'en' rally.hold(true) end
-      rs = rally.state()
-    end
     rally.hold(false)
     if rs then
       M.toast((es and 'Rally completo: sales de la asistencia a las ' or 'Full rally: you leave the service park at ')
@@ -1398,6 +1421,7 @@ end
 -- las disposiciones de apps del rally del juego (rallyModeStage y rallyModeLoop) con los créditos del mapa
 M.RACE_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidStage.uilayout.json'
 M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
+M.HC_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidHardcore.uilayout.json'
 local vhud = require('earthRaid/vhud')
 local guard = require('earthRaid/guard')
 local audit = require('earthRaid/audit')
@@ -1409,14 +1433,16 @@ local function raceLayout(dt)
   layoutT = 0
   local L = rawget(_G, 'ui_appLayouts')
   if not (L and L.getCurrentLayout and L.setCurrentLayout) then return end
-  local on = (stage.active() or rally.active()) and settings.get().raceHud
+  -- el diseño de rally del juego es fijo (no es un ajuste: vanilla no lo tiene); en hardcore, el mínimo
+  local on = stage.active() or rally.active()
   local cur = L.getCurrentLayout()
   local curName = type(cur) == 'table' and cur.filename or nil
-  local want = vhud.wantsStageLayout(stage) and M.RACE_LAYOUT or M.LOOP_LAYOUT
+  local want = settings.get().hardcore and M.HC_LAYOUT or (vhud.wantsStageLayout(stage) and M.RACE_LAYOUT or M.LOOP_LAYOUT)
+  local function ours(n) return n == M.RACE_LAYOUT or n == M.LOOP_LAYOUT or n == M.HC_LAYOUT end
   if on then
     if curName ~= want then
-      if not S.prevLayout or S.prevLayout == M.RACE_LAYOUT or S.prevLayout == M.LOOP_LAYOUT then
-        if curName ~= M.RACE_LAYOUT and curName ~= M.LOOP_LAYOUT then S.prevLayout = curName end
+      if not S.prevLayout or ours(S.prevLayout) then
+        if not ours(curName) then S.prevLayout = curName end
       end
       if not L.setCurrentLayout(want) then
         log('W', TAG, 'race layout not found: ' .. want)
@@ -1424,10 +1450,32 @@ local function raceLayout(dt)
       end
     end
   elseif S.prevLayout then
-    if curName == M.RACE_LAYOUT or curName == M.LOOP_LAYOUT then pcall(L.setCurrentLayout, S.prevLayout) end
+    if ours(curName) then pcall(L.setCurrentLayout, S.prevLayout) end
     S.prevLayout = nil
   end
 end
+
+-- Modo hardcore: sin reparar ni restablecer el coche (las acciones del juego se filtran), sin la línea azul ni las
+-- flechas del GPS; la voz del copiloto y el HUD mínimo (settings.lua las notas, la línea de carrera...; layout aparte)
+local hcOn = false
+local HC_GROUPS = { 'vehicleTeleporting', 'resetPhysics', 'vehicleRecovery', 'vehicleMenues', 'physicsControls', 'vehicleSwitching',
+  'miniMap', 'bigMap', 'aiControls' }
+local function hardcoreTick()
+  local want = settings.get().hardcore == true and (stage.active() or rally.active() or loader.active() or S.pre ~= nil)
+  if want == hcOn then return end
+  hcOn = want
+  local F = rawget(_G, 'core_input_actionFilter')
+  if F and F.setGroup and F.addAction then
+    local list = {}
+    local T = F.getActionTemplates and F.getActionTemplates() or {}
+    for _, k in ipairs(HC_GROUPS) do for _, a in ipairs(T[k] or {}) do list[#list + 1] = a end end
+    pcall(F.setGroup, 'earthRaidHardcore', list)
+    pcall(F.addAction, 0, 'earthRaidHardcore', want)
+  end
+  pcall(guide.hideNav, want)
+  log('I', TAG, 'hardcore ' .. (want and 'on' or 'off'))
+end
+function M.hardcoreActive() return hcOn end
 
 function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
@@ -1444,6 +1492,7 @@ function M.onUpdate(dtReal, dtSim)
     local okLd, errLd = pcall(loader.update, dtReal or 0)
     if not okLd then log('W', TAG, 'loader: ' .. tostring(errLd)) loader.cancel() end
   end
+  pcall(hardcoreTick)
   if not S.layoutFailed then
     local okL, errL = pcall(raceLayout, dtReal)
     if not okL then log('W', TAG, 'layout: ' .. tostring(errL)) S.layoutFailed = true end

@@ -899,7 +899,7 @@ local function hud()
     totalM = t.total, along = S.along, splitM = S.splitAt, splitTime = S.splitTime, time = S.time, penalty = S.penalty,
     penalties = S.penalties, distM = S.distM, staged = S.staged, stagingLeft = S.stagingLeft, countdown = S.countdown,
     best = S.best, newBest = S.newBest, lang = S.lang, note = S.lastNote, doneLeft = S.doneLeft, overLine = S.overLine, tcTime = S.tcTime, startAt = S.startAt,
-    session = S.session ~= nil, notesScale = S.opt.notesScale, notesOpacity = S.opt.notesOpacity })
+    session = S.session ~= nil })
 end
 
 -- Metros del morro del coche a la línea de salida (positivo: antes de la línea): con su caja orientada si se puede

@@ -111,16 +111,38 @@ function watchPause() {
   })
   pauseObserver.observe(document.body, { childList: true, subtree: true })
 }
-async function checkPause() {
-  {
-    const tab = [...document.querySelectorAll("span,div,button")].find(e => e.children.length < 3 && e.textContent.trim() === "Raid.Earth" && e.offsetParent)
-    if (!tab) { pauseSeen = false; return }
-    if (pauseSeen) return
-    pauseSeen = true
-    try {
-      if (await lua.earthRaid_main.uiIsActive()) (tab.closest("button,[role=tab],a,li,div") || tab).click()
-    } catch (e) { /* none */ }
+// la pestaña "Raid.Earth" del menú de pausa: el nodo de texto exacto (el botón puede ser cualquier elemento)
+function findPauseTab() {
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  let n
+  while ((n = w.nextNode())) {
+    if (n.textContent.trim().toLowerCase() !== "raid.earth") continue
+    const el = n.parentElement
+    if (el && el.offsetParent !== null) return el
   }
+  return null
+}
+function clickLike(el) {
+  let t = el
+  for (let i = 0; i < 6 && t; i++, t = t.parentElement) {
+    if (t.matches && t.matches("button,[role=tab],a,li,[tabindex]")) { el = t; break }
+  }
+  for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+    el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }))
+  }
+}
+async function checkPause() {
+  const tab = findPauseTab()
+  if (!tab) { pauseSeen = false; return }
+  if (pauseSeen) return
+  pauseSeen = true
+  try {
+    if (await lua.earthRaid_main.uiIsActive()) {
+      clickLike(tab)
+      // otra vez un momento después (el menú aún se está montando y a veces se come el primer clic)
+      setTimeout(() => { const t2 = findPauseTab(); if (t2) clickLike(t2) }, 700)
+    }
+  } catch (e) { /* none */ }
 }
 
 export async function onLoad() {

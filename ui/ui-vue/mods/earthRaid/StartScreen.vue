@@ -4,19 +4,19 @@
        del control horario, y el mundo detrás. Rally completo: resumen y normas a la izquierda, ajustes a la derecha;
        tramo suelto: una sola columna. Iniciar suelta el coche. Petición del usuario, 19-nov. -->
   <div class="ers" tabindex="-1" ref="rootEl" @keydown.esc.stop="back">
-    <div class="card" :class="{ wide: rally }" v-if="pre && sel">
+    <div class="card wide" v-if="pre && sel">
       <header class="head">
         <span class="slash"></span>
         <h1>{{ title }}</h1>
       </header>
       <nav class="tabs">
         <button class="navarrow" @click="back" :title="t('back')">‹</button>
-        <button class="tab" :class="{ on: tab === 'info' }" @click="tab = 'info'" :title="t('summary')">ⓘ</button>
-        <button class="tab" :class="{ on: tab === 'ratings' }" @click="tab = 'ratings'" :title="t('ratings')">▮▮▮</button>
+        <button class="tab" :class="{ on: tab === 'info' }" @click="tab = 'info'" :title="t('summary')"><BngIcon :type="icons.roadInfo" class="ticon" /></button>
+        <button class="tab" :class="{ on: tab === 'ratings' }" @click="tab = 'ratings'" :title="t('ratings')"><BngIcon :type="icons.chartBars" class="ticon" /></button>
         <div class="grow"></div>
       </nav>
 
-      <div class="body" v-if="tab === 'info'" :class="{ two: rally }">
+      <div class="body two" v-if="tab === 'info'">
         <div class="col">
           <h2 class="sect"><span class="slash small"></span>{{ rally ? t("summary") : t("stageSummary") }}</h2>
           <template v-if="rally">
@@ -44,14 +44,10 @@
           <ul class="bul">
             <li v-for="k in (rally ? ['ruleR1','ruleR2','ruleR3','ruleR4','rule2','rule3','rule4','rule5'] : ['rule1','rule2','rule3','rule4','rule5','rule6'])" :key="k">{{ t(k) }}</li>
           </ul>
-          <template v-if="!rally">
-            <h2 class="sect"><span class="slash small"></span>{{ t("settings") }}</h2>
-            <div class="settings"><SettingsBlock :rally="false" /></div>
-          </template>
         </div>
-        <div class="col" v-if="rally">
+        <div class="col">
           <h2 class="sect"><span class="slash small"></span>{{ t("settings") }}</h2>
-          <div class="settings"><SettingsBlock :rally="true" /></div>
+          <div class="settings"><SettingsBlock :rally="rally" /></div>
           <p class="dim small">{{ t("preNote") }}</p>
         </div>
       </div>
@@ -85,6 +81,7 @@
 <script setup>
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from "vue"
 import { useEvents } from "@/services/events"
+import { BngIcon, icons } from "@/common/components/base"
 import { state, call, onState, list, t, km, clock } from "./store.js"
 
 useEvents().on("EarthRaidState", m => onState(m))
@@ -131,33 +128,45 @@ function cycleVoice(dir) {
   call("uiSetSetting", "voicepack", vs[(i + dir + vs.length) % vs.length].id)
 }
 function toggle(k) { call("uiSetSetting", k, !set.value[k]) }
-const TOGGLES = ["visualNotes", "voice", "notesSafe", "raceHud", "falseStart", "recoveryPenalty"]
 const SettingsBlock = defineComponent({
   props: { rally: Boolean },
-  setup(p) {
+  setup() {
+    // en hardcore las ayudas no se pueden activar (se apagan solas)
+    const AIDS = ["visualNotes", "racingLine"]
+    const row = k => {
+      const locked = set.value.hardcore && AIDS.includes(k)
+      return h("div", { class: ["toggle-row", { locked }], key: k, onClick: () => { if (!locked) toggle(k) } }, [h("span", t(k)), h("span", { class: ["toggle", { on: set.value[k] }] }, [h("span", { class: "knob" })])])
+    }
+    const chips = (key, opts, label) => h("div", { class: "chips-row" }, opts.map(o => h("button", { key: o[0], class: ["chip", { on: set.value[key] === o[0] }], onClick: () => call("uiSetSetting", key, o[0]) }, label(o))))
+    const group = (title, kids) => h("div", { class: "group" }, [h("div", { class: "glabel" }, title), ...kids])
     return () => {
-      const kids = []
-      kids.push(h("div", { class: "set-label" }, t("copilot")))
-      kids.push(h("div", { class: "selector" }, [
-        h("button", { onClick: () => cycleVoice(-1) }, "‹"),
-        h("div", { class: "sel-val" }, [
-          h("b", `${voice.value.name} - ${voice.value.style || ""}`),
-          h("small", voice.value.dialect + (voice.value.partial ? " · " + t("vpPartial") : "")),
-          h("div", { class: "dots" }, voices.value.map(v => h("span", { key: v.id, class: { on: v.id === voice.value.id } }))),
+      const v = voice.value
+      const small = v.dialect || ""
+      return h("div", [
+        // el copiloto: la voz, cuándo canta, las notas en pantalla
+        group(t("copilot"), [
+          h("div", { class: "selector" }, [
+            h("button", { onClick: () => cycleVoice(-1) }, "‹"),
+            h("div", { class: "sel-val" }, [
+              h("b", `${v.name} - ${v.style || ""}`),
+              h("small", small + (v.partial ? " · " + t("vpPartial") : "")),
+              h("div", { class: "dots" }, voices.value.map(x => h("span", { key: x.id, class: { on: x.id === v.id } }))),
+            ]),
+            h("button", { onClick: () => cycleVoice(1) }, "›"),
+          ]),
+          row("voice"),
+          h("div", { class: "set-label" }, t("notesLead")),
+          chips("notesLeadS", [[6, "early"], [4.5, "normal"], [3, "late"]], o => t(o[1])),
+          row("visualNotes"),
+          row("notesSafe"),
         ]),
-        h("button", { onClick: () => cycleVoice(1) }, "›"),
-      ]))
-      if (p.rally) {
-        kids.push(h("div", { class: "set-label" }, t("liaisonKmh")))
-        kids.push(h("div", { class: "chips-row" }, [40, 50, 60, 80, 100].map(v => h("button", { key: v, class: ["chip", { on: set.value.liaisonKmh === v }], onClick: () => call("uiSetSetting", "liaisonKmh", v) }, v + " km/h"))))
-      }
-      kids.push(h("div", { class: "set-label" }, t("notesLead")))
-      kids.push(h("div", { class: "chips-row" }, [[6, "early"], [4.5, "normal"], [3, "late"]].map(o => h("button", { key: o[0], class: ["chip", { on: set.value.notesLeadS === o[0] }], onClick: () => call("uiSetSetting", "notesLeadS", o[0]) }, t(o[1])))))
-      kids.push(h("div", { class: "set-label" }, t("notesSize")))
-      kids.push(h("div", { class: "chips-row" }, [0.55, 0.72, 0.9, 1.1].map(v => h("button", { key: v, class: ["chip", { on: set.value.notesScale === v }], onClick: () => call("uiSetSetting", "notesScale", v) }, Math.round(v * 100) + " %"))))
-      for (const k of TOGGLES) kids.push(h("div", { class: "toggle-row", key: k, onClick: () => toggle(k) }, [h("span", t(k)), h("span", { class: ["toggle", { on: set.value[k] }] }, [h("span", { class: "knob" })])]))
-      if (s.value && s.value.racingLineMod) kids.push(h("div", { class: "toggle-row", onClick: () => toggle("racingLine") }, [h("span", t("racingLine")), h("span", { class: ["toggle", { on: set.value.racingLine }] }, [h("span", { class: "knob" })])]))
-      return h("div", kids)
+        // la pantalla y las líneas
+        ...(s.value && s.value.racingLineMod ? [group(t("screenLines"), [row("racingLine")])] : []),
+        // las sanciones
+        group(t("penalties"), [row("falseStart"), row("recoveryPenalty")]),
+        // el modo de juego: hardcore
+        group(t("modeGroup"), [row("hardcore"), h("p", { class: "dim small hcnote" }, t("hardcoreNote"))]),
+      ])
     }
   },
 })
@@ -174,7 +183,7 @@ const SettingsBlock = defineComponent({
   position: fixed; inset: 0; z-index: 50; color: var(--ink); outline: none; pointer-events: auto; font-size: 14.5px;
 }
 .card { position: absolute; left: 1.2vw; top: 1.5vh; bottom: 1.5vh; width: 400px; display: flex; flex-direction: column; background: var(--panel); border-radius: 6px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
-.card.wide { width: 780px; }
+.card.wide { width: 860px; max-width: 96vw; }
 .head { display: flex; align-items: center; padding: 12px 16px 4px; }
 h1 { margin: 0; font-size: 30px; line-height: 1.1; font-style: italic; font-weight: 800; }
 .slash { display: inline-block; width: 16px; height: 44px; background: var(--or); transform: skewX(-18deg); margin-right: 14px; flex: none; }
@@ -183,6 +192,7 @@ h1 { margin: 0; font-size: 30px; line-height: 1.1; font-style: italic; font-weig
 .navarrow { background: var(--panel2); border: 0; color: var(--ink); font-size: 24px; width: 40px; height: 40px; border-radius: 3px; cursor: pointer; }
 .tab { width: 52px; height: 40px; background: transparent; border: 0; border-radius: 3px; color: var(--ink); font-size: 18px; cursor: pointer; }
 .tab.on { background: var(--or); }
+.ticon { width: 26px; height: 26px; color: #fff; fill: currentColor; }
 .grow { flex: 1; }
 .body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; }
 .body.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -198,6 +208,8 @@ h1 { margin: 0; font-size: 30px; line-height: 1.1; font-style: italic; font-weig
 .rtable td { padding: 9px 8px; border-bottom: 1px solid var(--hair); }
 // los ajustes (misma forma que en el menú)
 .settings :deep(.set-label) { font-weight: 700; margin: 6px 0; }
+.settings :deep(.group) { margin-bottom: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--hair); }
+.settings :deep(.glabel) { font-style: italic; font-weight: 800; color: var(--or); text-transform: uppercase; letter-spacing: .06em; font-size: 12.5px; margin: 2px 0 8px; }
 .settings :deep(.selector) { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; background: #0f1013; border-radius: 4px; margin-bottom: 10px; }
 .settings :deep(.selector button) { height: 60px; background: transparent; border: 0; color: var(--ink); font-size: 24px; cursor: pointer; }
 .settings :deep(.selector button:hover) { color: var(--or); }
@@ -211,6 +223,8 @@ h1 { margin: 0; font-size: 30px; line-height: 1.1; font-style: italic; font-weig
 .settings :deep(.chip.on) { background: var(--or); border-color: var(--or); color: #fff; }
 .settings :deep(.toggle-row) { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; margin-bottom: 4px; background: rgba(255,255,255,.04); border-radius: 3px; cursor: pointer; }
 .settings :deep(.toggle-row:hover) { background: rgba(255,255,255,.08); }
+.settings :deep(.toggle-row.locked) { opacity: .45; cursor: not-allowed; }
+.settings :deep(.hcnote) { margin: 4px 2px 0; line-height: 1.35; }
 .settings :deep(.toggle) { width: 34px; height: 16px; border-radius: 8px; background: #555; position: relative; flex: none; }
 .settings :deep(.toggle .knob) { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #ddd; transition: left .15s; }
 .settings :deep(.toggle.on) { background: var(--or); }

@@ -1,0 +1,5 @@
+{
+  "_doc": "Tramos retirados provisionalmente de un evento (id del evento -> id del tramo -> motivo). Se ocultan del catalogo, de las fichas y del rally completo aunque el paquete se vuelva a importar.",
+  "imp-rally-islas-canarias": { "ss01": "Superespecial sobre una explanada del puerto: el mapa no tiene esa zona como carretera (auditoria 19-nov)." },
+  "imp-rallye-cristian-lopez-2026": { "ss01": "Superespecial sobre una explanada sin carretera en el mapa (auditoria 19-nov)." }
+}
