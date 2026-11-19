@@ -82,7 +82,7 @@ const rallyOn = computed(() => s.value && s.value.rallyActive)
 const activeEvent = computed(() => active.value && events.value.find(e => e.id === active.value.eventId))
 const set = computed(() => (s.value && s.value.settings) || {})
 const toggles = computed(() => {
-  const k = ["hardcore", "visualNotes", "voice", "noTraffic", "closures", "ambience", "sounds"]
+  const k = ["hardcore", "visualNotes", "voice", "noTraffic", "regionalTraffic", "closures", "ambience", "parkCars", "sounds"]
   if (s.value && s.value.racingLineMod) k.push("racingLine")
   k.push("recModsAuto")
   return k

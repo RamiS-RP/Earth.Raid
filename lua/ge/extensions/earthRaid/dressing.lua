@@ -397,6 +397,35 @@ function M.night()
 end
 M.SOUND_KINDS = { sndCrowd = true, sndCheer = true, sndGenerator = true }
 
+-- Nada grande encima de otra cosa grande (19-nov, norma del usuario: "bien posicionados y con una separación
+-- realista"): vallas, carpas y ambulancias guardan una distancia mínima entre sus centros, vengan de la fila que vengan
+M.GROUP = { gazebo3x3 = 'tent', gazebo3x6 = 'tent', gazebo3x6b = 'tent', ambulance = 'van' }
+M.MIN_GAP_M = { ['fence|fence'] = 2.45, ['tent|tent'] = 3.3, ['fence|tent'] = 2.2, ['fence|van'] = 3.0, ['tent|van'] = 3.6,
+  ['van|van'] = 4.5 }
+local function groupOf(kind)
+  if M.GROUP[kind] then return M.GROUP[kind] end
+  if tostring(kind):find('^fence') then return 'fence' end
+  return nil
+end
+function M.tooClose(kind, lat, lon)
+  local g = groupOf(kind)
+  if not g or M.dry or not lat then return false end
+  local k = math.cos(math.rad(lat)) * 111195
+  for _, it in ipairs(props.all()) do
+    if it.lat and not it.dead and not it.hidden and not it.line then
+      local g2 = groupOf(it.kind)
+      if g2 then
+        local min = M.MIN_GAP_M[g .. '|' .. g2] or M.MIN_GAP_M[g2 .. '|' .. g]
+        if min then
+          local ex, ny = (it.lon - lon) * k, (it.lat - lat) * 111195
+          if ex * ex + ny * ny < min * min then return true end
+        end
+      end
+    end
+  end
+  return false
+end
+
 local function place(kind, t, along, right, yaw, fwd, opts)
   -- sonido de ambiente: solo si el jugador lo activa (por defecto no; el audio se entrecortaba en los tirones)
   if M.SOUND_KINDS[kind] and not M.sounds and not M.dry then return nil end
@@ -404,6 +433,9 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) then
     local from = opts and opts.from or 0
     local hit = freeTo(t, along, right, fwd, from)
+    -- piezas de una fila (vallas, lonas, mallas): si en su sitio hay un árbol o un muro, hueco. Antes se buscaba sitio
+    -- unos metros antes o después y caía ENCIMA de sus vecinas (19-nov, Villaviciosa: vallas amontonadas) MARK:rows-v1
+    if hit and M.AVOID[kind] and opts and (opts.row or opts.noPush) then M.skipped = M.skipped + 1 return nil end
     if hit and M.AVOID[kind] then
       -- en sitios estrechos (pueblos: casas, muros) se busca hueco unos metros antes o después, y si no, al otro lado,
       -- antes de renunciar (17-nov: las salidas junto a zonas urbanas se quedaban sin carpas ni equipo)
@@ -445,6 +477,7 @@ local function place(kind, t, along, right, yaw, fwd, opts)
     M.counts[kind] = (M.counts[kind] or 0) + 1
     return { kind = kind, lat = lat, lon = lon }
   end
+  if M.tooClose(kind, lat, lon) then M.skipped = M.skipped + 1 return nil end
   local it = props.add(kind, lat, lon, dx, dy, yaw, opts)
   if it and seen then it.roadOk = true end
   return it
@@ -601,13 +634,29 @@ local function paintLine(t, along, hw, fwd, what)
   return props.addLine(la1, lo1, la2, lo2, M.PAINT[what] or 'spraypaint_mark', 0.3)
 end
 
-local function fenceLine(t, along, side, n, fwd)
-  local kinds = { 'fenceNgrc', 'fenceBlastr', 'fenceRotopad', 'fenceApm', 'fenceApmSpecial' }
-  for i = 0, n - 1 do
-    -- las vallas son largas en Y: Y a lo largo de la carretera
-    -- la publicidad mira a la carretera: a la izquierda, girada
-    place(kinds[i % #kinds + 1], t, along, side, side < 0 and 180 or 0, (fwd or 0) - i * 2.6)
+-- Fila de vallas publicitarias a `side` m del eje, de f0 a f1 metros (respecto a `along`). Cada valla mide 2,5 m: van
+-- una detrás de otra a FENCE_PITCH_M medidos SOBRE EL TERRENO, no sobre el eje de la carretera (19-nov: por el
+-- interior de una curva, 2,6 m de eje son 1,7 m de arcén y se montaban unas sobre otras). Donde no cabe una (un
+-- árbol, un muro, una calle que sale), queda el hueco, como en una fila de verdad.
+M.FENCE_PITCH_M = 2.75
+M.FENCE_KINDS = { 'fenceNgrc', 'fenceBlastr', 'fenceRotopad', 'fenceApm', 'fenceApmSpecial' }
+local function fenceRow(t, along, side, f0, f1)
+  local step = f1 >= f0 and 0.25 or -0.25
+  local yaw = side < 0 and 180 or 0          -- la publicidad mira a la carretera: a la izquierda, girada
+  local lx, ly, k, n = nil, nil, nil, 0
+  for f = f0, f1, step do
+    local la, lo = at(t, along, side, f)
+    if la then
+      k = k or math.cos(math.rad(la)) * 111195
+      local x, y = lo * k, la * 111195
+      if not lx or (x - lx) ^ 2 + (y - ly) ^ 2 >= M.FENCE_PITCH_M ^ 2 then
+        lx, ly = x, y
+        place(M.FENCE_KINDS[n % #M.FENCE_KINDS + 1], t, along, side, yaw, f, { row = true, noPush = true })
+        n = n + 1
+      end
+    end
   end
+  return n
 end
 
 -- lonas de público (4 m, largas en -Y desde su origen) detrás de una fila de vallas
@@ -732,20 +781,16 @@ function M.endKit(t, endAlong, out, hw, D, role)
   end
   paintLine(t, endAlong, hw, 0, role == 'start' and 'start' or 'finish')
   -- vallas publicitarias a los dos lados, de 30 m dentro a 25 m fuera, público detrás (y su murmullo)
-  local kinds = { 'fenceNgrc', 'fenceBlastr', 'fenceRotopad', 'fenceApm', 'fenceApmSpecial' }
-  local n = math.floor((M.END_FENCE_IN_M + M.END_FENCE_OUT_M) / 2.6)
   for _, sg in ipairs({ 1, -1 }) do
     local side = out * sg * (hw + 3.5)
-    for i = 0, n - 1 do
-      place(kinds[i % #kinds + 1], t, endAlong, side, side < 0 and 180 or 0, out * (-M.END_FENCE_IN_M + i * 2.6))
-    end
+    fenceRow(t, endAlong, side, out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M)
     local tside = out * sg * (hw + 6)
     local from = tside > 0 and tside - 2.5 or tside + 2.5
     for i = 0, 5 do
       local tk = ({ 'specTarp', 'specTarp2', 'specTarp3' })[i % 3 + 1]
       -- las lonas son largas en -Y desde su origen: el origen en su extremo "hacia fuera"
       place(tk, t, endAlong, tside, out > 0 and 0 or 180, out * (-22 + i * 4),
-        { noCollision = true, from = from })
+        { noCollision = true, from = from, row = true })
     end
     put('sndCrowd', sg * (hw + 7), -6, nil, 0)
   end
@@ -754,7 +799,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
   M.tcPost(t, endAlong, out, hw, D, role == 'start' and -1 or 1, true)
   -- el médico, con su ambulancia
   put('medical', -P, D + 8, 'out')
-  put('ambulance', -(P + 2.6), D + 16, 'out')
+  M.medicPost(t, endAlong, -out, out * (D + 16))
 
   -- según el sentido: el semáforo de salida (5,5 m dentro, a la derecha de quien sale, mirándole) o el reloj de meta
   -- (5,5 m fuera, a la derecha de quien llega); y los ánimos al llegar
@@ -800,7 +845,7 @@ function M.safety(t, hw, splitAt)
       place('medical', t, d, -(hwAt(t, d) + M.SIDE_PAD_M), M.SIGN_YAW)
       place('medical', t, d, hwAt(t, d) + M.SIDE_PAD_M, M.SIGN_YAW + 180)
       -- norma: ambulancia en cada punto médico, aparcada fuera de la calzada pasado el cartel
-      place('ambulance', t, d + 15, -(hwAt(t, d + 15) + 3.0), 0)
+      M.medicPost(t, d + 15, -1, 0)
     end)
   end
 end
@@ -1222,6 +1267,235 @@ function M.closures(t, from, to)
   end
   if n > 0 then log('I', TAG, ('closures: +%d tapes (%d total)'):format(n, tapeCount)) end
   return n
+end
+
+-- ---- puesto médico -------------------------------------------------------------------------------------------------------
+-- Norma (19-nov, el usuario): la ambulancia no puede ser un estorbo. Si junto al punto médico sale una calle (un cruce a
+-- menos de MEDIC_SEARCH_M), el puesto va DENTRO de esa calle, que se corta: cinta en la boca, la ambulancia detrás
+-- mirando al tramo (lista para salir) y, más adentro, la carpa con la mesa, la silla y los extintores del comisario.
+-- Si no hay calle, la ambulancia va fuera de la calzada con toda su planta (6,2 x 2,4 m) libre de cualquier carretera;
+-- y si no cabe en ningún lado, no se pone. MARK:medic-v1
+M.MEDIC_SEARCH_M = 70
+M.VAN_HALF_LEN_M, M.VAN_HALF_WID_M = 3.1, 1.2
+
+-- ¿la planta de un vehículo (centro x, y; dirección ux, uy; medias medidas) queda fuera de todas las calzadas?
+-- true / false; nil si no hay carreteras cargadas por ahí (no se puede saber)
+local function footprintClear(x, y, ux, uy, halfLen, halfWid, margin)
+  local px, py = uy, -ux
+  local any = false
+  for _, c in ipairs({ { 0, 0 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+    local qx, qy = x + ux * halfLen * c[1] + px * halfWid * c[2], y + uy * halfLen * c[1] + py * halfWid * c[2]
+    local segs = props.roadsAt(qx, qy)
+    if not segs then return nil end
+    for _, sg in ipairs(segs) do
+      any = true
+      local sx, sy = sg.bx - sg.ax, sg.by - sg.ay
+      local L2 = sx * sx + sy * sy
+      local u = L2 > 0.01 and math.max(0, math.min(1, ((qx - sg.ax) * sx + (qy - sg.ay) * sy) / L2)) or 0
+      local d = math.sqrt((qx - sg.ax - sx * u) ^ 2 + (qy - sg.ay - sy * u) ^ 2)
+      if d < sg.ra + (sg.rb - sg.ra) * u + (margin or 0.4) then return false end
+    end
+  end
+  if not any then
+    local ix = props.roadIndex()
+    if not (ix and #ix.segs > 0) then return nil end
+  end
+  return true
+end
+M.footprintClear = footprintClear
+
+-- dirección del juego (ux, uy) en (x, y) -> dirección este/norte (la que usa props.add)
+local function geoDirOf(a, x, y, z, ux, uy)
+  local la0, lo0 = a.toGeo(x, y, z)
+  local la1, lo1 = a.toGeo(x + ux * 10, y + uy * 10, z)
+  local k = math.cos(math.rad(la0)) * 111195
+  local ex, ny = (lo1 - lo0) * k, (la1 - la0) * 111195
+  local l = math.sqrt(ex * ex + ny * ny)
+  if l < 0.01 then return 0, 1 end
+  return ex / l, ny / l
+end
+
+-- una calle desde el cruce `from` por el vecino `to`: polilínea { {x, y, z, r, d} } hasta maxM metros
+local function walkStreet(m, from, to, maxM)
+  local p0 = m.nodes[from].pos
+  local pts = { { p0.x, p0.y, p0.z, m.nodes[from].radius or 3, 0 } }
+  local seen, prev, cur, L = { [from] = true }, from, to, 0
+  while cur and m.nodes[cur] and L < maxM do
+    local q, pp = m.nodes[cur].pos, m.nodes[prev].pos
+    local hx, hy = q.x - pp.x, q.y - pp.y
+    local hl = math.sqrt(hx * hx + hy * hy)
+    L = L + hl
+    pts[#pts + 1] = { q.x, q.y, q.z, m.nodes[cur].radius or 3, L }
+    seen[cur] = true
+    if hl < 0.1 then break end
+    local best, bd = nil, 0.6
+    for nb in pairs(props.neighbors(cur)) do
+      if not seen[nb] and m.nodes[nb] then
+        local r = m.nodes[nb].pos
+        local vx, vy = r.x - q.x, r.y - q.y
+        local vl = math.sqrt(vx * vx + vy * vy)
+        if vl > 0.1 then
+          local dot = (vx * hx + vy * hy) / (vl * hl)
+          if dot > bd then best, bd = nb, dot end
+        end
+      end
+    end
+    prev, cur = cur, best
+  end
+  return pts, L
+end
+local function streetAt(pts, d)
+  for i = 2, #pts do
+    if pts[i][5] >= d or i == #pts then
+      local a0, b0 = pts[i - 1], pts[i]
+      local l = b0[5] - a0[5]
+      local u = l > 0.01 and math.max(0, math.min(1, (d - a0[5]) / l)) or 0
+      local ux, uy = b0[1] - a0[1], b0[2] - a0[2]
+      local ul = math.sqrt(ux * ux + uy * uy)
+      if ul < 0.01 then return nil end
+      return a0[1] + (b0[1] - a0[1]) * u, a0[2] + (b0[2] - a0[2]) * u, a0[3] + (b0[3] - a0[3]) * u, ux / ul, uy / ul,
+        a0[4] + (b0[4] - a0[4]) * u
+    end
+  end
+  return nil
+end
+
+-- ¿(lat, lon) está lejos del tramo y de sus accesos? (una "calle lateral" que es el propio tramo no vale)
+local function farFromStage(t, lat, lon, minM)
+  for _, tr in ipairs({ t, t.after, t.before }) do
+    if tr and tr.pts and #tr.pts >= 2 then
+      local x, y = geo.toLocal(tr, lat, lon)
+      local _, lateral = geo.project(tr, x, y, 1, 0, #tr.pts)
+      if lateral and lateral < minM then return false end
+    end
+  end
+  return true
+end
+
+-- side: +1 a la derecha del sentido del trazado, -1 a la izquierda (lado preferido si no hay calle)
+function M.medicPost(t, along, side, fwd)
+  if M.dry then M.counts.ambulance = (M.counts.ambulance or 0) + 1 return true end
+  local a = api()
+  local la, lo, dx, dy = at(t, along, 0, fwd)
+  if not la then return false end
+  local x, y, z = props.ground(la, lo)
+  if not x then return false end
+  -- la dirección del tramo en coordenadas del juego
+  local kk = math.cos(math.rad(la)) * 111195
+  local x2, y2 = a.toGame(la + dy * 10 / 111195, lo + dx * 10 / kk, 0)
+  local gx, gy = x2 - x, y2 - y
+  local gl = math.sqrt(gx * gx + gy * gy)
+  if gl < 0.01 then return false end
+  gx, gy = gx / gl, gy / gl
+
+  -- 1) una calle que salga cerca: el puesto dentro de ella, cortada
+  local okS, placed = pcall(function()
+    local m = map.getMap()
+    if not (m and m.nodes) then return false end
+    local best, bs = nil, 1e9
+    for name, node in pairs(m.nodes) do
+      local ex, ey = node.pos.x - x, node.pos.y - y
+      local al, lt = ex * gx + ey * gy, math.abs(ex * gy - ey * gx)
+      if math.abs(al) <= M.MEDIC_SEARCH_M and lt < 8 and math.abs(al) < bs then
+        local deg = 0
+        for _ in pairs(props.neighbors(name)) do deg = deg + 1 end
+        if deg >= 3 then
+          for other in pairs(props.neighbors(name)) do
+            local pts, L = walkStreet(m, name, other, 45)
+            if L >= 30 then
+              local qx, qy, qz, ux, uy = streetAt(pts, 6)
+              local fx, fy, fz = streetAt(pts, 24)
+              if qx and fx and math.abs(ux * gx + uy * gy) < 0.8 then
+                local fla, flo = a.toGeo(fx, fy, fz)
+                if farFromStage(t, fla, flo, 12) then
+                  best, bs = { name = name, other = other, pts = pts, node = node }, math.abs(al)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    if not best then return false end
+    local pts, node = best.pts, best.node
+    local function add(kind, d, across, yaw, flip, opts)
+      local px, py, pz, ux, uy = streetAt(pts, d)
+      if not px then return nil end
+      local qx, qy = px + uy * across, py - ux * across
+      local pl, po = a.toGeo(qx, qy, pz)
+      local ex, ny = geoDirOf(a, qx, qy, pz, flip and -ux or ux, flip and -uy or uy)
+      local it = props.add(kind, pl, po, ex, ny, yaw or 0, opts)
+      if it then it.roadOk = true it.closure = true end
+      return it
+    end
+    local rw = select(6, streetAt(pts, 8)) or 3
+    local d0 = math.max(rw + 3, (node.radius or 3) + 3.5)
+    -- la cinta en la boca (si los cortes del tramo no la han puesto ya), con sus barreras y su bidón
+    local key = best.name < best.other and (best.name .. '|' .. best.other) or (best.other .. '|' .. best.name)
+    if not doneKeys[key] then
+      doneKeys[key] = true
+      local kind, half = 'tape', 4
+      if rw <= 2.6 then kind, half = 'tape6', 3 elseif rw > 3.6 then kind, half = 'tape10', 5 end
+      local px, py, pz, ux, uy = streetAt(pts, d0)
+      -- el origen de la cinta en un extremo y su largo a lo ancho de la calle (como en M.closures)
+      local ox, oy = px + uy * half, py - ux * half
+      local pl, po = a.toGeo(ox, oy, pz)
+      local ex, ny = geoDirOf(a, ox, oy, pz, uy, -ux)
+      local itT = props.add(kind, pl, po, ex, ny, 0, { noCollision = false })
+      if itT then itT.closure = true end
+      add('plasticBarrier', d0 + 2.2, -1.9, 90)
+      add('plasticBarrierW', d0 + 2.2, 1.9, 90)
+      add('barrel', d0 + 2.2, 0, 0)
+    end
+    -- la ambulancia en el centro de la calle, mirando al tramo
+    if not add('ambulance', d0 + 8.5, 0, 0, true) then return false end
+    -- la carpa del comisario más adentro, a un lado de la calle, con su mesa, silla y extintores
+    local off = math.max(0, rw - 1.7)
+    add('gazebo3x3', d0 + 17, off, 0)
+    add('table', d0 + 17, off - 0.6, 0)
+    add('chair', d0 + 17, off + 0.3, M.CHAIR_YAW)
+    add('extinguisher', d0 + 15.6, off - 1.2, 40)
+    add('extinguisher', d0 + 15.4, off - 0.8, 250)
+    add('coneS', d0 + 4.4, -1.4, 0)
+    add('coneS', d0 + 4.4, 1.4, 0)
+    log('I', TAG, ('medical post in a closed side street, %.0f m from the point'):format(bs))
+    return true
+  end)
+  if not okS then log('W', TAG, 'medicPost: ' .. tostring(placed)) end
+  if okS and placed then return true end
+
+  -- 2) sin calle: fuera de la calzada, con toda la planta libre; si no cabe, no se pone
+  local hw = halfWidth(la, lo)
+  local unknown = false
+  for _, sgn in ipairs({ side or -1, -(side or -1) }) do
+    for _, extra in ipairs({ 3.0, 3.8, 4.6, 5.6 }) do
+      local r = sgn * (hw + extra)
+      if not freeTo(t, along, r + sgn * M.VAN_HALF_WID_M, fwd, sgn * (hw + 0.3)) then
+        local pla, plo, pdx, pdy = at(t, along, r, fwd)
+        local px, py, pz = props.ground(pla, plo)
+        if px then
+          local x3, y3 = a.toGame(pla + pdy * 10 / 111195, plo + pdx * 10 / kk, 0)
+          local ux, uy = x3 - px, y3 - py
+          local ul = math.sqrt(ux * ux + uy * uy)
+          if ul > 0.01 then
+            local clear = footprintClear(px, py, ux / ul, uy / ul, M.VAN_HALF_LEN_M, M.VAN_HALF_WID_M, 0.5)
+            if clear == nil then unknown = true end
+            if clear and not M.tooClose('ambulance', pla, plo) then
+              local it = props.add('ambulance', pla, plo, pdx, pdy, 0)
+              if it then it.roadOk = true end
+              return it ~= nil
+            end
+          end
+        end
+      end
+    end
+  end
+  if unknown then
+    -- sin carreteras cargadas todavía: en su sitio de siempre; el repaso continuo la saca de la calzada al acercarse
+    return place('ambulance', t, along, (side or -1) * (hw + 3.2), 0, fwd, { keepSide = true }) ~= nil
+  end
+  log('I', TAG, 'medical post: no room for the ambulance off the road, not placed')
+  return false
 end
 
 -- El aparcamiento más cercano a (lat, lon) entre 40 m y 1,5 km (Overture, por BeamNG.Earth): el box. cb(lat, lon) o cb()

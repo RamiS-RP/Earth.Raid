@@ -48,11 +48,22 @@ function M.file(base)
 end
 
 -- Encola una lista de nombres base; front = antes de lo que haya
+-- Un aviso de sistema (cuenta atrás, «preparados», «treinta segundos»...) no se repite en menos de SYSTEM_GAP_S: si
+-- algo lo pide dos veces seguidas (19-nov: la cuenta atrás se oyó dos veces), la segunda se calla
+M.SYSTEM_GAP_S = 4
+local lastSystem = {}
 function M.say(bases, front)
   local items = {}
+  local now = os.clock()
   for _, b in ipairs(bases) do
-    local f, len = M.file(b)
-    if f then items[#items + 1] = { f = f, len = len } else log('D', TAG, 'audio: no file for ' .. tostring(b)) end
+    local skip = false
+    if type(b) == 'string' and b:find('^system_') then
+      if lastSystem[b] and now - lastSystem[b] < M.SYSTEM_GAP_S then skip = true else lastSystem[b] = now end
+    end
+    local f, len
+    if not skip then f, len = M.file(b) end
+    if skip then f = false end
+    if f then items[#items + 1] = { f = f, len = len } elseif f == nil then log('D', TAG, 'audio: no file for ' .. tostring(b)) end
   end
   if front then
     for i = #items, 1, -1 do table.insert(queue, 1, items[i]) end

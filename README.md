@@ -61,8 +61,8 @@ En el tramo: control horario con parada, colocación en la línea de salida, cue
 - **Montaje estándar en todos los tramos**, el mismo en los dos sentidos (el tramo inverso usa los mismos objetos):
   - **TC y STOP:** aviso amarillo, cartel rojo y puesto de control a 150 m de la línea, con carpa, mesa, silla, reloj LED para fichar, luz de noche y generador.
   - **Salida y meta:** carteles a ambos lados de los sensores, semáforo con reloj y cuenta atrás, líneas pintadas con spray de borde a borde y fin de zona.
-  - **Zonas de seguridad:** aviso de meta lanzada a 100 m, tablillas 3-2-1, radio y médico con ambulancia.
-  - **Ambiente:** vallas publicitarias, público, sonido, cortes de calles en los cruces y pacas en las escapatorias.
+  - **Zonas de seguridad:** aviso de meta lanzada a 100 m, tablillas 3-2-1, radio y punto médico. La ambulancia nunca estorba: si junto al punto sale una calle, esa calle se corta y dentro van la ambulancia y la carpa del comisario; si no, aparca fuera de la calzada (y si no cabe, no se pone).
+  - **Ambiente:** vallas publicitarias en fila (una tras otra, con hueco donde hay un árbol o sale una calle), público, sonido, cortes de calles en los cruces y pacas en las escapatorias.
   - **Regla fija:** nada en la calzada salvo conos en el eje.
 - **Trazados corregidos solos**: zigzags de líneas dibujadas a mano, archivos mal georreferenciados (desplazados de la carretera) y ganchos al principio o al final que dejarían la salida mirando al revés.
 - **Copiloto**: notas visuales y de voz. Las curvas se vuelven a medir sobre la carretera real mientras conduces.
@@ -70,6 +70,8 @@ En el tramo: control horario con parada, colocación en la línea de salida, cue
 - **Importar rutas** desde el menú (⤓ Importar):
   - **Formatos:** KMZ, KML, GPX, GeoJSON y OSM XML, con su logo, un enlace a la fuente y la ficha del evento.
   - **Reconocimiento automático:** tramos, pasadas, enlaces, controles, meta lanzada, STOP, radios, saltos y chicanes, por los nombres que usan los mapas de los organizadores.
+- **Parque de asistencia con vida**: un par de coches de rally aparcados en los boxes vecinos al tuyo, de asfalto o de tierra según el rally.
+- **Tráfico de la zona**: en los enlaces y en conducción libre, el tráfico del juego lleva más coches de la parte del mundo donde estás (en Europa, más alemanes, franceses e italianos y versiones europeas; en Norteamérica, más americanos; en Asia, más japoneses). Se apaga en Ajustes.
 - **Sin trampas**: cambiar de vehículo durante un tramo lo anula.
 
 ## Requisitos

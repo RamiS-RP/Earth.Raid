@@ -20,6 +20,7 @@ M.SHAPES = {
   medical = A .. 's_rally_signboard_medical_point.dae', medicalWarn = A .. 's_rally_signboard_medical_warning.dae',
   -- ambulancia: solo existe como vehículo cerca del coche (phys.lua); de lejos, un marcador oculto
   ambulance = A .. 's_rally_signboard_medical_point.dae',
+  rallyCar = A .. 's_rally_signboard_medical_point.dae',     -- coche de rally aparcado en un box: igual, solo vehículo
   endArea = A .. 's_rally_signboard_end_of_area.dae',
   board1 = A .. 's_cooldown_board_01.dae', board2 = A .. 's_cooldown_board_02.dae', board3 = A .. 's_cooldown_board_03.dae',
   sensor = A .. 's_rally_start_sensor.dae', tree = A .. 's_rally_start_tree.dae',

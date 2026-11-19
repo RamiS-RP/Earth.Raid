@@ -8,7 +8,8 @@ local TAG = 'earthRaid'
 M.VIEW_NAME = 'earthRaidStartClockView'
 M.WIDTH_RATIO = 0.2
 M.ASPECT = 400 / 164
-M.TOP_RATIO = 0.132
+M.TOP_RATIO = 0.225         -- debajo de la tarjeta STAGED / SLOW del juego (acaba al 21 % de la pantalla): a 0,132 la
+                            -- ventana de la cámara la tapaba (19-nov)
 M.FOV = 25
 M.DIST_M = 1.0
 M.SHIFT = 1 / 3

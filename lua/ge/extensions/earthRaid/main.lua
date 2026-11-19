@@ -1212,6 +1212,7 @@ function M.uiStartRally(eventId, fromRun, force)
           if S.park and not servicepark.step(S.park, 8) then return 1 end
           local site = S.park and S.park.site
           if site then
+            servicepark.surface = dressing.normSurface(full.surface)
             S.box = servicepark.build(site) or false
             local ok, tc = pcall(servicepark.tc0, site, dressing)
             if ok and tc then rally.setTc0(tc.lat, tc.lon) else log('W', TAG, 'TC0: ' .. tostring(tc)) end
@@ -1474,6 +1475,9 @@ M.LOOP_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidLoop.uilayout.json'
 M.HC_LAYOUT = '/settings/ui_apps/layouts/default/earthRaidHardcore.uilayout.json'
 local vhud = require('earthRaid/vhud')
 local guard = require('earthRaid/guard')
+local regiontraffic = require('earthRaid/regiontraffic')
+-- tráfico con coches de la zona del mundo donde estás (solo en mapas de BeamNG.Earth y si el ajuste está puesto)
+local function regionTrafficOn() return S.earthLevel == true and settings.get().regionalTraffic ~= false end
 local audit = require('earthRaid/audit')
 M.audit = audit
 local layoutT = 0
@@ -1547,6 +1551,9 @@ function M.onUpdate(dtReal, dtSim)
     local okL, errL = pcall(raceLayout, dtReal)
     if not okL then log('W', TAG, 'layout: ' .. tostring(errL)) S.layoutFailed = true end
   end
+  -- (el módulo de tráfico del juego se carga cuando hace falta: se mira de vez en cuando)
+  S.rtT = (S.rtT or 0) + (dtReal or 0)
+  if S.rtT > 3 then S.rtT = 0 pcall(regiontraffic.install, regionTrafficOn) end
   local ok, err = pcall(stage.update, dtSim or dtReal or 0, dtReal or 0)
   if not ok then log('W', TAG, 'stage: ' .. tostring(err)) end
   ok, err = pcall(rally.update, dtSim or dtReal or 0, dtReal or 0)
@@ -1610,7 +1617,7 @@ function M.onBeamNGEarthTeleported()
 end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
-function M.onExtensionUnloaded() pcall(guard.release) rally.stop() stage.stop() end
+function M.onExtensionUnloaded() pcall(guard.release) pcall(regiontraffic.uninstall) rally.stop() stage.stop() end
 function M.onVehicleResetted(vid)
   if not S.earthLevel then return end
   local v = getPlayerVehicle(0)

@@ -25,6 +25,9 @@ El tramo de referencia es **Obejo** (43 Rally Sierra Morena 2026), comprobado en
 - **Cintas de corte:** nunca en la carretera del tramo. Sus estacas quedan a más de radio + 1,2 m de ella.
 - **Dirección de salida y de meta (`clean.hooks`):** un gancho en los primeros o los últimos 80 m del trazado (la línea se vuelve sobre sí misma, giro ≥ 150°: Villaviciosa empezaba 33 m hacia atrás) se quita antes de montar nada. Si no, la salida queda mirando al revés: semáforo de espaldas, línea por delante del punto 0 y «colocado» imposible. En mitad del tramo no se toca: allí es una horquilla.
 - **Pantalla de carga primero (`loader.cover`):** al iniciar, reiniciar o abandonar, nada se mueve ni se quita hasta que la pantalla tapa el juego; mientras está, las apps de pantalla (minimapa incluido) quedan ocultas.
+- **Filas (vallas, lonas, mallas):** cada pieza a su paso medido sobre el terreno (vallas: 2,75 m), no sobre el eje. Si en su sitio hay un árbol, un muro o una calle, se deja el hueco: nunca se desplaza encima de sus vecinas. Además, vallas, carpas y ambulancias guardan una separación mínima entre centros (`dressing.MIN_GAP_M`).
+- **Puesto médico (`dressing.medicPost`):** con una calle lateral a menos de 70 m, dentro de ella y cortada (cinta, barreras, ambulancia mirando al tramo, carpa con mesa y silla). Sin calle, la ambulancia fuera de la calzada con toda su planta libre (6,2 × 2,4 m); si no cabe, no se pone.
+- **Ventana de la cámara del reloj:** debajo de la tarjeta STAGED del juego (`startclock.TOP_RATIO = 0.225`).
 - **Teletransporte:** a la calzada, 100 m antes del TC y mirando hacia él.
 - **Notas del copiloto:** el grado sale del radio mínimo en 24 m. En marcha, las curvas se vuelven a medir sobre la carretera real del juego.
 - **Reloj LED:** la hora real y la cuenta atrás hasta la hora de salida fijada en el TC.

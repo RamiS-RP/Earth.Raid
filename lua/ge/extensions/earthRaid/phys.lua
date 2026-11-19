@@ -17,7 +17,7 @@ M.SCAN_EVERY_S = 0.25         -- la búsqueda del más cercano, no en cada fotog
 -- con física solo lo que el coche puede tocar de verdad: conos en la calzada, cintas, lo del puesto de control y la
 -- meta (zona lenta) y la ambulancia; el resto de carteles del tramo queda estático (18-nov, rendimiento)
 M.PHYS_KINDS = { cone = true, coneS = true, coneY = true, tapeY = true, markY = true, tape = true, tape6 = true, tape10 = true, ambulance = true, start = true, finish = true,
-  stop = true, tc = true, tcEntry = true, finishEntry = true, endArea = true }
+  stop = true, tc = true, tcEntry = true, finishEntry = true, endArea = true, rallyCar = true }
 M.enabled = true
 
 -- tipo de props.lua -> modelo y configuración del juego
@@ -32,12 +32,33 @@ M.MAP = {
   tapeY = { 'rallytape', 'hazardtape' }, markY = { 'rallytape', 'coursemarker_4m' },
   -- en cada punto médico, una ambulancia aparcada (la de tráfico simple: ligera, sin motor que simular)
   ambulance = { 'simple_traffic', 'van_ambulance_parked' },
+  -- coches de rally aparcados en los boxes (19-nov): el modelo y la configuración van en el objeto (it.opts.vehicle)
+  rallyCar = { 'covet', 'rally_asphalt' },
   tape = { 'rallytape', 'roadclosed_8m' }, tape6 = { 'rallytape', 'roadclosed_6m' }, tape10 = { 'rallytape', 'roadclosed_10m' },
 }
 -- giro extra (grados) entre la orientación del modelo estático y la del vehículo
 M.YAW_FIX = { rallysigns = 0, cones = 0, rallytape = 0, simple_traffic = 0 }
 -- sin modelo estático visible: solo existen como vehículo
-M.PHYS_ONLY = { ambulance = true, tapeY = true, markY = true }
+M.PHYS_ONLY = { ambulance = true, tapeY = true, markY = true, rallyCar = true }
+-- los de los boxes, según la superficie del rally (los que existan en el juego)
+M.RALLY_CARS = {
+  asphalt = { { 'sunburst2', 'rally_pro_asphalt' }, { 'vivace', 'ardente_rally_asphalt' }, { 'covet', 'rally_asphalt' },
+    { 'bolide', 'rally_asphalt' }, { 'etki', 'rally_am_asphalt' }, { 'sbr', 'rally_am_asphalt' }, { 'legran', 'rally_asphalt' },
+    { 'bx', '240bx_coupe_rally_asp' } },
+  gravel = { { 'sunburst2', 'rally_pro_gravel' }, { 'vivace', 'ardente_rally' }, { 'covet', 'rally_gravel' },
+    { 'bolide', 'rally_gravel' }, { 'etki', 'rally_am_gravel' }, { 'pessima', 'rallyspec1_dirty' }, { 'wendover', 'rally' },
+    { 'bx', '240bx_coupe_rally_gravel' } },
+}
+-- n coches distintos para los boxes: { {modelo, configuración}... }
+function M.pickRallyCars(n, surface)
+  local list = M.RALLY_CARS[(surface == 'gravel' or surface == 'dirt' or surface == 'snow') and 'gravel' or 'asphalt']
+  local ok = {}
+  for _, c in ipairs(list) do if FS:fileExists('/vehicles/' .. c[1] .. '/' .. c[2] .. '.pc') then ok[#ok + 1] = c end end
+  local out = {}
+  while #out < n and #ok > 0 do out[#out + 1] = table.remove(ok, math.random(#ok)) end
+  return out
+end
+local function mapOf(it) return (it.opts and it.opts.vehicle) or M.MAP[it.kind] end
 
 local live = {}               -- item -> { vid }
 local count = 0
@@ -45,8 +66,8 @@ local spawnT = 0
 
 function M.handles(kind) return M.enabled and M.MAP[kind] ~= nil and M.PHYS_KINDS[kind] == true end
 
-local function exists(kind)
-  local m = M.MAP[kind]
+local function exists(it)
+  local m = mapOf(it)
   return m and FS:fileExists('/vehicles/' .. m[1] .. '/' .. m[2] .. '.pc')
 end
 
@@ -67,8 +88,8 @@ local function despawn(it)
 end
 
 local function spawn(it)
-  local m = M.MAP[it.kind]
-  if not (it.obj and m and exists(it.kind)) then return false end
+  local m = mapOf(it)
+  if not (it.obj and m and exists(it)) then return false end
   local ok, vid = pcall(function()
     local pos = it.obj:getPosition()
     local rot = quat(it.obj:getRotation())
@@ -80,6 +101,10 @@ local function spawn(it)
     if not v then return nil end
     pcall(function() v.playerUsable = false end)
     pcall(function() v:setDynDataFieldbyName('earthRaidProp', 0, '1') end)
+    if it.kind == 'rallyCar' then
+      -- aparcado: sin contacto y con el freno de mano
+      pcall(function() v:queueLuaCommand("if electrics and electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end input.event('parkingbrake', 1, 1)") end)
+    end
     return v:getID()
   end)
   if not ok or not vid then

@@ -61,8 +61,8 @@ On the stage: time control with a stop, staging at the start line, countdown on 
 - **Standard dressing on every stage**, the same in both directions (the reverse stage reuses the same objects):
   - **TC and STOP:** yellow warning, red board and a control post 150 m from the line, with gazebo, table, chair, LED clock to check in, night light and generator.
   - **Start and finish:** boards on both sides of the sensors, start lights with clock and countdown, spray-painted lines from edge to edge and end-of-zone board.
-  - **Safety:** flying-finish warning at 100 m, 3-2-1 boards, radio and medical points with an ambulance.
-  - **Atmosphere:** advertising fences, spectators, sound, closed side streets at junctions and hay bales in escape roads.
+  - **Safety:** flying-finish warning at 100 m, 3-2-1 boards, radio and medical points. The ambulance is never in the way: if a side street leaves the road next to the point, that street is closed and the ambulance and the marshal's gazebo go inside it; otherwise it parks clear of the road (and if there is no room, it is not placed).
+  - **Atmosphere:** advertising fences in a row (one after another, with a gap where there is a tree or a side street), spectators, sound, closed side streets at junctions and hay bales in escape roads.
   - **Fixed rule:** nothing on the road except cones on the centre line.
 - **Routes fixed automatically**: zigzags from hand-drawn lines, badly georeferenced files (shifted off the road) and hooks at the beginning or the end that would leave the start facing backwards.
 - **Co-driver**: visual and spoken pacenotes. Corners are measured again on the real road while you drive.
@@ -70,6 +70,8 @@ On the stage: time control with a stop, staging at the start line, countdown on 
 - **Route importer** from the menu (⤓ Import):
   - **Formats:** KMZ, KML, GPX, GeoJSON and OSM XML, with a logo, a source link and the event details.
   - **Automatic recognition:** stages, passes, road sections, controls, flying finish, STOP, radio points, jumps and chicanes, from the names organisers use on their maps.
+- **A living service park**: a couple of rally cars parked in the bays next to yours, tarmac or gravel spec to match the rally.
+- **Regional traffic**: on road sections and in free roam, the game's traffic has more cars from the part of the world you are in (in Europe, more German, French and Italian cars and EU-spec versions; in North America, more American ones; in Asia, more Japanese ones). It can be switched off in Settings.
 - **No cheating**: switching vehicle during a stage cancels it.
 
 ## Requirements

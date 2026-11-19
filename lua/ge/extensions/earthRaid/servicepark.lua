@@ -497,6 +497,24 @@ function M.active(h) return h ~= nil and h.phase ~= 'done' end
 -- { lat, lon, faceLat, faceLon } (el coche bajo la carpa, mirando al pasillo).
 -- En un aparcamiento de verdad: los boxes sobre las plazas de la fila más alejada de la salida (así quedan en el
 -- asfalto pintado, nunca en el talud del borde), orientados como las plazas
+-- Coches de rally aparcados en los boxes vecinos al del jugador (19-nov, ambiente): { [índice de box] = {modelo, config} }
+-- Son vehículos de verdad solo cerca del coche (phys.lua): como mucho M.PARK_CARS.
+M.PARK_CARS = 2
+M.surface = 'asphalt'
+function M.parkedCars(n, mine)
+  local out = {}
+  local okS, st = pcall(function() return require('earthRaid/settings').get() end)
+  if not okS or st.ambience == false or st.parkCars == false then return out end
+  local slots = {}
+  for _, i in ipairs({ mine - 1, mine + 1, mine - 2, mine + 2 }) do
+    if i >= 1 and i <= n and #slots < M.PARK_CARS then slots[#slots + 1] = i end
+  end
+  local okP, list = pcall(function() return require('earthRaid/phys').pickRallyCars(#slots, M.surface) end)
+  if not okP then return out end
+  for j, i in ipairs(slots) do out[i] = list[j] end
+  return out
+end
+
 local function buildOnStalls(site)
   local a = api()
   -- los ejes son los de las plazas (su rumbo = el largo de la plaza; una fila de plazas, a lo ancho), no los del rectángulo
@@ -551,6 +569,7 @@ local function buildOnStalls(site)
   local mine = math.floor((#picks + 1) / 2)
   local box
   local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
+  local cars = M.parkedCars(#picks, mine)
   for i, p in ipairs(picks) do
     local hdg = math.rad(p[4] or 0)
     local fx, fy = math.cos(hdg), math.sin(hdg)
@@ -564,6 +583,8 @@ local function buildOnStalls(site)
     -- una sola carpa 3x6 por coche, girada 90° (su lado largo, el del coche) y con los objetos del box de NGRC Rally Utah:
     -- dos extintores delante y un cono pequeño a rayas
     put(k, 0, 0, 90)
+    -- en los boxes de al lado del tuyo, un coche de rally aparcado (ambiente)
+    if cars[i] then put('rallyCar', 0, 0, 0, { vehicle = cars[i] }) end
     put('extinguisher', 3.2, -1.2, 40)
     put('extinguisher', 3.2, -0.6, 250)
     put('coneS', 4.6, 1.3, 0)
@@ -605,10 +626,12 @@ function M.build(site)
   local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
   local mine = math.floor((n + 1) / 2)
   local box
+  local cars = M.parkedCars(n, mine)
   for i = 1, n do
     local along = along0 + (i - 1) * M.PAIR_M
     local k = kinds[(i - 1) % #kinds + 1]
     put(k, along, rowSide, 90)
+    if cars[i] then put('rallyCar', along, rowSide, 0, { vehicle = cars[i] }) end
     put('extinguisher', along + 1.2, rowSide + sideSign * 3.2, 40)
     put('extinguisher', along + 0.6, rowSide + sideSign * 3.2, 250)
     if i == mine then
