@@ -176,6 +176,7 @@ function M.run(list)
     end
   end
   A = { list = list, i = 1, step = 'begin', t = 0, results = {}, startedAt = os.date('%Y-%m-%d %H:%M') }
+  pcall(function() if simTimeAuthority.getPause() then simTimeAuthority.pause(false) end end)
   pcall(function() mn.uiCancelStage() end)
   log('I', TAG, ('audit: %d stages'):format(#list))
   return true
@@ -221,6 +222,8 @@ function M.update(dt)
     elseif A.t > 240 then A.res.problems[#A.res.problems + 1] = 'loading timed out' finishStage(A.res) return end
   elseif A.step == 'retryWait' then
     if A.t < 15 then return end
+    -- con el juego en pausa BeamNG.Earth no termina de colocar el coche y rechaza los viajes (19-nov)
+    pcall(function() if simTimeAuthority.getPause() then simTimeAuthority.pause(false) end end)
     local keep = mn.PLAY_TELEPORT_M
     mn.PLAY_TELEPORT_M = 0
     pcall(mn.uiPlay, item[1], item[2], item[3])
