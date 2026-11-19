@@ -3,7 +3,7 @@
   "tagid": "EARTH_RAID",
   "icon": "icon.jpg",
   "author": "RamiroRP",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "tag_line": "Real rallies, raids and Dakar stages on BeamNG.Earth",
   "description": "Raid.Earth turns BeamNG.Earth into a rally simulator: drive the real special stages of real events (imported from KML/KMZ/GPX/GeoJSON) with time controls, start and finish lines, stop control, radio and medical points, spectators, safety barriers, the vanilla rally signs and a co-driver that calls the pacenotes. Single stages or full rallies with time card, liaisons and penalties. Requires BeamNG.Earth. Open it from Esc > Raid.Earth. Only active on BeamNG.Earth maps: it does not change the vanilla rally mode."
 }

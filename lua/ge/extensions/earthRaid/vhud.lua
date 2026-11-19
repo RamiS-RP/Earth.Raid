@@ -55,7 +55,19 @@ local function fromStage(S, R, api)
   local d = { showStageApps = true, missionName = S.title, showDebugInfo = false }
   d.stageData = { currentSSTime = nil, isActive = false, isComplete = false, label = label, stageHeader = S.title, unit = 'km',
     completion = { distM = 0, distPct = 0, totalDistM = t.total },
-    splits = S.splitAt and { { pathnodeId = 1, splitLabel = 'Split 1', time = S.splitTime } } or nil }
+    splits = nil }
+  -- la barra de progreso del juego (DistanceWidgetSVGRect) espera la lista de parciales con pathnodeType 'split_*' y
+  -- distPct, y el ÚLTIMO elemento es la meta, con su etiqueta en km (como en el rally del juego: 1.5 ... 3.7 km)
+  do
+    local tot = t.total or 0
+    local list = {}
+    local function km(m) return string.format('%.1f', m / 1000) end
+    if S.splitAt and tot > 0 and S.splitAt > 0 and S.splitAt < tot then
+      list[#list + 1] = { pathnodeId = 1, pathnodeType = 'split_1', distPct = S.splitAt / tot, splitLabel = km(S.splitAt), time = S.splitTime }
+    end
+    if tot > 0 then list[#list + 1] = { pathnodeId = 2, pathnodeType = 'finish', distPct = 1, splitLabel = km(tot) } end
+    d.stageData.splits = #list > 0 and list or nil
+  end
   local sc = baseSchedule()
   sc.totalSSCount = S.stageCount
   d.countdownData = { countdown = nil, state = nil }
