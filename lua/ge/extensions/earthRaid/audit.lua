@@ -204,12 +204,28 @@ function M.update(dt)
     mn.PLAY_TELEPORT_M = keep
     if not ok then A.res.problems[#A.res.problems + 1] = 'uiPlay: ' .. tostring(err) finishStage(A.res) return end
     A.step, A.t = 'loading', 0
+    A.retries = A.retries or 0
   elseif A.step == 'loading' then
     local L = require('earthRaid/loader')
     if not L.active() and A.t > 2 then
-      if not st.state() then A.res.problems[#A.res.problems + 1] = 'stage did not start' finishStage(A.res) return end
+      if not st.state() then
+        -- el viaje puede negarse mientras el mapa carga el suelo ("Loading the ground"): otra vez en 15 s, hasta 8 veces
+        if A.retries < 8 then
+          A.retries = A.retries + 1
+          A.step, A.t = 'retryWait', 0
+          return
+        end
+        A.res.problems[#A.res.problems + 1] = 'stage did not start' finishStage(A.res) return
+      end
       A.step, A.t = 'startSettle', 0
     elseif A.t > 240 then A.res.problems[#A.res.problems + 1] = 'loading timed out' finishStage(A.res) return end
+  elseif A.step == 'retryWait' then
+    if A.t < 15 then return end
+    local keep = mn.PLAY_TELEPORT_M
+    mn.PLAY_TELEPORT_M = 0
+    pcall(mn.uiPlay, item[1], item[2], item[3])
+    mn.PLAY_TELEPORT_M = keep
+    A.step, A.t = 'loading', 0
   elseif A.step == 'startSettle' then
     -- primero junto a la salida (lo de allí se recomprueba al acercarse, como al conducir), luego la medida
     if A.t < 6 then return end

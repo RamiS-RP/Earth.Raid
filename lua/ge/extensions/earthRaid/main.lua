@@ -1080,6 +1080,10 @@ function M.uiPlay(eventId, stageId, reverse)
       if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
       M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8)
     end })
+  if not ok then
+    stage.holdJobs(false)
+    M.toast((es and 'No se puede viajar ahora: ' or 'Cannot travel now: ') .. tostring(err), 6)
+  end
   if not ok then stage.holdJobs(false) M.toast('Raid.Earth: ' .. tostring(err), 6) end
 end
 
