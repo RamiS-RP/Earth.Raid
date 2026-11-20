@@ -752,6 +752,25 @@ end
 -- el nodo de carretera de verdad (drivability > LOT_DRIV) más cercano fuera del recinto (22-nov: antes solo calles de
 -- servicio y salía por otra calle que la del GPS). Sin ruta, la recta a la incorporación; si ni así sale de la envolvente,
 -- la salida de siempre (exitGate). MARK:mouth-v1
+-- (22-nov) el grafo de carreteras se completa tras viajar al sitio: la boca se calcula cuando ya está la calle junto al
+-- aparcamiento (una calle a menos de 45 m del centro; como mucho 20 s de espera)
+local graphWait
+function M.graphReady(site)
+  local okM, m = pcall(map.getMap)
+  if okM and m and m.nodes then
+    for _, nd in pairs(m.nodes) do
+      if (nd.pos.x - site.x) ^ 2 + (nd.pos.y - site.y) ^ 2 < 45 ^ 2 then
+        for _, ed in pairs(nd.links or {}) do
+          if (type(ed) == 'table' and tonumber(ed.drivability) or 1) > M.LOT_DRIV then graphWait = nil return true end
+        end
+      end
+    end
+  end
+  graphWait = graphWait or os.clock()
+  if os.clock() - graphWait > 20 then graphWait = nil return true end
+  return false
+end
+
 local function mouthRoute(m, h, cx, cy)
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
   local adj, cls = {}, {}
@@ -774,11 +793,11 @@ local function mouthRoute(m, h, cx, cy)
     local q = m.nodes[k].pos
     local d = (q.x - cx) ^ 2 + (q.y - cy) ^ 2
     if not sd or d < sd then start, sd = k, d end
-    if (cls[k] or 0) > M.LOT_DRIV and not inHull(h, q.x, q.y, M.LOT_FENCE_OFF_M + 2) and (not gd or d < gd) then goal, gd = k, d end
+    if (cls[k] or 0) > M.LOT_DRIV and not inHull(h, q.x, q.y, M.RUN_OFF_M + 2) and (not gd or d < gd) then goal, gd = k, d end
   end
   -- el aparcamiento no tiene calles en el grafo (los nodos más cercanos ya están fuera del vallado): la ruta es la recta del
   -- box al punto más cercano de una carretera de verdad, como la línea que pinta el GPS por el aparcamiento
-  if start and not inHull(h, m.nodes[start].pos.x, m.nodes[start].pos.y, M.LOT_FENCE_OFF_M) then
+  if start then
     local bx, by, bd, brad
     for _, nd in pairs(m.nodes) do
       for nb, ed in pairs(nd.links or {}) do
@@ -790,7 +809,7 @@ local function mouthRoute(m, h, cx, cy)
           local L2 = vx * vx + vy * vy
           local tt = L2 > 0 and math.max(0, math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L2)) or 0
           local px, py = ax + vx * tt, ay + vy * tt
-          if not inHull(h, px, py, M.LOT_FENCE_OFF_M + 2) then
+          if not inHull(h, px, py, M.RUN_OFF_M + 2) then
             local d = (px - cx) ^ 2 + (py - cy) ^ 2
             if not bd or d < bd then bd, bx, by, brad = d, px, py, nd.radius end
           end
@@ -839,9 +858,23 @@ local function exitMouth(h, cx, cy, z)
       local ux, uy = (B[1] - A[1]) / L, (B[2] - A[2]) / L
       for d = 0, L, 1 do
         local x, y = A[1] + ux * d, A[2] + uy * d
-        if not inHull(h, x, y, M.LOT_FENCE_OFF_M) then
+        if not inHull(h, x, y, M.RUN_OFF_M) then
           local rad = A[3] or B[3] or 2
           log('I', TAG, string.format('lot mouth at (%.1f, %.1f), route of %d nodes', x, y, #route))
+          do   -- la línea de stop paralela al vallado: la salida es la normal exterior del lado del recinto por el que cruza
+            local bd2, bnx, bny
+            for i2 = 1, #h do
+              local A2, B2 = h[i2], h[i2 % #h + 1]
+              local ex2, ey2 = B2[1] - A2[1], B2[2] - A2[2]
+              local L2 = math.sqrt(ex2 * ex2 + ey2 * ey2)
+              if L2 > 0.5 then
+                local t2 = math.max(0, math.min(1, ((x - A2[1]) * ex2 + (y - A2[2]) * ey2) / (L2 * L2)))
+                local d2 = (x - A2[1] - ex2 * t2) ^ 2 + (y - A2[2] - ey2 * t2) ^ 2
+                if not bd2 or d2 < bd2 then bd2, bnx, bny = d2, ey2 / L2, -ex2 / L2 end
+              end
+            end
+            if bnx and bnx * ux + bny * uy > 0.2 then ux, uy = bnx, bny end
+          end
           return { x = x, y = y, z = terrainZ(x, y) or z, ux = ux, uy = uy, bx = -ux, by = -uy,
             hw = math.max(2.5, math.min(3.5, rad + 1)), gate = true, mouth = true }
         end
@@ -893,6 +926,8 @@ end
 -- consecutivas casi alineadas. Los boxes van en fila a lo largo de él, centrados, y la segunda fila es una copia trasladada
 -- hacia dentro ROW_GAP_M (alineada y cuadrada con la primera, con pasillo para maniobrar).
 M.BOX_PITCH_M = 7.8
+M.TWIN_S1, M.TWIN_S2 = -2.7, 3.6      -- casetas del TC0 de box: antes y después de la línea de stop (medidas de la marca del usuario)
+M.STREET_W_M, M.RUN_OFF_M = 9.2, 0.3 -- calle junto al aparcamiento: ancho entre vallas, y valla del lado del aparcamiento pegada al recinto
 local function wallPicks(site, h)
   local n = #h
   local edges = {}
@@ -944,17 +979,44 @@ local function lotFence(site)
   -- el hueco del vallado: en la boca de salida (por donde va el GPS y está el TC0), con sitio para las dos casetas
   local gates, gap = {}, M.LOT_FENCE_GAP_M
   if M.tcSpot then gates[#gates + 1] = { M.tcSpot.x, M.tcSpot.y } end
-  if M.tcSpot and M.tcSpot.mouth then gap = (M.tcSpot.hw or 3) + 3.2     -- hueco de ~13 m: las casetas (a hw+2,6) quedan en los extremos
+  if M.tcSpot and M.tcSpot.mouth then gap = (M.tcSpot.hw or 3) + 0.1     -- hueco = el ancho del carril (7 m en la marca del usuario)
   elseif site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
   local z0 = site.z or terrainZ(site.x, site.y) or 0
   local n, skipped = 0, 0
+  -- el tramo recto del recinto por el que sale la ruta (la calle va pegada): su valla va junto al borde y la del otro lado de
+  -- la calle, paralela a STREET_W_M
+  local runSet, runA, runB = {}, nil, nil
+  if M.tcSpot and M.tcSpot.mouth then
+    local bi, bd
+    for i = 1, #h do
+      local A, B = h[i], h[i % #h + 1]
+      local ex, ey = B[1] - A[1], B[2] - A[2]
+      local L = math.sqrt(ex * ex + ey * ey)
+      if L > 0.5 then
+        local t = math.max(0, math.min(1, ((M.tcSpot.x - A[1]) * ex + (M.tcSpot.y - A[2]) * ey) / (L * L)))
+        local d = (M.tcSpot.x - A[1] - ex * t) ^ 2 + (M.tcSpot.y - A[2] - ey * t) ^ 2
+        if not bd or d < bd then bi, bd = i, d end
+      end
+    end
+    if bi then
+      local function ang(i) local A, B = h[i], h[i % #h + 1] return math.atan2(B[2] - A[2], B[1] - A[1]) end
+      local a0 = ang(bi)
+      local function same(i) return math.abs(((ang(i) - a0 + math.pi) % (2 * math.pi)) - math.pi) < math.rad(18) end
+      local lo, hi = bi, bi
+      runSet[bi] = true
+      for _ = 1, #h - 1 do local j = (lo - 2) % #h + 1 if runSet[j] or not same(j) then break end lo = j runSet[j] = true end
+      for _ = 1, #h - 1 do local j = hi % #h + 1 if runSet[j] or not same(j) then break end hi = j runSet[j] = true end
+      runA, runB = h[lo], h[hi % #h + 1]
+    end
+  end
   for i = 1, #h do
     local A, B = h[i], h[i % #h + 1]
     local ex, ey = B[1] - A[1], B[2] - A[2]
     local L = math.sqrt(ex * ex + ey * ey)
     if L > 1 then
       ex, ey = ex / L, ey / L
-      local ox, oy = ey * M.LOT_FENCE_OFF_M, -ex * M.LOT_FENCE_OFF_M       -- hacia fuera (derecha del lado)
+      local OFF = runSet[i] and M.RUN_OFF_M or M.LOT_FENCE_OFF_M
+      local ox, oy = ey * OFF, -ex * OFF       -- hacia fuera (derecha del lado)
       local la0, lo0 = a.toGeo(A[1], A[2], z0)
       local la1, lo1 = a.toGeo(A[1] + ex * 10, A[2] + ey * 10, z0)
       local kk = math.cos(math.rad(la0)) * 111195
@@ -987,6 +1049,36 @@ local function lotFence(site)
           if props.add(M.LOT_FENCE_KINDS[n % #M.LOT_FENCE_KINDS + 1], la, lo, gx, gy, 0, { row = true, noPush = true }) then n = n + 1 end
         else skipped = skipped + 1 end
       end
+    end
+  end
+  if runA and runB then
+    local ex, ey = runB[1] - runA[1], runB[2] - runA[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 3 then
+      ex, ey = ex / L, ey / L
+      local off = M.RUN_OFF_M + M.STREET_W_M
+      local la0, lo0 = a.toGeo(runA[1], runA[2], z0)
+      local la1, lo1 = a.toGeo(runA[1] + ex * 10, runA[2] + ey * 10, z0)
+      local kk = math.cos(math.rad(la0)) * 111195
+      local gx, gy = (lo1 - lo0) * kk, (la1 - la0) * 111195
+      local gl = math.sqrt(gx * gx + gy * gy)
+      if gl > 0.01 then gx, gy = gx / gl, gy / gl else gx, gy = 0, 1 end
+      local far = 0
+      for d = -8, L + 8, M.LOT_FENCE_PITCH_M do
+        local x, y = runA[1] + ex * d + ey * off, runA[2] + ey * d - ex * off
+        local z = terrainZ(x, y)
+        local ok = z ~= nil and math.abs(z - z0) < 2.5
+        if ok then
+          local hitOk, hd = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
+          if hitOk and hd and hd < 24.3 then ok = false end
+        end
+        if ok then
+          local la, lo = a.toGeo(x, y, z)
+          if props.add(M.LOT_FENCE_KINDS[(n + far) % #M.LOT_FENCE_KINDS + 1], la, lo, gx, gy, 0, { row = true, noPush = true }) then far = far + 1 end
+        end
+      end
+      n = n + far
+      log('I', TAG, ('street fence: %d pieces on the far side'):format(far))
     end
   end
   log('I', TAG, ('lot fence: %d pieces, %d spots skipped'):format(n, skipped))
@@ -1126,7 +1218,9 @@ local function buildOnStalls(site)
       if dl > 1 then ux, uy = dx / dl, dy / dl end
     end
     M.tcSpot = { x = e[1] + ux * M.TC0_BEYOND_M + fx * M.TC0_AISLE_M, y = e[2] + uy * M.TC0_BEYOND_M + fy * M.TC0_AISLE_M, z = e[3], ux = ux, uy = uy, fx = fx, fy = fy }
-    local mp = picks[mine] or picks[1]
+    -- la boca se calcula desde el centro de los boxes (no desde el del jugador: así no depende de cuál le toque)
+    local mp = { 0, 0 }
+    for _, q in ipairs(picks) do mp[1], mp[2] = mp[1] + q[1] / #picks, mp[2] + q[2] / #picks end
     local okG, gate = pcall(exitMouth, hull, mp[1], mp[2], e[3])
     if okG and gate then M.tcSpot = gate elseif not okG then log('W', TAG, 'mouth: ' .. tostring(gate)) end
   end
@@ -1278,7 +1372,7 @@ function M.tc0(site, dressing)
       -- (tcPost: lateral = out * lado, con out = -1; los boxes a la derecha de quien sale -> lado -1)
       lado = (sp.ux * sp.by - sp.uy * sp.bx) < 0 and -1 or 1
     elseif sp.fx and (sp.uy * sp.fx - sp.ux * sp.fy) < 0 then lado = 1 end
-    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, sp.mouth == true)
+    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, sp.mouth == true and { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 } or false)
     if ok then
       local la, lo = geo.toGeo(t, geo.at(t, 20))
       return { lat = la, lon = lo }

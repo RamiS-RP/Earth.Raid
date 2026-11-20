@@ -1236,6 +1236,7 @@ function M.uiStartRally(eventId, fromRun, force)
               if hla then return 1, { lat = hla, lon = hlo, key = 'park' } end
             end
           end
+          if site and not site.manual and servicepark.graphReady and not servicepark.graphReady(site) then return 1 end
           if site then
             servicepark.surface = dressing.normSurface(full.surface)
             S.box = servicepark.build(site) or false

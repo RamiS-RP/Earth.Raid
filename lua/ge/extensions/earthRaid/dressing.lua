@@ -795,7 +795,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
   -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
   local _ = both
-  local g = 2.6
+  local g = (type(twin) == 'table' and twin.g) or 2.6
   -- SIEMPRE hay caseta de comisario en un control (19-nov, norma del usuario: el TC0 a la salida de un aparcamiento se
   -- quedaba sin carpa, mesa ni reloj porque no cabían "fuera de toda calzada" entre los pasillos del aparcamiento, y
   -- el control pasaba inadvertido). Se prueba en su lado, en el otro y unos metros antes o después; y si en ningún
@@ -836,6 +836,11 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
     cands[#cands + 1] = { clockLado, sh }
     cands[#cands + 1] = { -clockLado, sh }
   end
+  -- (22-nov, el usuario marcó las casetas del TC0 de box) escalonadas: la primera antes de la línea de stop a un lado y la
+  -- segunda después, al otro (twin = { g, s1, s2 }: separación extra del carril y desplazamientos a lo largo)
+  if type(twin) == 'table' and twin.s1 then
+    table.insert(cands, 1, { clockLado, twin.s1 })
+  end
   local function usable(c, seen)
     local side, f = out * c[1] * (hw + g), out * D + c[2]
     if tentFree(t, endAlong, side, f) == false then return false end
@@ -870,7 +875,8 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   -- (22-nov, el usuario: el TC0 de los boxes lleva dos casetas, como en NGRC Rally Utah): la segunda, enfrente, al otro lado
   -- de la salida, a la altura de la línea de stop
   if twin and chosen then
-    for _, sh in ipairs({ 0, -3, 3, -6, 6 }) do
+    local shs = (type(twin) == 'table' and twin.s2) and { twin.s2, 0, -3, 3, -6, 6 } or { 0, -3, 3, -6, 6 }
+    for _, sh in ipairs(shs) do
       if usable({ -chosen, sh }, false) and booth(-chosen, sh, true) then break end
     end
   end
