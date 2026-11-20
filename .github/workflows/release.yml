@@ -52,7 +52,7 @@ jobs:
           curl -fsSL --retry 3 --max-time 180 -o /tmp/es.onnx "$B/es_ES-davefx-medium.onnx"
           curl -fsSL --retry 3 --max-time 60 -o /tmp/es.onnx.json "$B/es_ES-davefx-medium.onnx.json"
           python tools/voicepack/make_voicepack.py --phrases tools/voicepack/es.json --engine piper --model /tmp/es.onnx \
-            --id raidearth_es_davefx --persona "Copiloto Raid.Earth" --dialect es-ES --out .
+            --id raidearth_es_davefx --persona "Copiloto en español (Piper)" --dialect es-ES --out .
       - name: Package
         if: steps.ver.outputs.skip != 'true'
         run: sh tools/package.sh earth_raid.zip

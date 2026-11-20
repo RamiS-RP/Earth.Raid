@@ -107,7 +107,7 @@ Add more from the menu (⤓ Import).
 
 ## Co-driver and voices
 
-- **Inside the mod:** the Spanish **Copiloto Raid.Earth** (a neural voice generated with [Piper](https://github.com/rhasspy/piper), model `es_ES-davefx-medium`, from `tools/voicepack/es.json`). It ships inside the `earth_raid.zip` of every release (and is stored in the repository): nothing else to install. If you had the old `earth_raid_voice_es.zip`, you can delete it.
+- **Inside the mod:** the Spanish **Copiloto en español (Piper)** (a neural voice generated with [Piper](https://github.com/rhasspy/piper), model `es_ES-davefx-medium`, from `tools/voicepack/es.json`). It ships inside the `earth_raid.zip` of every release (and is stored in the repository): nothing else to install. If you had the old `earth_raid_voice_es.zip`, you can delete it.
 - **The game's own:** every BeamNG.drive co-driver (Alex Kihurani, dirtwheel, HighDef…) is also in the selector.
 - **Other voices or languages:** translate `es.json` and run `tools/voicepack/make_voicepack.py` (Piper, Windows voices or espeak-ng). Any voicepack in the game's format shows up in the start screen → Co-driver.
 

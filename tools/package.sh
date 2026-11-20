@@ -6,5 +6,5 @@ set -e
 cd "$(dirname "$0")/.."
 OUT="${1:-earth_raid.zip}"
 rm -f "$OUT"
-zip -r -q "$OUT" art earthRaid lua mod_info scripts settings ui beamngEarth_addon.json LICENSE -x '*.DS_Store' -x 'earthRaid/events/*'
+zip -r -q -9 -X "$OUT" art earthRaid lua mod_info scripts settings ui beamngEarth_addon.json LICENSE -x '*.DS_Store' -x '*.bak' -x '*.orig' -x '*~' -x 'earthRaid/events/*'
 echo "$OUT listo: cópialo tal cual (sin descomprimir) a <carpeta de usuario de BeamNG>/current/mods/"
