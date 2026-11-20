@@ -29,9 +29,11 @@ local TAG = 'earthRaid'
 M.STAGING_S = 60
 M.COUNTDOWN_S = 10
 M.PRECOUNT_MAX_S = 1.5    -- el aviso de antes de la cuenta atrás, como mucho esto de largo
-M.FALSE_START_S = 10
-M.STAGING_PENALTY_S = 10
-M.RECOVERY_S = 5
+-- las del rally del juego (loop/penalties.lua y recoveryClockAdvance.lua)
+local okP, GP = pcall(require, '/lua/ge/extensions/gameplay/rally/loop/penalties')
+local okC, GC = pcall(require, '/lua/ge/extensions/gameplay/rally/recoveryClockAdvance')
+M.FALSE_START_S = (okP and GP.falseStartPenaltySeconds) or 10
+M.RECOVERY_S = (okC and GC.getSeconds('recovery', true)) or 5
 M.NEAR_M = 40
 M.STAGED_MAX_M = 1.2       -- colocado: el morro como mucho a esto antes de la línea (el juego: < 1 m)...
 M.STAGED_OVER_M = 0.3      -- ... y como mucho esto por encima de ella; más: "te has pasado", no vale
@@ -1265,8 +1267,7 @@ function M.update(dtSim, dtReal)
       local preLen = audio.length('system_precountdown')
       if S.opt.voice and preLen and preLen <= M.PRECOUNT_MAX_S then audio.say({ 'system_precountdown' }) end
     elseif S.stagingLeft <= 0 then
-      -- sin colocar a la hora: penalización y el minuto de espera vuelve a empezar
-      penalise('staging', M.STAGING_PENALTY_S)
+      -- sin colocar a la hora: el minuto de espera vuelve a empezar (el juego no penaliza aquí: solo llegar tarde al control)
       S.stagingLeft, S.saidWarn = M.STAGING_S, {}
       if S.opt.voice then audio.say({ 'system_warningSeconds30' }) end
     elseif math.sqrt((x - sx) ^ 2 + (y - sy) ^ 2) > M.NEAR_M * 3 then

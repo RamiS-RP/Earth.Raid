@@ -1729,7 +1729,7 @@ function M.onExtensionUnloaded() pcall(guard.release) pcall(regiontraffic.uninst
 function M.onVehicleResetted(vid)
   if not S.earthLevel then return end
   local v = getPlayerVehicle(0)
-  if v and v:getID() == vid then stage.onReset() end
+  if v and v:getID() == vid then stage.onReset() pcall(rally.onReset) end
 end
 
 return M

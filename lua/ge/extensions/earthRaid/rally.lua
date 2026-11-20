@@ -18,7 +18,17 @@ local M = {}
 local catalog = require('earthRaid/catalog')
 local TAG = 'earthRaid'
 
-M.PENALTY_PER_MIN = 10
+-- las reglas de penalización son las del rally del juego (loop/penalties.lua y recoveryClockAdvance.lua)
+local okP, GP = pcall(require, '/lua/ge/extensions/gameplay/rally/loop/penalties')
+M.PENALTY_PER_MIN = (okP and GP.timeControlPenaltySecondsPerMinute) or 10
+local okC, GC = pcall(require, '/lua/ge/extensions/gameplay/rally/recoveryClockAdvance')
+M.LIAISON_RECOVERY_S = (okC and GC.getSeconds('recovery', false)) or 60
+-- Ajustes > Rally > «Penalizaciones por llegar pronto»: apagado (por defecto) llegar pronto no penaliza y el reloj se
+-- adelanta solo a tu minuto; encendido se ficha enseguida y se penaliza cada minuto de adelanto
+local function earlyPenalties()
+  local ok, v = pcall(function() return rawget(_G, 'settings').getValue('rallyEnableEarlyTimeControlPenalties') end)
+  return ok and v == true
+end
 M.START_MARGIN_S = 35       -- salida: el siguiente minuto entero con al menos esto tras fichar
 M.TC_ZONE_M = 12            -- radio del punto de fichaje
 M.TC_HOLD_S = 0.5           -- parado en él este tiempo: ficha
@@ -468,6 +478,12 @@ function M.skipLiaison()
   return ok
 end
 
+-- R en un enlace: como en el juego, el reloj avanza 60 s (no es una línea de penalización: si te pasas de tu minuto, llegas tarde)
+function M.onReset()
+  if R and R.phase == 'liaison' and not stage.active() then R.clock = R.clock + M.LIAISON_RECOVERY_S return true end
+  return false
+end
+
 -- Mayús+E: en la asistencia, salir; en el control con tiempo de sobra, adelantar el reloj a tu minuto
 function M.skip()
   if not R then return false end
@@ -586,11 +602,10 @@ function M.update(dtSim, dtReal)
         end
         if d < M.TC_ZONE_M and (p.speed or 0) < 0.6 then
           local early = math.floor(R.clock / 60) < R.startMin
-          R.early = early
-          if not early then
-            R.holdT = R.holdT + dtSim
-            if R.holdT >= M.TC_HOLD_S then R.holdT, R.early = 0, false checkInTc0() end
-          end
+          if early and not earlyPenalties() then R.clock = math.max(R.clock, R.startMin * 60 + 1) end
+          R.early = false
+          R.holdT = R.holdT + dtSim
+          if R.holdT >= M.TC_HOLD_S then R.holdT = 0 checkInTc0() end
         else
           R.holdT, R.early = 0, false
         end
@@ -622,11 +637,10 @@ function M.update(dtSim, dtReal)
     -- en el punto de fichaje y parado
     if d < M.TC_ZONE_M and (p.speed or 0) < 0.6 then
       local early = math.floor(R.clock / 60) < cur.dueMin
-      R.early = early
-      if not early then
-        R.holdT = R.holdT + dtSim
-        if R.holdT >= M.TC_HOLD_S then R.holdT, R.early = 0, false checkIn() end
-      end
+      if early and not earlyPenalties() then R.clock = math.max(R.clock, cur.dueMin * 60 + 1) end
+      R.early = false
+      R.holdT = R.holdT + dtSim
+      if R.holdT >= M.TC_HOLD_S then R.holdT = 0 checkIn() end
     else
       R.holdT, R.early = 0, false
     end

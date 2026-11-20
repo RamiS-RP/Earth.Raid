@@ -115,12 +115,9 @@
        las penalizaciones del tramo (bajo los tiempos del juego), las del rally (bajo la hoja de tiempos) y el marco de
        la cámara del reloj (la imagen la pone el juego debajo) -->
   <div class="erh" v-if="slim">
-    <div v-if="d && d.phase && d.phase !== 'idle' && d.phase !== 'hold' && d.penalty > 0" class="spen">
-      <span class="penb">+{{ d.penalty }}s</span> {{ penaltyText }}
-    </div>
-    <div v-if="r && r.active && r.phase !== 'finished' && list(r.penalties).length" class="tcpen slimpen">
-      <div class="tcpent"><b>{{ t.penalties }}</b><span>{{ t.total }} {{ penTotal }}s</span></div>
-      <div v-for="(p, i) in list(r.penalties)" :key="i" class="tcpenr"><span>{{ p.label }} · {{ penWhy(p.why) }}</span><b>{{ p.s }}s</b></div>
+    <div v-if="slimPens.length" class="spen">
+      <div class="spent"><b>{{ t.penalties }}</b><span>+{{ slimTotal }}s</span></div>
+      <div v-for="(p, i) in slimPens" :key="i" class="spenr"><span>{{ p.label }} · {{ penWhy(p.why) }}<template v-if="p.n > 1"> ×{{ p.n }}</template></span><b>+{{ p.s }}s</b></div>
     </div>
     <!-- el resultado al parar en el STOP (19-nov: con las apps del juego se había perdido): tiempo, parcial,
          penalización y mejor tiempo; en un tramo suelto se queda hasta aceptarlo con Mayús+E (se retira el montaje) -->
@@ -304,6 +301,25 @@ const cardRows = computed(() => {
   return rows.slice(from, from + 12)
 })
 const penTotal = computed(() => list(r.value && r.value.penalties).reduce((a, p) => a + (p.s || 0), 0))
+// una sola caja, por orden de lo ocurrido: primero las del rally (llegar tarde/pronto a un control) y después las del tramo
+// en curso (salida en falso, fuera de hora, recuperaciones); al acabar el tramo las suyas pasan a la lista del rally
+const slimPens = computed(() => {
+  const all = list(r.value && r.value.active && r.value.phase !== "finished" ? r.value.penalties : []).map(p => ({ label: p.label, s: p.s, why: p.why }))
+  const ph = d.value && d.value.phase
+  const inRally = !!(r.value && r.value.active && r.value.phase !== "finished")
+  // al acabar el tramo, dentro de un rally, sus penalizaciones ya están en la lista del rally
+  if (ph && ph !== "idle" && ph !== "hold" && !(inRally && (ph === "done" || ph === "toStop"))) list(d.value.penalties).forEach(p => all.push({ label: t.value.stageWord, s: p.s, why: p.kind }))
+  // como el juego: lo repetido se agrupa por control y tipo, con su recuento (recuperación ×3), en orden de aparición
+  const out = [], idx = {}
+  all.forEach(p => {
+    const k = p.label + "|" + p.why
+    if (idx[k] === undefined) { idx[k] = out.length; out.push({ label: p.label, why: p.why, s: 0, n: 0 }) }
+    out[idx[k]].s += p.s || 0
+    out[idx[k]].n += 1
+  })
+  return out
+})
+const slimTotal = computed(() => slimPens.value.reduce((a, p) => a + (p.s || 0), 0))
 const penWhy = w => (w === "early" ? t.value.earlyWord : t.value[w] || w)
 function statusText(row) {
   if (!row.status) return ""
@@ -443,8 +459,10 @@ const frameStyle = computed(() => {
 .erh-load .lbar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
 .erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
-.spen { position: absolute; left: 10px; top: 436px; padding: 4px 10px; background: rgba(26, 29, 34, 0.82); color: #fff; font-size: 14px; font-weight: 700; }
-.erh .tcpen.slimpen { position: absolute; left: 410px; top: 132px; width: 290px; background: rgba(26, 29, 34, 0.86); color: #fff;
+.spen { position: absolute; left: 288px; top: 118px; width: 290px; padding: 6px 10px 7px; background: rgba(26, 29, 34, 0.86); color: #fff; font-size: 14px; border-left: 3px solid #ff6a5c; }
+.spen .spent { display: flex; justify-content: space-between; color: #ff6a5c; letter-spacing: 0.04em; font-weight: 700; }
+.spen .spenr { display: flex; justify-content: space-between; gap: 8px; }
+.erh .tcpen.slimpen { position: absolute; left: 288px; top: 160px; width: 290px; background: rgba(26, 29, 34, 0.86); color: #fff;
   padding: 6px 10px 7px; border-left: 3px solid #ff9100; font-size: 14px; }
 .erh .tcpen.slimpen .tcpent { color: #ffb347; letter-spacing: 0.04em; }
 </style>
