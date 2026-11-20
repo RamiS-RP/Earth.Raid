@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.8.2'
+M.VERSION = '0.8.3'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
