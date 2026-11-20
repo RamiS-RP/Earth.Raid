@@ -368,7 +368,9 @@ function M.recheck(plat, plon)
   local k = math.cos(math.rad(plat))
   local moved, hidden = 0, 0
   for _, it in ipairs(props.all()) do
-    if not it.roadOk and not M.SKIP_RECHECK[it.kind] and it.lat and not it.hidden then
+    -- (20-nov: lo de un corte —pacas, barreras— va en la calzada a propósito; al cambiar el grafo se borraba su roadOk y
+    -- acababan apartadas a los lados, dejando el paso abierto)
+    if not it.roadOk and not it.closure and not M.SKIP_RECHECK[it.kind] and it.lat and not it.hidden then
       local ex, ny = (it.lon - plon) * 111195 * k, (it.lat - plat) * 111195
       if ex * ex + ny * ny < M.RECHECK_M * M.RECHECK_M then
         M._seen = false
@@ -1183,10 +1185,12 @@ function M.closures(t, from, to)
                       -- pacas cuadradas (1,8 x 2,5 m) cruzadas: el lado largo a lo ancho de la calle (20-nov, el usuario:
                       -- estaban a lo largo, giradas 90°), y una segunda fila encima a tresbolillo. MARK:bales-across-v1
                       local kinds = {}
-                      local nb = math.max(2, math.floor((2 * w) / 2.6 + 0.5))
-                      local stepB = (2 * w - 2.6) / math.max(1, nb - 1)
+                      -- 0,8 m más a cada lado que el radio de la calle: sin hueco por el que quepa un coche junto al bordillo
+                      local wb = w + 0.8
+                      local nb = math.max(2, math.floor((2 * wb) / 2.6 + 0.5))
+                      local stepB = (2 * wb - 2.6) / math.max(1, nb - 1)
                       for i = 0, nb - 1 do
-                        local off = -w + 1.3 + i * stepB
+                        local off = -wb + 1.3 + i * stepB
                         kinds[#kinds + 1] = { 'hayBale2', off, 0, 0 }
                         if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + stepB / 2, 0, 1.3 } end
                       end

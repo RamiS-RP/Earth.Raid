@@ -242,6 +242,18 @@ local function create(kind, opts)
   end
   if kind == 'ambulance' or phys.PHYS_ONLY[kind] then pcall(function() o:setHidden(true) end) end
   register(o, kind)
+  -- las vallas son prefabs (armazón + lona) y sus piezas traen colisión propia: fuera (20-nov, norma del usuario: lo que
+  -- delimita el circuito no choca). Las piezas existen desde que el prefab se registra. MARK:fence-nocol-v1
+  if prefab and (tostring(kind):find('^fence') or (opts and opts.noCollision)) then
+    pcall(function()
+      local g = o:getChildGroup()
+      for i = 0, g:getCount() - 1 do
+        local c = Sim.upcast(g:getObject(i))
+        if c and c:getClassName() == 'TSStatic' then c:setField('collisionType', 0, 'None') pcall(function() c:postApply() end) end
+      end
+      M.collisionDirty = true
+    end)
+  end
   if prefab and o.load then pcall(function() o:load() end) end
   return o
 end
