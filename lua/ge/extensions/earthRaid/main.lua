@@ -541,6 +541,20 @@ function M.enableRecommended()
   return done
 end
 
+-- (20-nov) Los copilotos que vienen como mods aparte (earth_raid_voice_*: el de voz real y el zip antiguo de la voz en
+-- español) se quedaban desactivados: al arrancar, el gestor de mods dejaba apagados todos los mods salvo los
+-- recomendados, que Raid.Earth reactiva, y los copilotos desaparecían del selector. Se reactivan igual.
+function M.enableVoiceMods()
+  local done = {}
+  for name, m in pairs(modsDb()) do
+    if tostring(name):lower():find('^earth_raid_voice') and not m.active then
+      if pcall(core_modmanager.activateMod, name) then done[#done + 1] = tostring(name) end
+    end
+  end
+  if #done > 0 then log('I', TAG, 'voice mods enabled: ' .. table.concat(done, ', ')) end
+  return done
+end
+
 function M.hasHotw()
   for _, e in ipairs(M.recommendedState()) do if e.id == 'hotw' then return e.active end end
   return false
@@ -1333,7 +1347,7 @@ function M.onExtensionLoaded()
   M.loadIndex()
   pcall(cleanLayouts)
   refresh()
-  if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) end
+  if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) pcall(M.enableVoiceMods) end
   S.earthLevel = M.isEarthLevel()
   log('I', TAG, 'Raid.Earth ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
 end

@@ -28,16 +28,20 @@ M.enabled = true
 --     como modelo estático, sin ambulancias ni coches en los boxes.
 M.LEVELS = {
   low    = { max = 0,  createKmh = 0,  rallyCars = 0, prewarm = 0 },
-  medium = { max = 12, createKmh = 20, rallyCars = 1, prewarm = 10 },
-  high   = { max = 24, createKmh = 35, rallyCars = 3, prewarm = 16 },
+  medium = { max = 12, createKmh = 20, rallyCars = 1, prewarm = 14 },
+  high   = { max = 24, createKmh = 35, rallyCars = 3, prewarm = 20 },
 }
 -- (20-nov, medido en Ourense con el nivel alto y el tope en 110 km/h: 15 creados a 60 km/h, tirones de hasta 958 ms.
 -- Por eso el tope es bajo: a más velocidad solo se usan los repuestos; lo que no tenga repuesto se queda estático.)
-M.quiet = false               -- lo pone stage.lua en la cuenta atrás: ni crear ni hacer repuestos (un tirón en la salida)
+-- (20-nov, conduciendo en Ourense: una cinta de corte creada en mitad del tramo con el coche casi parado = parón de
+-- 1,5 s.) Durante el tramo cronometrado NO se crea nada: solo se reutilizan los de la reserva, que se llena antes (en
+-- el control horario, en la línea de salida y en la carga), incluidas la ambulancia y las cintas de los cortes.
+M.quiet = false               -- lo pone stage.lua en la cuenta atrás y en el tramo: ni crear ni hacer repuestos
+M.ALWAYS_WARM = { 'tape6', 'tape' }   -- cintas de corte: se montan por el camino, no están en la lista al empezar
 -- «auto»: según la calidad elegida en BeamNG.Earth (él ya mira el equipo la primera vez)
 M.AUTO = { low = 'low', medium = 'low', high = 'medium', ultra = 'high', extreme = 'high' }
-M.POOL_MAX = 20               -- desactivados en reserva, como mucho
-M.PREWARM_PER = { cones = 6, rallysigns = 2, rallytape = 2 }   -- repuestos por configuración (solo estos modelos)
+M.POOL_MAX = 24               -- desactivados en reserva, como mucho
+M.PREWARM_PER = { cones = 6, rallysigns = 2, rallytape = 2, simple_traffic = 1 }   -- repuestos por configuración (solo estos modelos)
 local levelT, levelName = -1, 'medium'
 function M.levelName()
   local now = os.clock()
@@ -221,9 +225,10 @@ end
 -- adelante (así el primer cartel de meta o el primer cono lejano no dan tirón). Uno por llamada.
 local function prewarm(items, L)
   if warmed >= L.prewarm or poolN >= M.POOL_MAX then return end
-  local want = {}
+  local want, any = {}, nil
   for _, it in ipairs(items) do
     if it.obj and not live[it] and not it.noPhys and not it.hidden and M.PHYS_KINDS[it.kind] and not (it.opts and it.opts.vehicle) then
+      any = any or it
       local m = M.MAP[it.kind]
       if m and M.PREWARM_PER[m[1]] then
         local k = keyOf(m)
@@ -232,9 +237,25 @@ local function prewarm(items, L)
       end
     end
   end
+  if any then
+    for _, kind in ipairs(M.ALWAYS_WARM) do
+      local m = M.MAP[kind]
+      local k = m and keyOf(m)
+      if k and not want[k] then want[k] = { m = m, n = 2, it = any } end
+    end
+  end
+  -- primero lo que más cuesta crear y más se echa en falta: ambulancia, cintas, carteles y, al final, conos
+  local order = {}
   for k, w in pairs(want) do
+    w.k = k
+    w.prio = w.m[1] == 'simple_traffic' and 0 or w.m[1] == 'rallytape' and 1 or w.m[1] == 'rallysigns' and 2 or 3
+    order[#order + 1] = w
+  end
+  table.sort(order, function(a, b) if a.prio ~= b.prio then return a.prio < b.prio end return a.k < b.k end)
+  for _, w in ipairs(order) do
+    local k = w.k
     local have = pool[k] and #pool[k] or 0
-    if have < math.min(w.n, M.PREWARM_PER[w.m[1]]) and exists(w.it) then
+    if have < math.min(w.n, M.PREWARM_PER[w.m[1]]) and FS:fileExists('/vehicles/' .. w.m[1] .. '/' .. w.m[2] .. '.pc') then
       local ok, l = pcall(function()
         local pos = w.it.obj:getPosition()
         return create(w.m, pos, quat(w.it.obj:getRotation()), w.it.kind)
