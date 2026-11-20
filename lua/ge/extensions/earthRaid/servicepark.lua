@@ -65,11 +65,13 @@ end
 -- Parques colocados a mano por el usuario (20-nov): donde la búsqueda automática no da con un sitio como quiere, sus
 -- cruces sobre una captura. lat/lon (no coordenadas del juego: valen en cualquier zona cargada).
 --   boxes: un box (carpa + coche + extintores) en cada punto; los coches salen marcha atrás hacia 'aisle' (grados, 0 = N, 90 = E)
---   tc0: el puesto del TC0; out = hacia dónde se sale (grados), face = hacia dónde miran los boxes desde él
+--   (el usuario colocó su caseta con F11: eje largo norte-sur, coche de morro al sur; los demás igual, 20-nov)
+--   tc0: el puesto del TC0 (en el centro de la calzada de salida); out = hacia dónde se sale (grados), face = hacia dónde
+--   miran los boxes desde él, hw = semiancho de la calzada (la línea cruza perpendicular a 'out')
 M.MANUAL = {
-  { name = 'cristian-lopez', lat = 43.31945, lon = -3.85400, radius = 500, aisle = 90,
-    boxes = { { 43.3195570, -3.8541923 }, { 43.3194202, -3.8541603 }, { 43.3193689, -3.8539816 }, { 43.3193626, -3.8538706 } },
-    tc0 = { lat = 43.3195651, lon = -3.8536733, out = 90, face = 180 } },
+  { name = 'cristian-lopez', lat = 43.31945, lon = -3.85400, radius = 500, aisle = 0,
+    boxes = { { 43.3195578, -3.8542240 }, { 43.3194210, -3.8541920 }, { 43.3193697, -3.8540132 }, { 43.3193634, -3.8539023 } },
+    tc0 = { lat = 43.3196299, lon = -3.8536290, out = 90, face = 180, hw = 3.0 } },
 }
 local function manualFor(lat, lon)
   for _, m in ipairs(M.MANUAL) do
@@ -785,7 +787,7 @@ local function buildManual(site)
     end
   end
   local o, f = math.rad(man.tc0.out), math.rad(man.tc0.face)
-  M.tcSpot = { x = site.x, y = site.y, z = site.z, ux = math.sin(o), uy = math.cos(o), fx = math.sin(f), fy = math.cos(f) }
+  M.tcSpot = { x = site.x, y = site.y, z = site.z, ux = math.sin(o), uy = math.cos(o), fx = math.sin(f), fy = math.cos(f), hw = man.tc0.hw }
   return box
 end
 

@@ -1220,7 +1220,7 @@ function M.uiStartRally(eventId, fromRun, force)
           end
           if not S.box then S.box = dressing.serviceBox(start[1], start[2], tw and tw[1], tw and tw[2]) or false end
           -- sin salida de aparcamiento: el TC0 se crea en la carretera más cercana y llana, junto al box
-          if S.box and not S.tc0Done and not (rally.state() and rally.state().tc0) then
+          if S.box and not S.tc0Done and not (rally.state() and rally.state().tc0) and not (S.park and S.park.site and S.park.site.manual) then
             S.tc0Done = true
             local okS, site2 = pcall(servicepark.roadSite, S.box.lat or start[1], S.box.lon or start[2], tw and tw[1], tw and tw[2])
             if okS and site2 then
