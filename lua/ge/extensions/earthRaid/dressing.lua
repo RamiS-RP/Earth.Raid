@@ -1429,7 +1429,7 @@ end
 -- mirando al tramo (lista para salir) y, más adentro, la carpa con la mesa, la silla y los extintores del comisario.
 -- Si no hay calle, la ambulancia va fuera de la calzada con toda su planta (6,2 x 2,4 m) libre de cualquier carretera;
 -- y si no cabe en ningún lado, no se pone. MARK:medic-v1
-M.MEDIC_SEARCH_M = 70
+M.MEDIC_SEARCH_M = 160   -- (21-nov: el puesto médico siempre en la calle lateral más cercana si la hay, también un callejón sin salida)
 M.VAN_HALF_LEN_M, M.VAN_HALF_WID_M = 3.1, 1.2
 
 -- ¿la planta de un vehículo (centro x, y; dirección ux, uy; medias medidas) queda fuera de todas las calzadas?
@@ -1714,11 +1714,21 @@ function M.build(t, notes, hazards, splitAt, opts)
   M._t = t
   M.skipped = 0
   local steps = {
-    function() M.later(0, function()
-      if opts.startLater then pcall(opts.startLater) end
-      local obj = M.startLine(t, hwAt(t, 0))
-      if opts.onStartClock and obj then pcall(opts.onStartClock, obj) end
-    end) end,
+    function()
+      -- (21-nov) el control y la salida esperan a que el grafo de carreteras de allí esté cargado (hasta 20 s): con el
+      -- coche recién llegado al sitio el TC caía en la rama equivocada (una calle sin salida) y ya no se movía. MARK:start-wait-v1
+      local tries = 0
+      local function startJob()
+        if opts.startReady and not M.dry and tries < 20 then
+          local okR, ready = pcall(opts.startReady)
+          if okR and not ready then tries = tries + 1 M.later(0, startJob, t, 1.0) return end
+        end
+        if opts.startLater then pcall(opts.startLater) end
+        local obj = M.startLine(t, hwAt(t, 0))
+        if opts.onStartClock and obj then pcall(opts.onStartClock, obj) end
+      end
+      M.later(0, startJob)
+    end,
     function()
       if opts.finishLater then M.later(t.total, opts.finishLater)
       else finishClock = M.finishLine(t, hwF) end

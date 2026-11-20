@@ -768,10 +768,20 @@ function M.start(ev, st, info)
   end
   -- la carretera antes de la salida, otra vez al acercarse (el TC está a 150 m: hace falta entera)
   local startLater = function()
-    if t.before and t.before.total >= dressing.TC_BEFORE_M + 40 then return end
+    -- (21-nov: en un rally el tramo se monta a 2,5 km, con el grafo de allí a medias, y el camino de antes podía salir por
+    -- una calle sin salida; al acercarse, con el grafo cargado, se vuelve a calcular y vale el nuevo si cambia de rama. MARK:before-recheck-v1)
+    if t.cutStart and t.cutStart > 0 then return end
     local bp2, how2 = beforePath(ev, cpath)
     local nb = bp2 and geo.track(bp2)
-    if nb and (not t.before or nb.total > t.before.total + 5) then
+    local moved = false
+    if nb and t.before then
+      local ex, ey = geo.at(nb, math.min(nb.total, dressing.TC_BEFORE_M + 40))
+      local ox, oy = geo.at(t.before, math.min(t.before.total, dressing.TC_BEFORE_M + 40))
+      local nla, nlo = geo.toGeo(nb, ex, ey)
+      local ola, olo = geo.toGeo(t.before, ox, oy)
+      moved = distLL({ nla, nlo }, { ola, olo }) > 12
+    end
+    if nb and (not t.before or moved or nb.total > t.before.total + 5) then
       t.before, t._snap0 = nb, nil
       log('I', TAG, ('before the start (near): %s, %.0f m'):format(how2, nb.total))
       M.refreshLine()
@@ -803,6 +813,13 @@ function M.start(ev, st, info)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
     { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
       surface = S.surface,
+      startReady = function()
+        local a2 = api()
+        local la, lo = geo.toGeo(t, t.pts[1][1], t.pts[1][2])
+        local gx, gy, gz = props.ground(la, lo)
+        if not gx then return false end
+        return props.nearestRoad(gx, gy, gz, 60) ~= nil
+      end,
       reversed = st.reverse == true,
       onStartClock = function(obj) startclock.setClock(obj) M.refreshLine() end })
   S.dressT = 0

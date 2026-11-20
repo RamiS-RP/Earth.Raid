@@ -168,6 +168,10 @@ local function create(m, pos, rot, kind)
     -- aparcado: sin contacto y con el freno de mano
     pcall(function() v:queueLuaCommand("if electrics and electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end input.event('parkingbrake', 1, 1)") end)
   end
+  if kind == 'ambulance' then
+    -- las luces de la ambulancia encendidas (barra de emergencia y warning): el puesto médico se ve de lejos y avisa del corte
+    pcall(function() v:queueLuaCommand("if electrics then if electrics.set_lightbar_signal then electrics.set_lightbar_signal(2) end if electrics.set_warn_signal then electrics.set_warn_signal(true) end end") end)
+  end
   local l = { vid = v:getID(), key = keyOf(m) }
   pcall(function()
     local vp = v:getPosition()
