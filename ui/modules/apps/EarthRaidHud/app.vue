@@ -122,6 +122,31 @@
       <div class="tcpent"><b>{{ t.penalties }}</b><span>{{ t.total }} {{ penTotal }}s</span></div>
       <div v-for="(p, i) in list(r.penalties)" :key="i" class="tcpenr"><span>{{ p.label }} · {{ penWhy(p.why) }}</span><b>{{ p.s }}s</b></div>
     </div>
+    <!-- el resultado al parar en el STOP (19-nov: con las apps del juego se había perdido): tiempo, parcial,
+         penalización y mejor tiempo; en un tramo suelto se queda hasta aceptarlo con Mayús+E (se retira el montaje) -->
+    <div v-if="d && d.phase === 'done'" class="card result sresult">
+      <div class="res-title">{{ t.finish }}</div>
+      <div class="res-title small">{{ d.title }}</div>
+      <div class="res-time mono">{{ fmt(d.time + d.penalty) }}</div>
+      <div class="res-rows">
+        <div><span>{{ t.stageTime }}</span><b class="mono">{{ fmt(d.time) }}</b></div>
+        <div v-if="d.splitTime"><span>{{ t.split }} {{ km(d.splitM) }}</span><b class="mono">{{ fmt(d.splitTime) }}</b></div>
+        <div><span>{{ t.pen }}</span><b class="mono" :class="{ red: d.penalty > 0 }">{{ d.penalty > 0 ? '+' + d.penalty + 's' : '0s' }}</b></div>
+        <div v-if="d.best"><span>{{ t.best }}</span><b class="mono">{{ fmt(d.best) }}</b></div>
+      </div>
+      <div v-if="d.newBest" class="newbest">{{ t.newBest }}</div>
+      <div v-if="!d.session" class="accept"><span class="key">⇧ + E</span> {{ t.accept }}</div>
+    </div>
+    <div v-if="r && r.active && r.phase === 'finished'" class="card result sresult">
+      <div class="res-title">{{ t.rallyDone }}</div>
+      <div class="res-title small">{{ r.eventName }}</div>
+      <div class="res-time mono">{{ fmt(r.total || 0) }}</div>
+      <div class="res-rows">
+        <div><span>{{ t.stageTimes }}</span><b class="mono">{{ fmt(r.stageTimes || 0) }}</b></div>
+        <div><span>{{ t.penalties }}</span><b class="mono" :class="{ red: penTotal > 0 }">{{ penTotal > 0 ? '+' + penTotal + 's' : '0s' }}</b></div>
+      </div>
+      <div v-if="r.newBest" class="newbest">{{ t.newBest }}</div>
+    </div>
     <div v-if="view.show" class="clockframe" :class="'c' + view.code" :style="frameStyle"></div>
   </div>
   </div>
@@ -164,7 +189,7 @@ onMounted(() => {
 const TEXT = {
   es: { goSub: "Ve a la salida del tramo: sigue el GPS.", stage: "Coloca el coche en la línea de salida.",
     staged: "Colocado en la línea de salida.", startIn: "Salida en", skip: "salir ya", toStop: "Detente en el control STOP.",
-    finish: "TRAMO TERMINADO", stageTime: "Tiempo de tramo", split: "Parcial", pen: "Penalización", best: "Tu mejor tiempo",
+    accept: "Aceptar y retirar el montaje", finish: "TRAMO TERMINADO", stageTime: "Tiempo de tramo", split: "Parcial", pen: "Penalización", best: "Tu mejor tiempo",
     newBest: "¡Nuevo mejor tiempo!", splits: "PARCIAL", stageWord: "TRAMO", falseStart: "salida en falso",
     staging: "fuera de hora", recovery: "recuperación", asphalt: "ASFALTO", gravel: "TIERRA", snow: "NIEVE", mixed: "MIXTO",
     overLine: "Te has pasado de la línea: da marcha atrás.", tcSub: "Detente en el control horario para fichar.",
@@ -180,7 +205,7 @@ const TEXT = {
     insDone: "Rally terminado. {k} para cerrar." },
   en: { goSub: "Drive to the stage start: follow the GPS.", stage: "Stage vehicle at start line.",
     staged: "Staged at the start line.", startIn: "Start in", skip: "start now", toStop: "Stop at Stop Control.",
-    finish: "STAGE COMPLETE", stageTime: "Stage time", split: "Split", pen: "Penalty", best: "Your best",
+    accept: "Accept and clear the stage", finish: "STAGE COMPLETE", stageTime: "Stage time", split: "Split", pen: "Penalty", best: "Your best",
     newBest: "New best time!", splits: "SPLITS", stageWord: "STAGE", falseStart: "false start",
     staging: "late staging", recovery: "recovery", asphalt: "TARMAC", gravel: "GRAVEL", snow: "SNOW", mixed: "MIXED",
     overLine: "Past the line: reverse behind it.", tcSub: "Stop at the time control to check in.",
@@ -398,6 +423,9 @@ const frameStyle = computed(() => {
 .tcpent { display: flex; justify-content: space-between; margin-bottom: 3px; }
 .tcpenr { display: flex; justify-content: space-between; }
 .res-title.small { font-size: 16px; font-style: normal; opacity: 0.8; }
+.sresult { top: 230px; text-align: center; color: #fff; }
+.accept { margin-top: 12px; font-size: 18px; opacity: 0.95; }
+.accept .key { display: inline-block; background: #fff; color: #111; font-weight: 800; border-radius: 4px; padding: 1px 8px; margin-right: 6px; }
 .clockframe.cA { border-color: #ff9100; }
 .clockframe.cG { border-color: #2bff00; }
 </style>
@@ -416,5 +444,7 @@ const frameStyle = computed(() => {
 .erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
 .spen { position: absolute; left: 10px; top: 436px; padding: 4px 10px; background: rgba(26, 29, 34, 0.82); color: #fff; font-size: 14px; font-weight: 700; }
-.slimpen { position: absolute; left: 10px; top: 900px; width: 270px; background: rgba(26, 29, 34, 0.82); padding: 6px 8px; }
+.erh .tcpen.slimpen { position: absolute; left: 410px; top: 132px; width: 290px; background: rgba(26, 29, 34, 0.86); color: #fff;
+  padding: 6px 10px 7px; border-left: 3px solid #ff9100; font-size: 14px; }
+.erh .tcpen.slimpen .tcpent { color: #ffb347; letter-spacing: 0.04em; }
 </style>
