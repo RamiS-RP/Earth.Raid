@@ -717,8 +717,19 @@ function M.start(ev, st, info)
   finishLater = function()
     -- la meta espera a que el eje de la carretera se encuentre en la línea (hasta ~30 s; en tierra sin carretera del
     -- mapa no se espera): con el grafo a medias la línea de meta y sus carteles quedaban fuera del eje. MARK:ends-ready-v1
-    local maxTries = dressing.normSurface(S.surface) == 'gravel' and 8 or 20
-    do
+    -- (sin límite práctico mientras el coche está lejos; a menos de 200 m de la meta se monta ya, esté o no el eje: quien
+    -- llega lanzado tiene que ver la meta)
+    local maxTries = dressing.normSurface(S.surface) == 'gravel' and 8 or 60
+    local near = false
+    pcall(function()
+      local pl, po = api().position()
+      if pl then
+        local x, y = geo.toLocal(t, pl, po)
+        local fx, fy = t.pts[#t.pts][1], t.pts[#t.pts][2]
+        near = (x - fx) ^ 2 + (y - fy) ^ 2 < 200 * 200 and S.phase == 'running'
+      end
+    end)
+    if not near then
       local okR, ready = pcall(function()
         local la, lo = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
         local dx, dy = geo.dirAt(t, t.total)

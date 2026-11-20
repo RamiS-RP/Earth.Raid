@@ -417,7 +417,8 @@ function M.edgeGuard(plat, plon)
         if okP and q then
           local n1, n2, dd = map.findClosestRoad(q)
           if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
-            it.edgeOk = true
+            -- (se da por bueno solo de cerca, con el grafo de allí ya entero; de lejos se vuelve a mirar)
+            if ex * ex + ny * ny < 180 * 180 then it.edgeOk = true end
             local p1, p2 = m.nodes[n1].pos, m.nodes[n2].pos
             local sx, sy = p2.x - p1.x, p2.y - p1.y
             local L2 = sx * sx + sy * sy
@@ -1781,7 +1782,7 @@ function M.build(t, notes, hazards, splitAt, opts)
       -- coche recién llegado al sitio el TC caía en la rama equivocada (una calle sin salida) y ya no se movía. MARK:start-wait-v1
       local tries = 0
       local function startJob()
-        if opts.startReady and not M.dry and tries < 20 then
+        if opts.startReady and not M.dry and tries < 40 then
           local okR, ready = pcall(opts.startReady)
           if okR and not ready then tries = tries + 1 M.later(0, startJob, t, 1.0) return end
         end
