@@ -478,10 +478,37 @@ function M.skipLiaison()
   return ok
 end
 
--- R en un enlace: como en el juego, el reloj avanza 60 s (no es una línea de penalización: si te pasas de tu minuto, llegas tarde)
-function M.onReset()
-  if R and R.phase == 'liaison' and not stage.active() then R.clock = R.clock + M.LIAISON_RECOVERY_S return true end
+-- Recuperar en un enlace (reglas del juego, recoveryClockAdvance): el reloj avanza 60 s por recuperar y 10 s por volcar
+-- (no es una línea de penalización: si te pasas de tu minuto, llegas tarde)
+function M.onReset(kind)
+  if R and R.phase == 'liaison' and not stage.active() then
+    local s = (okC and GC.getSeconds(kind or 'recovery', false)) or ((kind == 'flip') and 10 or 60)
+    R.clock = R.clock + s
+    return true
+  end
   return false
+end
+
+-- Exceso de velocidad (el detector del juego, loop/speedingDetector.lua: una muestra por segundo, media de 5, probabilidad
+-- creciente con el exceso, como mucho una cada 60 s). Solo en enlaces y en el parque (estricto, 30 km/h), nunca en tramo.
+M.SPEEDING_S = 10             -- el del juego (recordSpeedingPenalty)
+M.LIAISON_LIMIT_KPH = 100     -- el límite por defecto de un enlace en el juego
+M.SERVICE_LIMIT_KPH = 30      -- el del parque de asistencia en el juego (modo estricto)
+local okD, GD = pcall(require, '/lua/ge/extensions/gameplay/rally/loop/speedingDetector')
+local function speedingUpdate(dtSim)
+  if not (okD and type(GD) == 'function') then return end
+  if not R.speeding then
+    local ok, det = pcall(GD, { recordSpeedingPenalty = function(_, data)
+      local cur = item()
+      penalise((R.phase == 'service' and 'TC0') or (cur and cur.label) or 'TC', M.SPEEDING_S, 'speeding')
+      return true
+    end })
+    R.speeding = ok and det or false
+  end
+  if R.speeding then
+    local service = R.phase == 'service'
+    pcall(R.speeding.update, R.speeding, dtSim, service and M.SERVICE_LIMIT_KPH or M.LIAISON_LIMIT_KPH, service)
+  end
 end
 
 -- Mayús+E: en la asistencia, salir; en el control con tiempo de sobra, adelantar el reloj a tu minuto
@@ -550,6 +577,7 @@ function M.update(dtSim, dtReal)
   if not R then return end
   if R.hold then return end
   R.clock = R.clock + (dtSim or 0)
+  if (R.phase == 'liaison' or R.phase == 'service') and not stage.active() then speedingUpdate(dtSim or 0) end
   -- el sol y el reloj van a la par: si el reloj salta (saltar enlace, esperar al minuto), la hora del mapa lo sigue
   if math.abs(((R.clock - geo.dayClock() + 43200) % 86400) - 43200) > 2 then geo.setDayClock(R.clock) end
   local a = api()

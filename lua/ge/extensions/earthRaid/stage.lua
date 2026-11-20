@@ -1389,8 +1389,9 @@ function M.skipWait()
 end
 
 -- R en un tramo: +5 s, como en el juego
-function M.onReset()
-  if S and S.phase == 'running' and S.opt.recoveryPenalty then penalise('recovery', M.RECOVERY_S) end
+function M.onReset(kind)
+  -- reglas del juego (recoveryClockAdvance): en un tramo, recuperar +5 s y volcar 0 s
+  if S and S.phase == 'running' and S.opt.recoveryPenalty and kind ~= 'flip' then penalise('recovery', M.RECOVERY_S) end
 end
 
 function M.sendHud() if S then hud() else guihooks.trigger('EarthRaidHud', { phase = 'idle' }) end end

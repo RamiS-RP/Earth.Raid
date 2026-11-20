@@ -1726,10 +1726,18 @@ end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
 function M.onExtensionUnloaded() pcall(guard.release) pcall(regiontraffic.uninstall) rally.stop() stage.stop() end
+-- el menú de recuperación del juego: «poner de pie» es un volcado (flip), lo demás una recuperación
+local flipAt = -10
+function M.onRecoveryPromptButtonPressed(id)
+  if id == 'flipUpright' or id == 'flipMission' then flipAt = os.clock() end
+end
 function M.onVehicleResetted(vid)
   if not S.earthLevel then return end
   local v = getPlayerVehicle(0)
-  if v and v:getID() == vid then stage.onReset() pcall(rally.onReset) end
+  if v and v:getID() == vid then
+    local kind = (os.clock() - flipAt < 3) and 'flip' or 'recovery'
+    stage.onReset(kind) pcall(rally.onReset, kind)
+  end
 end
 
 return M
