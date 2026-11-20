@@ -302,7 +302,7 @@ local function leaveService()
   local r0 = row('TC0')
   if not r0.actual then r0.actual, r0.status = R.clock, 'ok' end
   R.phase = 'liaison'
-  stage.trafficBack()
+  stage.trafficBack(true)
   guide.liaison(settings.get().hardcore == true)
   setGps()
 end

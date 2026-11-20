@@ -1239,6 +1239,7 @@ function M.uiStartRally(eventId, fromRun, force)
           if site then
             servicepark.surface = dressing.normSurface(full.surface)
             S.box = servicepark.build(site) or false
+            pcall(stage.serviceTraffic, site.x, site.y)
             local ok, tc = pcall(servicepark.tc0, site, dressing)
             if ok and tc then rally.setTc0(tc.lat, tc.lon) else log('W', TAG, 'TC0: ' .. tostring(tc)) end
           end

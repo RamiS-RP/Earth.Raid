@@ -775,7 +775,7 @@ local function tentSeen(t, along, side, f, approachF)
   return not (ok and h and h < d - 1.3)
 end
 
-function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
+function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   local put = endPlacer(t, endAlong, out)
   local S, P = hw + M.SIGN_SIDE_M, hw + M.SIDE_PAD_M
   paintLine(t, endAlong, hw, out * D, full and 'stop' or 'tc')
@@ -829,7 +829,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
     place(M.FENCE_KINDS[3], t, endAlong, -side, fy + 180, f + 2.6, fo)
     return true
   end
-  local done = false
+  local done, chosen = false, nil
   -- Los sitios posibles, del más cercano al punto al más lejano (su lado, el otro lado; hasta 23 m a cada lado)
   local cands = {}
   for _, sh in ipairs({ 0, -4, 4, -8, 8, -12, 12, -17, 17, -23, 23 }) do
@@ -846,7 +846,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
   if forceBooth then
     for _, seen in ipairs({ true, false }) do
       for _, c in ipairs(cands) do
-        if usable(c, seen) then booth(c[1], c[2], true) done = true break end
+        if usable(c, seen) then booth(c[1], c[2], true) done, chosen = true, c[1] break end
       end
       if done then break end
     end
@@ -854,7 +854,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
   if not done then
     for _, seen in ipairs({ true, false }) do
       for _, c in ipairs(cands) do
-        if usable(c, seen) and booth(c[1], c[2], false) then done = true break end
+        if usable(c, seen) and booth(c[1], c[2], false) then done, chosen = true, c[1] break end
       end
       if done then break end
     end
@@ -863,9 +863,16 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
     -- ningún sitio libre y a la vista en 23 m: pegada a la calzada en el mejor que no tenga un edificio encima; si ni así,
     -- sin carpa (antes se metía dentro del edificio)
     for _, c in ipairs(cands) do
-      if usable(c, false) then booth(c[1], c[2], true) done = true break end
+      if usable(c, false) then booth(c[1], c[2], true) done, chosen = true, c[1] break end
     end
     if not done then log('W', TAG, 'control post: no free place for the tent within 23 m') end
+  end
+  -- (22-nov, el usuario: el TC0 de los boxes lleva dos casetas, como en NGRC Rally Utah): la segunda, enfrente, al otro lado
+  -- de la salida, a la altura de la línea de stop
+  if twin and chosen then
+    for _, sh in ipairs({ 0, -3, 3, -6, 6 }) do
+      if usable({ -chosen, sh }, false) and booth(-chosen, sh, true) then break end
+    end
   end
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
   centreCones(t, endAlong, out * D, -10, 10, 5)

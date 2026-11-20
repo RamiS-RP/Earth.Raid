@@ -26,6 +26,8 @@ M.EXIT_ROAD_M = 70   -- la carretera de salida, como mucho a esta distancia del 
 M.BUILDINGS_WAIT_S = 5
 M.PAIR_M = 6.2       -- entre boxes (una carpa 3x6 por coche, girada 90°: el coche queda a lo largo)
 M.MAX_BOXES = 4      -- (a futuro: según los jugadores inscritos en el evento)
+M.BOX_LEVELS = { 1, 2, 4, 8 }   -- boxes según el sitio (22-nov): 1 mínimo obligatorio, 2 recomendable, 4 de norma, 8 máximo
+M.ROW_GAP_M = 15     -- entre dos filas de boxes: 6 m de fondo de carpa + pasillo de maniobra
 M.BIG_EXTRA = 4      -- en un aparcamiento grande (caben todos), estos boxes más, para llenar (19-nov)
 M.NO_PARK_M = 45     -- sin coches de tráfico aparcados a menos de esto de un box (19-nov: solo los de rally)
 -- El box, como en los rallies del juego (19-nov, colocado a mano por el usuario con el editor): el coche entra de
@@ -553,7 +555,7 @@ function M.active(h) return h ~= nil and h.phase ~= 'done' end
 -- asfalto pintado, nunca en el talud del borde), orientados como las plazas
 -- Coches de rally aparcados en los boxes vecinos al del jugador (19-nov, ambiente): { [índice de box] = {modelo, config} }
 -- Son vehículos de verdad solo cerca del coche (phys.lua): como mucho M.PARK_CARS.
-M.PARK_CARS = 2       -- (3 con la fila grande)
+M.PARK_CARS = 3       -- coches de rally aparcados en los boxes vecinos (22-nov, el usuario: 3)
 M.surface = 'asphalt'
 -- El TC0 en el pasillo de los boxes (19-nov, el usuario lo colocó a mano con F11 y lo quiere así): al final de la fila, del
 -- lado de la salida del recinto, 18 m más allá del último box y a 5,5 m de ellos (en el pasillo), de modo que desde el
@@ -635,15 +637,15 @@ local function exitGate(cx, cy, z)
   if bl < 0.5 then bx, by, bl = -dy, dx, 1 end
   log('I', TAG, string.format('TC0 at the lot exit: %.0f m before the road, %.0f m from the boxes', back, bl))
   return { x = x, y = y, z = z or P.pos.z, ux = dx, uy = dy, bx = bx / bl, by = by / bl,
-    hw = math.max(2.5, math.min(3.5, (P.radius or 2) + 1)), gate = true }
+    hw = math.max(2.5, math.min(3.5, (P.radius or 2) + 1)), gate = true, bp = bp, bj = bj }
 end
-function M.parkedCars(n, mine)
+function M.parkedCars(n, mine, cands)
   local out = {}
   local okS, st = pcall(function() return require('earthRaid/settings').get() end)
   if not okS or st.ambience == false or st.parkCars == false then return out end
-  local slots = {}
-  for _, i in ipairs({ mine - 1, mine + 1, mine - 2, mine + 2 }) do
-    if i >= 1 and i <= n and #slots < (n > M.MAX_BOXES and M.PARK_CARS + 1 or M.PARK_CARS) then slots[#slots + 1] = i end
+  local slots, seen = {}, {}
+  for _, i in ipairs(cands or { mine - 1, mine + 1, mine - 2, mine + 2 }) do
+    if i >= 1 and i <= n and i ~= mine and not seen[i] and #slots < M.PARK_CARS then slots[#slots + 1] = i seen[i] = true end
   end
   -- el ajuste de rendimiento limita cuántos (un coche de rally es un vehículo entero): bajo 0, medio 1, alto todos
   local okL, lim = pcall(function() return require('earthRaid/phys').level().rallyCars end)
@@ -681,14 +683,205 @@ local function hullOf(pts)
   for _, q in ipairs(up) do lo[#lo + 1] = q end
   return lo              -- antihorario: el interior queda a la izquierda de cada lado
 end
+
+-- ---- (22-nov) la boca del recinto, los boxes por niveles y el tráfico fuera del aparcamiento ----------------------------
+-- ¿(x, y) dentro de la envolvente h (antihoraria) ensanchada off metros?
+local function inHull(h, x, y, off)
+  for i = 1, #h do
+    local A, B = h[i], h[i % #h + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 0.01 and (ex * (y - A[2]) - ey * (x - A[1])) / L < -off then return false end
+  end
+  return true
+end
+M.inHull = inHull
+
+-- La ruta de servicio (las calles del aparcamiento, drivability <= LOT_DRIV) desde el nodo más cercano a (cx, cy) hasta
+-- la incorporación a la carretera (gate.bp -> gate.bj): lista de { x, y }; nil si el grafo no la une.
+local function serviceRoute(m, cx, cy, gate)
+  if not (gate and gate.bp and gate.bj) then return nil end
+  local R2 = (M.GATE_SEARCH_M + 40) ^ 2
+  local adj = {}
+  for k, nd in pairs(m.nodes) do
+    if (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 then
+      for nb, ed in pairs(nd.links or {}) do
+        local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+        if dr <= M.LOT_DRIV and m.nodes[nb] then
+          adj[k] = adj[k] or {}
+          adj[nb] = adj[nb] or {}
+          adj[k][nb], adj[nb][k] = true, true
+        end
+      end
+    end
+  end
+  if not adj[gate.bp] then return nil end
+  local start, sd
+  for k in pairs(adj) do
+    local q = m.nodes[k].pos
+    local d = (q.x - cx) ^ 2 + (q.y - cy) ^ 2
+    if not sd or d < sd then start, sd = k, d end
+  end
+  if not start then return nil end
+  local dist, prev, done = { [start] = 0 }, {}, {}
+  while true do
+    local u, ud
+    for k, d in pairs(dist) do if not done[k] and (not ud or d < ud) then u, ud = k, d end end
+    if not u or u == gate.bp then break end
+    done[u] = true
+    local pu = m.nodes[u].pos
+    for nb in pairs(adj[u] or {}) do
+      local pn = m.nodes[nb].pos
+      local d2 = ud + math.sqrt((pn.x - pu.x) ^ 2 + (pn.y - pu.y) ^ 2)
+      if not dist[nb] or d2 < dist[nb] then dist[nb], prev[nb] = d2, u end
+    end
+  end
+  if not dist[gate.bp] then return nil end
+  local rev, k = {}, gate.bp
+  while k do local q = m.nodes[k].pos rev[#rev + 1] = { q.x, q.y } k = prev[k] end
+  local out = {}
+  for i = #rev, 1, -1 do out[#out + 1] = rev[i] end
+  local J = m.nodes[gate.bj].pos
+  out[#out + 1] = { J.x, J.y }
+  return out
+end
+
+-- La boca del recinto: el punto donde la ruta de salida (la que sigue el GPS) cruza el vallado del aparcamiento (la
+-- envolvente de las plazas + LOT_FENCE_OFF_M). Ahí van el hueco del vallado, la línea del TC0 y sus dos casetas.
+-- La ruta: la más corta por el grafo de carreteras (todas las calles) desde el nodo más cercano al centro de los boxes hasta
+-- el nodo de carretera de verdad (drivability > LOT_DRIV) más cercano fuera del recinto (22-nov: antes solo calles de
+-- servicio y salía por otra calle que la del GPS). Sin ruta, la recta a la incorporación; si ni así sale de la envolvente,
+-- la salida de siempre (exitGate). MARK:mouth-v1
+local function mouthRoute(m, h, cx, cy)
+  local R2 = (M.GATE_SEARCH_M + 40) ^ 2
+  local adj, cls = {}, {}
+  for k, nd in pairs(m.nodes) do
+    if (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 then
+      for nb, ed in pairs(nd.links or {}) do
+        if m.nodes[nb] then
+          local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+          adj[k] = adj[k] or {}
+          adj[nb] = adj[nb] or {}
+          adj[k][nb], adj[nb][k] = true, true
+          if dr > (cls[k] or 0) then cls[k] = dr end
+          if dr > (cls[nb] or 0) then cls[nb] = dr end
+        end
+      end
+    end
+  end
+  local start, sd, goal, gd
+  for k in pairs(adj) do
+    local q = m.nodes[k].pos
+    local d = (q.x - cx) ^ 2 + (q.y - cy) ^ 2
+    if not sd or d < sd then start, sd = k, d end
+    if (cls[k] or 0) > M.LOT_DRIV and not inHull(h, q.x, q.y, M.LOT_FENCE_OFF_M + 2) and (not gd or d < gd) then goal, gd = k, d end
+  end
+  -- el aparcamiento no tiene calles en el grafo (los nodos más cercanos ya están fuera del vallado): la ruta es la recta del
+  -- box al punto más cercano de una carretera de verdad, como la línea que pinta el GPS por el aparcamiento
+  if start and not inHull(h, m.nodes[start].pos.x, m.nodes[start].pos.y, M.LOT_FENCE_OFF_M) then
+    local bx, by, bd, brad
+    for _, nd in pairs(m.nodes) do
+      for nb, ed in pairs(nd.links or {}) do
+        local o = m.nodes[nb]
+        local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+        if o and dr > M.LOT_DRIV and (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 then
+          local ax, ay = nd.pos.x, nd.pos.y
+          local vx, vy = o.pos.x - ax, o.pos.y - ay
+          local L2 = vx * vx + vy * vy
+          local tt = L2 > 0 and math.max(0, math.min(1, ((cx - ax) * vx + (cy - ay) * vy) / L2)) or 0
+          local px, py = ax + vx * tt, ay + vy * tt
+          if not inHull(h, px, py, M.LOT_FENCE_OFF_M + 2) then
+            local d = (px - cx) ^ 2 + (py - cy) ^ 2
+            if not bd or d < bd then bd, bx, by, brad = d, px, py, nd.radius end
+          end
+        end
+      end
+    end
+    if bx then return { { cx, cy, brad or 2.5 }, { bx, by, brad or 2.5 } } end
+    return nil
+  end
+  if not (start and goal) then return nil end
+  local dist, prev, done = { [start] = 0 }, {}, {}
+  while true do
+    local u, ud
+    for k, d in pairs(dist) do if not done[k] and (not ud or d < ud) then u, ud = k, d end end
+    if not u or u == goal then break end
+    done[u] = true
+    local pu = m.nodes[u].pos
+    for nb in pairs(adj[u] or {}) do
+      local pn = m.nodes[nb].pos
+      local d2 = ud + math.sqrt((pn.x - pu.x) ^ 2 + (pn.y - pu.y) ^ 2)
+      if not dist[nb] or d2 < dist[nb] then dist[nb], prev[nb] = d2, u end
+    end
+  end
+  if not dist[goal] then return nil end
+  local rev, k = {}, goal
+  while k do local q = m.nodes[k].pos rev[#rev + 1] = { q.x, q.y, m.nodes[k].radius } k = prev[k] end
+  local out = {}
+  for i = #rev, 1, -1 do out[#out + 1] = rev[i] end
+  return out
+end
+
+local function exitMouth(h, cx, cy, z)
+  local okM, m = pcall(map.getMap)
+  local route = okM and m and m.nodes and mouthRoute(m, h, cx, cy) or nil
+  M.dbg = { hull = h, cx = cx, cy = cy, route = route }
+  local gate
+  if not route then
+    gate = exitGate(cx, cy, z)
+    if not gate then return nil end
+    route = { { cx, cy }, { gate.x, gate.y } }
+  end
+  for i = 1, #route - 1 do
+    local A, B = route[i], route[i + 1]
+    local L = math.sqrt((B[1] - A[1]) ^ 2 + (B[2] - A[2]) ^ 2)
+    if L > 0.5 then
+      local ux, uy = (B[1] - A[1]) / L, (B[2] - A[2]) / L
+      for d = 0, L, 1 do
+        local x, y = A[1] + ux * d, A[2] + uy * d
+        if not inHull(h, x, y, M.LOT_FENCE_OFF_M) then
+          local rad = A[3] or B[3] or 2
+          log('I', TAG, string.format('lot mouth at (%.1f, %.1f), route of %d nodes', x, y, #route))
+          return { x = x, y = y, z = terrainZ(x, y) or z, ux = ux, uy = uy, bx = -ux, by = -uy,
+            hw = math.max(2.5, math.min(3.5, rad + 1)), gate = true, mouth = true }
+        end
+      end
+    end
+  end
+  return gate or exitGate(cx, cy, z)
+end
+
+-- ¿cabe la carpa 3x6 de una plaza (girada como la plaza) sin tocar un edificio, un muro o un árbol?
+local function boxFree(p)
+  local hdg = math.rad(p[4] or 0)
+  local fx, fy = math.cos(hdg), math.sin(hdg)
+  local sx, sy = fy, -fx
+  for _, f in ipairs({ -3, 0, 3 }) do
+    for _, sd in ipairs({ -1.7, 0, 1.7 }) do
+      local ok, d = pcall(castRayStatic, vec3(p[1] + fx * f + sx * sd, p[2] + fy * f + sy * sd, (p[3] or 0) + 25), vec3(0, 0, -1), 40)
+      if ok and d and d < 24.3 then return false end
+    end
+  end
+  return true
+end
+
+local function centered(list, k)
+  local l = {}
+  for i, v in ipairs(list) do l[i] = v end
+  while #l > k do table.remove(l, #l % 2 == 0 and 1 or #l) end
+  return l
+end
+
 local function lotFence(site)
   local a = api()
   if not (a and site and site.stalls and #site.stalls >= 6) then return 0 end
   local h = hullOf(site.stalls)
   if #h < 3 then return 0 end
-  local gates = {}
+  -- el hueco del vallado: en la boca de salida (por donde va el GPS y está el TC0), con sitio para las dos casetas
+  local gates, gap = {}, M.LOT_FENCE_GAP_M
   if M.tcSpot then gates[#gates + 1] = { M.tcSpot.x, M.tcSpot.y } end
-  if site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
+  if M.tcSpot and M.tcSpot.mouth then gap = (M.tcSpot.hw or 3) + 6
+  elseif site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
   local z0 = site.z or terrainZ(site.x, site.y) or 0
   local n, skipped = 0, 0
   for i = 1, #h do
@@ -710,7 +903,7 @@ local function lotFence(site)
         local ok = z ~= nil and math.abs(z - z0) < 2.5 and n < M.LOT_FENCE_MAX
         if ok then
           for _, g in ipairs(gates) do
-            if (x - g[1]) ^ 2 + (y - g[2]) ^ 2 < M.LOT_FENCE_GAP_M ^ 2 then ok = false break end
+            if (x - g[1]) ^ 2 + (y - g[2]) ^ 2 < gap ^ 2 then ok = false break end
           end
         end
         if ok then
@@ -747,25 +940,53 @@ local function buildOnStalls(site)
     bands[k] = bands[k] or {}
     bands[k][#bands[k] + 1] = p
   end
-  -- la banda más alejada de la salida con plazas suficientes
+  -- (22-nov) los boxes por niveles según el sitio: 1 (mínimo obligatorio), 2 (recomendable), 4 (de norma) y 8 (máximo, si el
+  -- aparcamiento es grande), siempre sin tocar edificios ni muros. La primera fila es la más alejada de la salida; si
+  -- hay otra a >= ROW_GAP_M hacia la salida, los boxes se reparten entre las dos.
+  local function rowPicks(row)
+    table.sort(row, function(p, q) return (p[1] - site.x) * hx + (p[2] - site.y) * hy < (q[1] - site.x) * hx + (q[2] - site.y) * hy end)
+    local picks, last = {}, -math.huge
+    for _, p in ipairs(row) do
+      local al = (p[1] - site.x) * hx + (p[2] - site.y) * hy
+      if al - last >= M.PAIR_M and boxFree(p) then picks[#picks + 1] = p last = al end
+    end
+    return picks
+  end
   local bestK
-  for k, g in pairs(bands) do
-    if #g >= 6 and (not bestK or k * sideSign > bestK * sideSign) then bestK = k end
+  for _, need in ipairs({ 6, 2, 1 }) do
+    for k, g in pairs(bands) do
+      if #g >= need and (not bestK or k * sideSign > bestK * sideSign) then bestK = k end
+    end
+    if bestK then break end
   end
   if not bestK then return nil end
-  local row = bands[bestK]
-  table.sort(row, function(p, q) return (p[1] - site.x) * hx + (p[2] - site.y) * hy < (q[1] - site.x) * hx + (q[2] - site.y) * hy end)
-  -- plazas cada PAIR_M a lo largo de la fila, de un extremo al otro
-  local picks, lastAlong = {}, -math.huge
-  for _, p in ipairs(row) do
-    local al = (p[1] - site.x) * hx + (p[2] - site.y) * hy
-    if al - lastAlong >= M.PAIR_M then picks[#picks + 1] = p lastAlong = al end
+  local picksA = rowPicks(bands[bestK])
+  local bestB
+  for k, g in pairs(bands) do
+    if k * sideSign < bestK * sideSign and math.abs(k - bestK) * 3 >= M.ROW_GAP_M and #g >= 5
+        and (not bestB or math.abs(k - bestK) < math.abs(bestB - bestK)) then bestB = k end
   end
-  local maxBoxes = #picks >= M.MAX_BOXES + M.BIG_EXTRA and M.MAX_BOXES + M.BIG_EXTRA or M.MAX_BOXES
-  while #picks > maxBoxes do table.remove(picks, #picks % 2 == 0 and 1 or #picks) end
-  if #picks == 0 then return nil end
-  -- las plazas de los boxes dejan de ser plazas de aparcamiento (si no, el juego aparca coches dentro de las carpas):
-  -- se vuelven a registrar las filas de la tesela sin ellas (parking.onRows, la entrada pública del módulo)
+  local picksB = bestB and rowPicks(bands[bestB]) or {}
+  if #picksA == 0 and #picksB > 0 then picksA, picksB = picksB, {} end
+  if #picksA == 0 then return nil end
+  local total = #picksA + #picksB
+  local level = 1
+  for _, L in ipairs(M.BOX_LEVELS) do if total >= L then level = L end end
+  local nA, nB = math.min(#picksA, level), 0
+  if level >= 4 and #picksB >= 2 then
+    nA = math.min(#picksA, math.ceil(level / 2))
+    nB = math.min(#picksB, level - nA)
+    nA = math.min(#picksA, level - nB)
+  end
+  local picks = centered(picksA, nA)
+  local mine = math.floor((#picks + 1) / 2)
+  for _, p in ipairs(centered(picksB, nB)) do picks[#picks + 1] = p end
+  log('I', TAG, ('boxes: %d (level %d; row A %d free, row B %d free)'):format(#picks, level, #picksA, #picksB))
+  M.lvl = { n = #picks, level = level, a = #picksA, b = #picksB, bestK = bestK, bestB = bestB, bands = (function() local t = {} for k, g in pairs(bands) do t[#t + 1] = k .. ':' .. #g end return table.concat(t, ' ') end)() }
+  local hull = hullOf(site.stalls)
+  -- las plazas de los boxes y las de todo el aparcamiento dejan de ser plazas de aparcamiento (22-nov, el usuario: "coches
+  -- de tráfico en el parking de box: no puede pasar, solo coches de rally en su box"): se vuelven a registrar las filas de la
+  -- tesela sin ellas (parking.onRows, la entrada pública del módulo)
   pcall(function()
     local pk = require('beamngEarth/parking')
     local spots
@@ -773,20 +994,24 @@ local function buildOnStalls(site)
     for key, t in pairs(spots or {}) do
       local keep, dropped = {}, 0
       for _, r in ipairs(t.rows or {}) do
-        local near = false
-        for _, p in ipairs(picks) do if (r[1] - p[1]) ^ 2 + (r[2] - p[2]) ^ 2 < M.NO_PARK_M ^ 2 then near = true break end end
+        local near = #hull >= 3 and inHull(hull, r[1], r[2], 8)
+        if not near then
+          for _, p in ipairs(picks) do if (r[1] - p[1]) ^ 2 + (r[2] - p[2]) ^ 2 < M.NO_PARK_M ^ 2 then near = true break end end
+        end
         if near then dropped = dropped + 1 else keep[#keep + 1] = r end
       end
       if dropped > 0 then pk.onRows(t.anchor, key, keep) end
     end
   end)
-  -- hacia el pasillo: la dirección de la plaza (su rumbo) que mira al centro del aparcamiento
-  local mine = math.floor((#picks + 1) / 2)
   local box
   local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
-  local cars = M.parkedCars(#picks, mine)
+  -- los coches de rally, repartidos: junto al del jugador y en la otra fila
+  local cands = { mine - 1, mine + 1 }
+  if #picks > #picksA or nB > 0 then cands[#cands + 1] = nA + math.ceil(nB / 2) end
+  for _, i in ipairs({ mine + 2, mine - 2, nA + 1, nA + nB }) do cands[#cands + 1] = i end
+  local cars = M.parkedCars(#picks, mine, cands)
   do
-    -- el extremo de la fila más cercano a la salida del recinto, y el sitio del TC0 más allá
+    -- la boca del recinto (por donde cruza la ruta de salida el vallado) y, de reserva, el extremo de la fila más cercano
     local cx, cy = 0, 0
     for _, p in ipairs(picks) do cx, cy = cx + p[1] / #picks, cy + p[2] / #picks end
     local e1, e2 = picks[1], picks[#picks]
@@ -797,14 +1022,14 @@ local function buildOnStalls(site)
     local ux, uy = fy, -fx
     if (e[1] - cx) * ux + (e[2] - cy) * uy < 0 then ux, uy = -ux, -uy end
     if #picks == 1 then
-      -- una sola plaza: hacia la salida
       local dx, dy = site.exitX - e[1], site.exitY - e[2]
       local dl = math.sqrt(dx * dx + dy * dy)
       if dl > 1 then ux, uy = dx / dl, dy / dl end
     end
     M.tcSpot = { x = e[1] + ux * M.TC0_BEYOND_M + fx * M.TC0_AISLE_M, y = e[2] + uy * M.TC0_BEYOND_M + fy * M.TC0_AISLE_M, z = e[3], ux = ux, uy = uy, fx = fx, fy = fy }
-    local okG, gate = pcall(exitGate, cx, cy, e[3])
-    if okG and gate then M.tcSpot = gate end
+    local mp = picks[mine] or picks[1]
+    local okG, gate = pcall(exitMouth, hull, mp[1], mp[2], e[3])
+    if okG and gate then M.tcSpot = gate elseif not okG then log('W', TAG, 'mouth: ' .. tostring(gate)) end
   end
   for i, p in ipairs(picks) do
     local hdg = math.rad(p[4] or 0)
@@ -953,7 +1178,7 @@ function M.tc0(site, dressing)
       -- (tcPost: lateral = out * lado, con out = -1; los boxes a la derecha de quien sale -> lado -1)
       lado = (sp.ux * sp.by - sp.uy * sp.bx) < 0 and -1 or 1
     elseif sp.fx and (sp.uy * sp.fx - sp.ux * sp.fy) < 0 then lado = 1 end
-    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true)
+    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, sp.mouth == true)
     if ok then
       local la, lo = geo.toGeo(t, geo.at(t, 20))
       return { lat = la, lon = lo }

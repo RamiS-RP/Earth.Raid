@@ -118,16 +118,45 @@ function M.trafficOff()
   end)
 end
 
-function M.trafficBack()
+-- El parque de asistencia (22-nov, el usuario: "el tráfico no debe aparecer cerca del box; que se genere al parar en el TC0,
+-- con una pequeña carga, y ya aparezca a una distancia prudente, como en el vanilla"): al montar el box se borra el tráfico
+-- que hubiera, se marca el entorno del box como zona sin tráfico y no se vuelve a crear hasta que sales por el TC0.
+M.SERVICE_NO_TRAFFIC_M = 160
+local svcN = nil
+function M.serviceTraffic(x, y)
+  local tr = rawget(_G, 'gameplay_traffic')
+  if tr then
+    pcall(function()
+      local n = tr.getNumOfTraffic and tr.getNumOfTraffic() or 0
+      if n > 0 then svcN = math.max(svcN or 0, n) tr.deleteVehicles() end
+    end)
+  end
+  if x and exclusionSupported() then
+    local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0)) or 0
+    local zones = {}
+    for _, d in ipairs({ { 0, 0 }, { 80, 0 }, { -80, 0 }, { 0, 80 }, { 0, -80 } }) do
+      zones[#zones + 1] = { pos = vec3(x + d[1], y + d[2], z or 0), radius = M.SERVICE_NO_TRAFFIC_M * 0.6 }
+    end
+    if pcall(function() map.setTrafficExclusionZones(zones) map.reset() end) then exclOn = true end
+  end
+  log('I', TAG, ('service park: traffic off around the box (%s vehicles were around)'):format(tostring(svcN)))
+end
+
+-- withLoad: al salir del TC0, como el juego, con una pequeña carga (setupTrafficWaitForUi) y el tráfico aparece lejos
+function M.trafficBack(withLoad)
   wantExcl = false
   if exclOn then
     exclOn, exclT, exclAt = false, nil, nil
     pcall(function() map.clearTrafficExclusionZones() map.reset() end)
   end
-  local n = trafficWas
-  trafficWas = nil
+  local n = trafficWas or svcN
+  trafficWas, svcN = nil, nil
   local tr = rawget(_G, 'gameplay_traffic')
-  if n and tr and tr.setupTraffic then pcall(tr.setupTraffic, n) end
+  if not (n and tr) then return end
+  if withLoad and tr.setupTrafficWaitForUi then
+    if pcall(tr.setupTrafficWaitForUi, true, false) then return end
+  end
+  if tr.setupTraffic then pcall(tr.setupTraffic, n) end
 end
 
 -- cada segundo, desde el bucle del tramo: la ventana de zonas sigue al coche
