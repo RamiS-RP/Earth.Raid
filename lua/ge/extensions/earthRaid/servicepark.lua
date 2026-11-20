@@ -865,11 +865,75 @@ local function boxFree(p)
   return true
 end
 
+-- distancia con signo al recinto (negativa dentro)
+local function sdHull(h, x, y)
+  local best, ins = math.huge, true
+  for i = 1, #h do
+    local A, B = h[i], h[i % #h + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 0 then
+      if (ex * (y - A[2]) - ey * (x - A[1])) / L < 0 then ins = false end
+      local t = math.max(0, math.min(1, ((x - A[1]) * ex + (y - A[2]) * ey) / (L * L)))
+      local d = math.sqrt((x - A[1] - ex * t) ^ 2 + (y - A[2] - ey * t) ^ 2)
+      if d < best then best = d end
+    end
+  end
+  return ins and -best or best
+end
+
 local function centered(list, k)
   local l = {}
   for i, v in ipairs(list) do l[i] = v end
   while #l > k do table.remove(l, #l % 2 == 0 and 1 or #l) end
   return l
+end
+
+-- (22-nov, el usuario colocó a mano los boxes en fila contra el muro SO) El tramo recto más largo del recinto: aristas
+-- consecutivas casi alineadas. Los boxes van en fila a lo largo de él, centrados, y la segunda fila es una copia trasladada
+-- hacia dentro ROW_GAP_M (alineada y cuadrada con la primera, con pasillo para maniobrar).
+M.BOX_PITCH_M = 7.8
+local function wallPicks(site, h)
+  local n = #h
+  local edges = {}
+  for i = 1, n do
+    local A, B = h[i], h[i % n + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 0.5 then edges[#edges + 1] = { A = A, B = B, L = L, a = math.atan2(ey, ex) } end
+  end
+  local best
+  for s0 = 1, #edges do
+    local len, last = edges[s0].L, edges[s0]
+    for k = 1, #edges - 1 do
+      local e = edges[(s0 + k - 1) % #edges + 1]
+      local da = math.abs(((e.a - edges[s0].a + math.pi) % (2 * math.pi)) - math.pi)
+      if da > math.rad(10) then break end
+      len, last = len + e.L, e
+    end
+    if not best or len > best.len then best = { len = len, A = edges[s0].A, B = last.B } end
+  end
+  if not best or best.len < 2 * M.BOX_PITCH_M then return nil end
+  local ex, ey = best.B[1] - best.A[1], best.B[2] - best.A[2]
+  local L = math.sqrt(ex * ex + ey * ey)
+  ex, ey = ex / L, ey / L
+  local nx, ny = -ey, ex                       -- hacia dentro (el recinto es antihorario)
+  local mx, my = (best.A[1] + best.B[1]) / 2, (best.A[2] + best.B[2]) / 2
+  local cnt = math.floor((L - 2) / M.BOX_PITCH_M) + 1
+  local function row(off)
+    local r = {}
+    for i = 1, cnt do
+      local t = (i - (cnt + 1) / 2) * M.BOX_PITCH_M
+      local x, y = mx + ex * t + nx * off, my + ey * t + ny * off
+      local z = terrainZ(x, y)
+      local pk = { x, y, z or site.z or 0, math.deg(math.atan2(ny, nx)), face = true, fx = nx, fy = ny }
+      if z and boxFree(pk) and (off == 0 or sdHull(h, x, y) < -3.5) then r[#r + 1] = pk end
+    end
+    return r
+  end
+  local A = row(0)
+  local B = row(M.ROW_GAP_M)
+  return A, B
 end
 
 local function lotFence(site)
@@ -880,7 +944,7 @@ local function lotFence(site)
   -- el hueco del vallado: en la boca de salida (por donde va el GPS y está el TC0), con sitio para las dos casetas
   local gates, gap = {}, M.LOT_FENCE_GAP_M
   if M.tcSpot then gates[#gates + 1] = { M.tcSpot.x, M.tcSpot.y } end
-  if M.tcSpot and M.tcSpot.mouth then gap = (M.tcSpot.hw or 3) + 6
+  if M.tcSpot and M.tcSpot.mouth then gap = (M.tcSpot.hw or 3) + 3.2     -- hueco de ~13 m: las casetas (a hw+2,6) quedan en los extremos
   elseif site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
   local z0 = site.z or terrainZ(site.x, site.y) or 0
   local n, skipped = 0, 0
@@ -900,6 +964,14 @@ local function lotFence(site)
       for d = 0, L, M.LOT_FENCE_PITCH_M do
         local x, y = A[1] + ex * d + ox, A[2] + ey * d + oy
         local z = terrainZ(x, y)
+        -- en un talud (la valla caía 2-5 m por encima del suelo del aparcamiento), se acerca al recinto hasta que el suelo coincide
+        if z and math.abs(z - z0) >= 2.5 then
+          for _, off in ipairs({ 3, 2, 1, 0.3 }) do
+            local x2, y2 = A[1] + ex * d + ey * off, A[2] + ey * d - ex * off
+            local z2 = terrainZ(x2, y2)
+            if z2 and math.abs(z2 - z0) < 2.5 then x, y, z = x2, y2, z2 break end
+          end
+        end
         local ok = z ~= nil and math.abs(z - z0) < 2.5 and n < M.LOT_FENCE_MAX
         if ok then
           for _, g in ipairs(gates) do
@@ -929,7 +1001,13 @@ local function buildOnStalls(site)
   local hdg0 = math.rad((site.stalls[1] and site.stalls[1][4]) or 0)
   local rx, ry = math.cos(hdg0), math.sin(hdg0)      -- profundidad de la plaza
   local hx, hy = ry, -rx                              -- a lo largo de la fila
-  local ex, ey = site.exitX - site.x, site.exitY - site.y
+  -- el lado de la salida = hacia la boca real (donde la ruta del GPS cruza el vallado); site.exit cambiaba entre arranques
+  local exX, exY = site.exitX, site.exitY
+  do
+    local okE, g0 = pcall(exitMouth, hullOf(site.stalls), site.x, site.y, site.z or 0)
+    if okE and g0 and g0.x then exX, exY = g0.x, g0.y end
+  end
+  local ex, ey = exX - site.x, exY - site.y
   local sideSign = (ex * rx + ey * ry) > 0 and -1 or 1
   -- las plazas por su coordenada de profundidad (bandas de 3 m = una fila)
   local bands = {}
@@ -967,6 +1045,27 @@ local function buildOnStalls(site)
         and (not bestB or math.abs(k - bestK) < math.abs(bestB - bestK)) then bestB = k end
   end
   local picksB = bestB and rowPicks(bands[bestB]) or {}
+  -- (22-nov, el usuario: la fila de detrás "alineada y cuadrada" con la de delante, a distancia para maniobrar): una copia
+  -- trasladada de la primera (mismas posiciones a lo largo, misma orientación) a la profundidad de la fila B
+  if bestB and #picksA > 0 then
+    local dk = (bestB - bestK) * 3
+    local hl = hullOf(site.stalls)
+    local copy = {}
+    for _, q in ipairs(picksA) do
+      local x, y = q[1] + rx * dk, q[2] + ry * dk
+      local z = terrainZ(x, y) or q[3]
+      local pk = { x, y, z, q[4], face = true }
+      local fx, fy = math.cos(math.rad(q[4] or 0)), math.sin(math.rad(q[4] or 0))
+      if (site.x - q[1]) * fx + (site.y - q[2]) * fy < 0 then fx, fy = -fx, -fy end
+      pk.fx, pk.fy = fx, fy
+      if (not q[3] or math.abs(z - q[3]) < 2) and sdHull(hl, x, y) < -3.5 and boxFree(pk) then copy[#copy + 1] = pk end
+    end
+    if #copy > 0 then picksB = copy end
+  end
+  do
+    local okW, wa, wb = pcall(wallPicks, site, hullOf(site.stalls))
+    if okW and wa and #wa >= 2 then picksA, picksB = wa, wb or {} end
+  end
   if #picksA == 0 and #picksB > 0 then picksA, picksB = picksB, {} end
   if #picksA == 0 then return nil end
   local total = #picksA + #picksB
@@ -982,7 +1081,7 @@ local function buildOnStalls(site)
   local mine = math.floor((#picks + 1) / 2)
   for _, p in ipairs(centered(picksB, nB)) do picks[#picks + 1] = p end
   log('I', TAG, ('boxes: %d (level %d; row A %d free, row B %d free)'):format(#picks, level, #picksA, #picksB))
-  M.lvl = { n = #picks, level = level, a = #picksA, b = #picksB, bestK = bestK, bestB = bestB, bands = (function() local t = {} for k, g in pairs(bands) do t[#t + 1] = k .. ':' .. #g end return table.concat(t, ' ') end)() }
+  M.lvl = { ex = exX, ey = exY, sideSign = sideSign, n = #picks, level = level, a = #picksA, b = #picksB, bestK = bestK, bestB = bestB, bands = (function() local t = {} for k, g in pairs(bands) do t[#t + 1] = k .. ':' .. #g end return table.concat(t, ' ') end)() }
   local hull = hullOf(site.stalls)
   -- las plazas de los boxes y las de todo el aparcamiento dejan de ser plazas de aparcamiento (22-nov, el usuario: "coches
   -- de tráfico en el parking de box: no puede pasar, solo coches de rally en su box"): se vuelven a registrar las filas de la
@@ -1035,6 +1134,7 @@ local function buildOnStalls(site)
     local hdg = math.rad(p[4] or 0)
     local fx, fy = math.cos(hdg), math.sin(hdg)
     if (site.x - p[1]) * fx + (site.y - p[2]) * fy < 0 then fx, fy = -fx, -fy end
+    if p.fx then fx, fy = p.fx, p.fy end
     local sx, sy = fy, -fx      -- a lo largo de la fila
     local k = kinds[(i - 1) % #kinds + 1]
     local function put(kind, fwd, side, yaw, opts)
