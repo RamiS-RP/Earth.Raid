@@ -25,7 +25,9 @@ M.DEFAULTS = {
   hardcore = false,              -- modo hardcore: sin reparar/restablecer, sin líneas, notas en pantalla ni minimapa: solo la voz
   notesLeadS = 4.5,              -- segundos de antelación con que se canta cada nota
   notesSafe = false,             -- notas prudentes: cada curva un grado más cerrada
+  performance = 'auto',          -- objetos con física (phys.lua): auto (según la calidad de BeamNG.Earth), low, medium, high
 }
+M.ENUMS = { performance = { auto = true, low = true, medium = true, high = true } }
 M.NUMBERS = { radiusKm = { 5, 20000 }, notesLeadS = { 2, 9 } }
 
 local raw = nil
@@ -59,6 +61,10 @@ function M.set(key, value)
     if not value then return false end
     local r = M.NUMBERS[key]
     if r then value = math.max(r[1], math.min(r[2], value)) end
+  end
+  if M.ENUMS[key] then
+    value = tostring(value)
+    if not M.ENUMS[key][value] then return false end
   end
   s[key] = value
   eff = nil

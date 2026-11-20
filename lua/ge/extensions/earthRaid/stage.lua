@@ -1027,6 +1027,7 @@ function M.update(dtSim, dtReal)
     local v = be:getPlayerVehicle(0)
     if v then
       local p = v:getPosition()
+      phys.quiet = S ~= nil and (S.phase == 'countdown' or (S.phase == 'staging' and (S.stagingLeft or 99) < 8))
       local okP, errP = pcall(phys.update, dtReal or dtSim or 0, p.x, p.y, props.all(), require('earthRaid/loader').active())
       if not okP then log('W', TAG, 'phys: ' .. tostring(errP)) end
     end

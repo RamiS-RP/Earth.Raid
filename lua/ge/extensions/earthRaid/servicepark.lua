@@ -645,6 +645,10 @@ function M.parkedCars(n, mine)
   for _, i in ipairs({ mine - 1, mine + 1, mine - 2, mine + 2 }) do
     if i >= 1 and i <= n and #slots < (n > M.MAX_BOXES and M.PARK_CARS + 1 or M.PARK_CARS) then slots[#slots + 1] = i end
   end
+  -- el ajuste de rendimiento limita cuántos (un coche de rally es un vehículo entero): bajo 0, medio 1, alto todos
+  local okL, lim = pcall(function() return require('earthRaid/phys').level().rallyCars end)
+  if okL and lim then while #slots > lim do table.remove(slots) end end
+  if #slots == 0 then return out end
   local okP, list = pcall(function() return require('earthRaid/phys').pickRallyCars(#slots, M.surface) end)
   if not okP then return out end
   for j, i in ipairs(slots) do out[i] = list[j] end

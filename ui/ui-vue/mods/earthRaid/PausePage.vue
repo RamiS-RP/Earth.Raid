@@ -61,6 +61,13 @@
         <span>{{ t(k) }}</span>
         <span class="tg" :class="{ on: set[k] }"><span class="knob"></span></span>
       </div>
+      <div class="erp-perf">
+        <span>{{ t("performance") }}</span>
+        <span class="erp-chips">
+          <button v-for="p in perfLevels" :key="p" class="erp-chip" :class="{ on: (set.performance || 'auto') === p }" @click="call('uiSetSetting', 'performance', p)">{{ t("perf_" + p) }}</button>
+        </span>
+      </div>
+      <p class="dim small">{{ t("perfHelp") }}</p>
       <p class="dim small">{{ t("pauseMore") }}</p>
     </template>
   </div>
@@ -88,6 +95,7 @@ const toggles = computed(() => {
   return k
 })
 
+const perfLevels = ["auto", "low", "medium", "high"]
 function refresh() { call("uiPeek") }
 function open(id) { call("uiOpen"); if (id) call("uiSelect", id) }
 function openImport() { call("uiOpen"); call("uiImportOpen", true) }
@@ -112,6 +120,10 @@ onMounted(refresh)
 }
 .erp-evinfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .erp-toggle { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.erp-perf { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px; }
+.erp-chips { display: flex; gap: 4px; }
+.erp-chip { color: inherit; cursor: pointer; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 4px; padding: 3px 10px;
+  &.on { background: #ff6600; border-color: #ff6600; color: #111; font-weight: 700; } }
 .tg { position: relative; width: 36px; height: 18px; border-radius: 9px; background: #555; flex: 0 0 36px;
   .knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.15s; }
   &.on { background: #ff6600; .knob { left: 20px; } } }
