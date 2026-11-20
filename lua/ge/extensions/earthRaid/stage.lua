@@ -123,7 +123,7 @@ end
 -- El parque de asistencia (22-nov, el usuario: "el tráfico no debe aparecer cerca del box; que se genere al parar en el TC0,
 -- con una pequeña carga, y ya aparezca a una distancia prudente, como en el vanilla"): al montar el box se borra el tráfico
 -- que hubiera, se marca el entorno del box como zona sin tráfico y no se vuelve a crear hasta que sales por el TC0.
-M.SERVICE_NO_TRAFFIC_M = 160
+M.SERVICE_NO_TRAFFIC_M = 200
 local svcN = nil
 function M.serviceTraffic(x, y)
   local tr = rawget(_G, 'gameplay_traffic')
@@ -137,7 +137,7 @@ function M.serviceTraffic(x, y)
     local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0)) or 0
     local zones = {}
     for _, d in ipairs({ { 0, 0 }, { 80, 0 }, { -80, 0 }, { 0, 80 }, { 0, -80 } }) do
-      zones[#zones + 1] = { pos = vec3(x + d[1], y + d[2], z or 0), radius = M.SERVICE_NO_TRAFFIC_M * 0.6 }
+      zones[#zones + 1] = { pos = vec3(x + d[1], y + d[2], z or 0), radius = M.SERVICE_NO_TRAFFIC_M * 0.8 }
     end
     if pcall(function() map.setTrafficExclusionZones(zones) map.reset() end) then exclOn = true end
   end

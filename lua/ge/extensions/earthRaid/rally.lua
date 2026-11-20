@@ -605,6 +605,12 @@ function M.update(dtSim, dtReal)
         zl[#zl + 1] = { lat = la, lon = lo, r = tz.CORRIDOR_R_M + 45 }
       end
     end
+    -- y 200 m alrededor de cada objeto montado (box, controles, salida, vallas): el tráfico no pasa por donde están
+    local okP, pr = pcall(require, 'earthRaid/props')
+    if okP and pr and pr.all then
+      local okZ, pz = pcall(tz.propZones, pr.all())
+      if okZ then for _, z in ipairs(pz) do zl[#zl + 1] = z end end
+    end
     pcall(tz.set, zl)
   end
   pcall(tz.update, dtSim)

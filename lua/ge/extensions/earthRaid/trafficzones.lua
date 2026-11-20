@@ -5,7 +5,8 @@
 local M = {}
 local TAG = 'earthRaid.trafficzones'
 M.EVERY_S = 1.0
-M.POINT_R_M = 130       -- alrededor de un control, la salida, la meta
+M.POINT_R_M = 200       -- alrededor de un control, la salida, la meta, el box y cualquier objeto montado (el tráfico gira a 200 m)
+M.PROP_CELL_M = 120     -- los objetos montados se agrupan en celdas de esto: una zona por celda
 M.CORRIDOR_R_M = 35     -- a cada lado del eje del tramo montado
 M.CORRIDOR_STEP_M = 80
 local t0 = 0
@@ -22,6 +23,17 @@ function M.set(list)
     local ok, x, y = pcall(a.toGame, z.lat, z.lon, 0)
     if ok and x then zones[#zones + 1] = { x = x, y = y, r2 = (z.r or M.POINT_R_M) ^ 2 } end
   end
+end
+-- Zonas de los objetos montados (vallas, carpas, conos...): una por celda, sin árboles ni rótulos sueltos del paisaje
+function M.propZones(items, toGeoFn)
+  local out, seen = {}, {}
+  for _, it in ipairs(items or {}) do
+    if it.lat and it.lon and not it.hidden and not it.dead and it.kind ~= 'tree' and it.obj then
+      local k = math.floor(it.lat * 111195 / M.PROP_CELL_M) .. ':' .. math.floor(it.lon * 111195 * math.cos(math.rad(it.lat)) / M.PROP_CELL_M)
+      if not seen[k] then seen[k] = true out[#out + 1] = { lat = it.lat, lon = it.lon, r = M.POINT_R_M } end
+    end
+  end
+  return out
 end
 function M.clear() zones = {} end
 function M.count() return #zones end
