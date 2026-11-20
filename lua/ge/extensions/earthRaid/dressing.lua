@@ -144,7 +144,8 @@ local function at(t, along, right, fwd)
       local ddx, ddy = geo.dirAt(t, base)
       local la0, lo0 = geo.toGeo(t, bx, by)
       local sl, so = M.snap(la0, lo0, ddx, ddy)
-      t[key] = sl and { sl, so } or false
+      -- (sin carretera cargada todavía no se guarda nada: se vuelve a intentar en la siguiente llamada)
+      t[key] = sl and { sl, so } or nil
     end
     local ref = t[key]
     if ref then
@@ -386,8 +387,68 @@ function M.recheck(plat, plon)
       end
     end
   end
+  -- Última comprobación (21-nov, auditoría): con el grafo ya cargado, lo que haya quedado pisando una calzada medido como
+  -- el juego (findClosestRoad: eje y radio del nodo) se aparta; las piezas de una fila (vallas, barreras, pacas) se
+  -- quitan, porque desplazadas quedarían encima de sus vecinas. Una vez por objeto y solo cerca. MARK:edge-guard-v1
+  local okG, g1, g2 = pcall(M.edgeGuard, plat, plon)
+  if okG then moved, hidden = moved + (g1 or 0), hidden + (g2 or 0) end
   if moved + hidden > 0 then log('I', TAG, ('recheck: %d objects moved off the road, %d removed'):format(moved, hidden)) end
   return moved
+end
+M.EDGE_GUARD_M = 350
+M.EDGE_MARGIN_M = 0.45
+-- el puesto de un control o de un médico se coloca con su propia lógica (carpa libre, calle cortada): no se toca
+M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true, cushion = true,
+  laptop = true, extinguisher = true, ambulance = true, rallyCar = true, tcEntry = true, tc = true }
+M.ROW_KINDS = { plasticBarrier = true, plasticBarrierW = true, hayBale = true, hayBale2 = true }
+function M.edgeGuard(plat, plon)
+  local a = api()
+  if not (a and map and map.findClosestRoad) then return 0, 0 end
+  local m = map.getMap()
+  local k = math.cos(math.rad(plat))
+  local moved, hidden = 0, 0
+  for _, it in ipairs(props.all()) do
+    if it.obj and it.lat and not it.edgeOk and not it.hidden and not it.closure and not it.line and not it.park
+      and not (it.opts and it.opts.force) and not M.POST_KINDS[it.kind]
+      and not M.SKIP_RECHECK[it.kind] and not M.SOUND_KINDS[it.kind] then
+      local ex, ny = (it.lon - plon) * 111195 * k, (it.lat - plat) * 111195
+      if ex * ex + ny * ny < M.EDGE_GUARD_M * M.EDGE_GUARD_M then
+        local okP, q = pcall(function() return it.obj:getPosition() end)
+        if okP and q then
+          local n1, n2, dd = map.findClosestRoad(q)
+          if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
+            it.edgeOk = true
+            local p1, p2 = m.nodes[n1].pos, m.nodes[n2].pos
+            local sx, sy = p2.x - p1.x, p2.y - p1.y
+            local L2 = sx * sx + sy * sy
+            local u = L2 > 0.01 and math.max(0, math.min(1, ((q.x - p1.x) * sx + (q.y - p1.y) * sy) / L2)) or 0
+            local cx, cy = p1.x + sx * u, p1.y + sy * u
+            local r1, r2 = m.nodes[n1].radius or 3, m.nodes[n2].radius or 3
+            -- (junto a un cruce el radio no baja en línea recta: el del nodo más cercano manda si es mayor)
+            local r = math.max(r1 + (r2 - r1) * u, u < 0.5 and r1 or r2)
+            local d = math.sqrt((q.x - cx) ^ 2 + (q.y - cy) ^ 2)
+            if d < r + M.EDGE_MARGIN_M then
+              local row = M.ROW_KINDS[it.kind] or tostring(it.kind):find('^fence')
+              if row or d < 0.3 then
+                props.hide(it) hidden = hidden + 1
+              else
+                local f = (r + M.EDGE_MARGIN_M + 0.6) / d
+                local nx, ny2 = cx + (q.x - cx) * f, cy + (q.y - cy) * f
+                local la, lo = a.toGeo(nx, ny2, q.z)
+                -- (el punto guardado es el del objeto: se desplaza lo mismo que su posición real)
+                if la then
+                  local la0, lo0 = a.toGeo(q.x, q.y, q.z)
+                  props.move(it, it.lat + (la - la0), it.lon + (lo - lo0))
+                  moved = moved + 1
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return moved, hidden
 end
 
 -- de noche (19:30-7:30 en el reloj del juego): las luces de las carpas solo entonces
@@ -401,9 +462,10 @@ M.SOUND_KINDS = { sndCrowd = true, sndCheer = true, sndGenerator = true }
 
 -- Nada grande encima de otra cosa grande (19-nov, norma del usuario: "bien posicionados y con una separación
 -- realista"): vallas, carpas y ambulancias guardan una distancia mínima entre sus centros, vengan de la fila que vengan
-M.GROUP = { gazebo3x3 = 'tent', gazebo3x6 = 'tent', gazebo3x6b = 'tent', ambulance = 'van' }
+M.GROUP = { gazebo3x3 = 'tent', gazebo3x6 = 'tent', gazebo3x6b = 'tent', ambulance = 'van', plasticBarrier = 'barrier',
+  plasticBarrierW = 'barrier' }
 M.MIN_GAP_M = { ['fence|fence'] = 2.45, ['tent|tent'] = 3.3, ['fence|tent'] = 2.2, ['fence|van'] = 3.0, ['tent|van'] = 3.6,
-  ['van|van'] = 4.5 }
+  ['van|van'] = 4.5, ['barrier|barrier'] = 1.1 }
 local function groupOf(kind)
   if M.GROUP[kind] then return M.GROUP[kind] end
   if tostring(kind):find('^fence') then return 'fence' end

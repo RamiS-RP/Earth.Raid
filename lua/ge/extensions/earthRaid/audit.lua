@@ -42,7 +42,14 @@ local function roadAt(x, y, z)
   local m = map.getMap()
   if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
     local a, b = m.nodes[n1].pos, m.nodes[n2].pos
-    return d, m.nodes[n1].radius or 3, b.x - a.x, b.y - a.y, false
+    -- el radio en el punto (entre el de los dos nodos; junto a un nodo, el suyo si es mayor), como dressing.edgeGuard:
+    -- con el del primer nodo, lo que está junto a una calle estrecha que sale de un cruce ancho contaba como en la calzada
+    local sx, sy = b.x - a.x, b.y - a.y
+    local L2 = sx * sx + sy * sy
+    local u = L2 > 0.01 and math.max(0, math.min(1, ((x - a.x) * sx + (y - a.y) * sy) / L2)) or 0
+    local r1, r2 = m.nodes[n1].radius or 3, m.nodes[n2].radius or 3
+    local r = math.max(r1 + (r2 - r1) * u, u < 0.5 and r1 or r2)
+    return d, r, sx, sy, false
   end
   local best = nil
   for _, sg in ipairs(props.roadsAt(x, y) or {}) do

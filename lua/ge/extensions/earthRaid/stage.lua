@@ -715,6 +715,22 @@ function M.start(ev, st, info)
   end
   local finishLater
   finishLater = function()
+    -- la meta espera a que el eje de la carretera se encuentre en la línea (hasta ~30 s; en tierra sin carretera del
+    -- mapa no se espera): con el grafo a medias la línea de meta y sus carteles quedaban fuera del eje. MARK:ends-ready-v1
+    local maxTries = dressing.normSurface(S.surface) == 'gravel' and 8 or 20
+    do
+      local okR, ready = pcall(function()
+        local la, lo = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
+        local dx, dy = geo.dirAt(t, t.total)
+        return dressing.snap(la, lo, dx, dy) ~= nil
+      end)
+      local paused = simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause()
+      if okR and not ready and (paused or (S.finishSnapTries or 0) < maxTries) then
+        if not paused then S.finishSnapTries = (S.finishSnapTries or 0) + 1 end
+        dressing.later(t.total, finishLater, t, 1.5)
+        return
+      end
+    end
     pcall(trimFinishToRoad)
     local okF, vF = pcall(checkFinish)
     if not okF then log('W', TAG, 'checkFinish: ' .. tostring(vF)) end
@@ -813,12 +829,21 @@ function M.start(ev, st, info)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
     { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
       surface = S.surface,
+      -- la salida y el control se montan cuando la carretera de allí se puede usar: el eje encontrado en la línea y en el
+      -- punto del TC (con el grafo a medias las líneas quedaban fuera del eje o torcidas). MARK:ends-ready-v1
       startReady = function()
-        local a2 = api()
         local la, lo = geo.toGeo(t, t.pts[1][1], t.pts[1][2])
         local gx, gy, gz = props.ground(la, lo)
         if not gx then return false end
-        return props.nearestRoad(gx, gy, gz, 60) ~= nil
+        if props.nearestRoad(gx, gy, gz, 60) == nil then return false end
+        local dx, dy = geo.dirAt(t, 0)
+        if not dressing.snap(la, lo, dx, dy) then return false end
+        local tl, to = dressing.lineAt(t, 0, -dressing.tcAt(t))
+        if tl then
+          local tx, ty, tz = props.ground(tl, to)
+          if tx and props.nearestRoad(tx, ty, tz, 30) == nil then return false end
+        end
+        return true
       end,
       reversed = st.reverse == true,
       onStartClock = function(obj) startclock.setClock(obj) M.refreshLine() end })
