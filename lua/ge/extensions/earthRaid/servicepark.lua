@@ -1372,7 +1372,7 @@ function M.tc0(site, dressing)
       -- (tcPost: lateral = out * lado, con out = -1; los boxes a la derecha de quien sale -> lado -1)
       lado = (sp.ux * sp.by - sp.uy * sp.bx) < 0 and -1 or 1
     elseif sp.fx and (sp.uy * sp.fx - sp.ux * sp.fy) < 0 then lado = 1 end
-    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, sp.mouth == true and { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 } or false)
+    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 })
     if ok then
       local la, lo = geo.toGeo(t, geo.at(t, 20))
       return { lat = la, lon = lo }
@@ -1466,7 +1466,7 @@ function M.tc0(site, dressing)
     local al = math.min(t.total - 10, math.max(12, exitAlong) + extra)
     if al > 12 and clearAt(al) then along = al break end
   end
-  dressing.tcPost(t, along, -1, hw, 0, -1, false)
+  dressing.tcPost(t, along, -1, hw, 0, -1, false, false, { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 })
   local la, lo = geo.toGeo(t, geo.at(t, along))
   return { lat = la, lon = lo }
 end

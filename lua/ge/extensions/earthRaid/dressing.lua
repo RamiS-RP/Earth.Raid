@@ -881,7 +881,9 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
     end
   end
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
-  centreCones(t, endAlong, out * D, -10, 10, 5)
+  -- (22-nov, el usuario colocó los conos del TC0 con F11) el TC0 lleva 3, juntos, para dejar la salida libre y que ninguno
+  -- caiga fuera de la calzada; los demás controles, como antes
+  if twin then centreCones(t, endAlong, out * D, -3.5, 3.5, 3.5) else centreCones(t, endAlong, out * D, -10, 10, 5) end
 end
 
 M.END_FENCE_IN_M, M.END_FENCE_OUT_M, M.END_FENCE_SIDE_M = 30, 25, 1.6
