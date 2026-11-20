@@ -15,7 +15,7 @@ M.DEFAULTS = {
   racingLine = true,             -- con el mod Racing Line instalado: su línea de carrera en vez de la azul del GPS
   recModsAuto = true,            -- activar al cargar los mods recomendados que estén descargados
   sounds = false,                -- sonido de ambiente (público, generadores): apagado por defecto
-  noTraffic = true,              -- sin tráfico en el tramo (vuelve al terminar)
+  noTraffic = true,              -- sin tráfico en el tramo (vuelve al terminar); el de los enlaces es del ajuste nativo
   regionalTraffic = true,        -- tráfico con más coches de la zona del mundo donde estás (regiontraffic.lua)
   parkCars = true,               -- un par de coches de rally aparcados en los boxes del parque de asistencia
   arrows = true,                 -- flechas antes de las curvas cerradas
@@ -41,8 +41,12 @@ M.NATIVE = {
   voice       = 'rallyAudioPacenotes',     -- notas de audio
   notesLeadS  = 'rallyCodriverTiming',     -- intervención del copiloto (segundos de antelación)
   falseStart  = 'rallyEnableFalseStarts',  -- sanción por salida en falso
-  noTraffic   = 'rallyEnableTraffic',      -- (invertido) sin tráfico en el tramo
 }
+-- tráfico en los ENLACES (en el tramo nunca hay: el juego también lo excluye): lo manda el ajuste nativo
+function M.liaisonTraffic()
+  local ok, v = pcall(function() return settings.getValue('rallyEnableTraffic') end)
+  return not (ok and v == false)
+end
 local function nget(k)
   local ok, v = pcall(function() return settings.getValue(k) end)
   if ok then return v end

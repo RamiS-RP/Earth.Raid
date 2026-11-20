@@ -136,7 +136,19 @@ local function hide()
 end
 
 -- Cada fotograma: active = en cuenta atrás; code 'R' | 'A' | 'G' (color del marco, como las luces)
+-- Ajustes > Rally > «Cuenta atrás de salida»: '3d' = el reloj LED con su ventana de cámara (y sin el panel 2D, como el juego),
+-- '2d' = el panel del HUD, 'disabled' = nada
+function M.mode()
+  local ok, v = pcall(function() return settings.getValue('rallyStartCountdownDisplay') end)
+  return ok and v or '3d'
+end
+-- ¿se va a ver la cuenta atrás en el reloj 3D? (entonces el panel 2D de la cuenta atrás se suprime)
+function M.threeD()
+  return M.mode() == '3d' and clockObj ~= nil and simObjectExists(clockObj) and linePos ~= nil
+end
+
 function M.update(dtReal, active, code)
+  if M.mode() ~= '3d' then if view and view.active then hide() end return end
   if active then linger = M.LINGER_S elseif linger > 0 then linger = linger - dtReal end
   if not (active or linger > 0) or not (clockObj and simObjectExists(clockObj)) or not linePos then
     if view and view.active then hide() end

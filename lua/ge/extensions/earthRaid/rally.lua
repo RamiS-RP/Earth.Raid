@@ -312,7 +312,7 @@ local function leaveService()
   local r0 = row('TC0')
   if not r0.actual then r0.actual, r0.status = R.clock, 'ok' end
   R.phase = 'liaison'
-  stage.trafficBack(true)
+  if settings.liaisonTraffic() then stage.trafficBack(true) end
   guide.liaison(settings.get().hardcore == true)
   setGps()
 end
@@ -422,7 +422,7 @@ function M.onStageStop()
   if not R then return end
   R.idx = R.idx + 1
   R.built = nil
-  stage.trafficBack()
+  if settings.liaisonTraffic() then stage.trafficBack() end
   if not item() then
     R.phase, R.finishLeft = 'finished', M.FINISH_SHOW_S
     M.saveResult()

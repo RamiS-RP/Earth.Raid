@@ -5,6 +5,7 @@
 -- (ui/modules/apps/rallyLoop/mockdata/*.json), desde onGuiUpdate: va después del onUpdate de gameplay_rallyLoop, así
 -- que el nuestro es el que llega a la UI ese fotograma.
 local M = {}
+local startclock = require('earthRaid/startclock')
 
 local wasActive = false
 -- el color de las apps (sin uiColors.theme, rallyStageTiming/rallyStageProgress no se ven)
@@ -98,8 +99,15 @@ local function fromStage(S, R, api)
   elseif ph == 'countdown' then
     -- la cuenta atrás va en el reloj LED real de la salida (startclock.lua, con la cámara y el marco): sin el semáforo
     -- 2D del juego (como hace el juego con rallyStartCountdownDisplay = 3d)
-    d.activeState = 'countdown'
-    d.countdownData = { countdown = math.max(0, math.ceil(S.countdown or 0)), state = 'countdown_running' }
+    -- como el juego (rallyLoop.getUiStreamData): con la cuenta atrás en el reloj 3D se suprime el panel 2D; con '2d' sí sale
+    -- y con 'disabled' no sale ninguno
+    local cdMode = startclock.mode()
+    if cdMode == '2d' or (cdMode == '3d' and not startclock.threeD()) then
+      d.activeState = 'countdown'
+      d.countdownData = { countdown = math.max(0, math.ceil(S.countdown or 0)), state = 'countdown_running' }
+    else
+      d.activeState = 'vehicleProximity'
+    end
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
     d.vehicleProximity = prox(0, true)
   elseif ph == 'running' then

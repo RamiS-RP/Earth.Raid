@@ -1261,6 +1261,11 @@ function M.update(dtSim, dtReal)
     end
     if S.stagingLeft <= M.COUNTDOWN_S and S.staged then
       S.phase, S.countdown, S.noseAtArm, S.saidCount = 'countdown', M.COUNTDOWN_S, nose, {}
+      -- la ruta del GPS y la línea verde se arman ya, en la cuenta atrás: el planificador tarda en tenerlas y a la salida
+      -- (GO) la línea verde no estaba (20-nov)
+      guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+      guide.racingLine(S.opt.racingLine)
+      S.lineArmed = true
       audio.clear()
       -- «preparados»: solo si es un aviso corto. En algún voicepack grabado (Xpectro99: 4,3 s) esa grabación ya trae
       -- su propia cuenta atrás, que sonaba a destiempo y se cortaba al llegar la de verdad (19-nov)
@@ -1287,8 +1292,10 @@ function M.update(dtSim, dtReal)
       elseif S.opt.voice then
         audio.say({ 'system_countdowngo' }, true)
       end
-      guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
-      guide.racingLine(S.opt.racingLine)
+      if not S.lineArmed then
+        guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+        guide.racingLine(S.opt.racingLine)
+      end
       M.callNotes(0, true)
     end
     if nose < S.noseAtArm - M.FALSE_START_M and S.countdown > 0 then go(true)
