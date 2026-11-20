@@ -229,6 +229,9 @@ end
 function M.wantsStageLayout(stage)
   local S = stage.state()
   if not S then return false end
+  -- Ajustes > Rally > «Mostrar apps de tramo»: si el jugador las apaga, no se cambia al diseño de tramo
+  local okA, apps = pcall(function() return settings.getValue('rallyShowStageApps') end)
+  if okA and apps == false then return false end
   local ph = S.phase
   return ph == 'staging' or ph == 'countdown' or ph == 'running' or ph == 'done' or ph == 'toStop'
 end

@@ -32,12 +32,52 @@ M.NUMBERS = { radiusKm = { 5, 20000 }, notesLeadS = { 2, 9 } }
 
 local raw = nil
 local eff = nil
+local effSig = nil
+
+-- Opciones del menú nativo Ajustes > Jugabilidad > Rally que Raid.Earth respeta (la fuente de verdad es el juego):
+-- nuestra clave -> clave nativa. Si el jugador las cambia en el menú del juego, aquí se nota en el siguiente tramo.
+M.NATIVE = {
+  visualNotes = 'rallyVisualPacenotes',    -- notas visuales
+  voice       = 'rallyAudioPacenotes',     -- notas de audio
+  notesLeadS  = 'rallyCodriverTiming',     -- intervención del copiloto (segundos de antelación)
+  falseStart  = 'rallyEnableFalseStarts',  -- sanción por salida en falso
+  noTraffic   = 'rallyEnableTraffic',      -- (invertido) sin tráfico en el tramo
+}
+local function nget(k)
+  local ok, v = pcall(function() return settings.getValue(k) end)
+  if ok then return v end
+end
+local function nativeVoicepack()
+  local mru = tostring(nget('rallyCodriverVoicepackMRU') or '')
+  for id in mru:gmatch('global:([^,]+)') do return id end   -- el primero es el elegido
+end
+local function nativeSig()
+  local t = {}
+  for _, nk in pairs(M.NATIVE) do t[#t + 1] = tostring(nget(nk)) end
+  t[#t + 1] = tostring(nativeVoicepack())
+  table.sort(t)
+  return table.concat(t, '|')
+end
+-- escribe en el menú nativo el valor que el jugador acaba de poner en nuestra app
+local function nativeSet(key, value)
+  local nk = M.NATIVE[key]
+  if nk then
+    if key == 'noTraffic' then value = not value end
+    pcall(function() settings.setValue(nk, value) end)
+  elseif key == 'voicepack' then
+    local mru, out = tostring(nget('rallyCodriverVoicepackMRU') or ''), { 'global:' .. tostring(value) }
+    for e in mru:gmatch('[^,]+') do if e ~= 'global:' .. tostring(value) then out[#out + 1] = e end end
+    pcall(function() settings.setValue('rallyCodriverVoicepackMRU', table.concat(out, ',')) end)
+  end
+end
 
 -- Los ajustes vigentes. El HUD de rally es siempre el del juego (no es un ajuste: vanilla no lo tiene). El modo hardcore
 -- (la voz del copiloto y nada más) apaga por encima las ayudas sin tocar lo guardado.
 M.HARDCORE_OFF = { visualNotes = false, racingLine = false, arrows = false, cautions = false }
 function M.get()
-  if eff then return eff end
+  local sig = nativeSig()
+  if eff and sig == effSig then return eff end
+  effSig = sig
   if not raw then
     local d = jsonReadFile(M.FILE)
     raw = {}
@@ -47,6 +87,16 @@ function M.get()
   end
   eff = {}
   for k, v in pairs(raw) do eff[k] = v end
+  for k, nk in pairs(M.NATIVE) do
+    local v = nget(nk)
+    if v ~= nil then
+      if k == 'noTraffic' then v = not v end
+      if k == 'notesLeadS' then v = math.max(M.NUMBERS.notesLeadS[1], math.min(M.NUMBERS.notesLeadS[2], tonumber(v) or raw[k])) end
+      eff[k] = v
+    end
+  end
+  local vp = nativeVoicepack()
+  if vp then for _, v in ipairs(M.voicepacks()) do if v.id == vp then eff.voicepack = vp break end end end
   if raw.hardcore then for k, v in pairs(M.HARDCORE_OFF) do eff[k] = v end eff.voice = true end
   return eff
 end
@@ -68,6 +118,7 @@ function M.set(key, value)
   end
   s[key] = value
   eff = nil
+  nativeSet(key, value)
   pcall(jsonWriteFile, M.FILE, s, true)
   return true
 end
