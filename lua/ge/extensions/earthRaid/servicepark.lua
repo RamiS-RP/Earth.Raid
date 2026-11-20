@@ -209,13 +209,16 @@ end
 M.LOT_LINK_M = 19      -- plazas a menos de esto son del mismo aparcamiento (las filas de un aparcamiento van a ~17 m)
 M.LOT_MIN = 16         -- plazas mínimas para que sirva
 M.LOT_PAD = 3          -- margen alrededor de las plazas
+M.LOT_R = 600          -- el aparcamiento más cercano, hasta a esta distancia del punto del organizador (20-nov)
+M.LOTS_WAIT_S = 3      -- las plazas llegan de BeamNG.Earth poco a poco: espera a que dejen de aumentar...
+M.LOTS_WAIT_MAX_S = 10 -- ...como mucho esto
 
 -- Los aparcamientos cerca del punto (racimos de plazas), del mejor al peor: { cx, cy, z, ux, uy, len, wid, n, far }
 local function lots(h)
   local rows = lotRows()
   local pts = {}
   for _, r in ipairs(rows) do
-    if math.abs(r[1] - h.x0) <= M.R and math.abs(r[2] - h.y0) <= M.R then pts[#pts + 1] = r end
+    if math.abs(r[1] - h.x0) <= M.LOT_R and math.abs(r[2] - h.y0) <= M.LOT_R then pts[#pts + 1] = r end
   end
   if #pts < M.LOT_MIN then return {} end
   -- racimos por enlace simple con una rejilla
@@ -263,7 +266,7 @@ local function lots(h)
       local ccx, ccy = cx + ux * (a0 + a1) / 2 - uy * (b0 + b1) / 2, cy + uy * (a0 + a1) / 2 + ux * (b0 + b1) / 2
       local far = math.sqrt((ccx - h.x0) ^ 2 + (ccy - h.y0) ^ 2)
       out[#out + 1] = { cx = ccx, cy = ccy, z = cz, ux = ux, uy = uy, len = len, wid = wid, n = #g, far = far, pts = g,
-        score = math.sqrt(math.min(len, 100) * math.min(wid, 60)) - far / 40 }
+        score = math.sqrt(math.min(len, 100) * math.min(wid, 60)) - far / 25 }
     end
   end
   table.sort(out, function(p, q) return p.score > q.score end)
@@ -472,7 +475,26 @@ function M.step(h, ms)
   local until_ = os.clock() + (ms or M.BUDGET_MS) / 1000
   if h.phase == 'buildings' then
     -- un aparcamiento de BeamNG.Earth cerca: no hace falta más búsqueda
-    if not h.lotsTried then h.lotsTried = true if tryLots(h) then return true end end
+    -- (20-nov) las plazas de BeamNG.Earth llegan después de cargar la zona: antes se miraba una sola vez nada más
+    -- empezar y, sin plazas todavía, se caía al descampado (Canarias: casas y solar en vez del aparcamiento de 600 plazas).
+    -- Ahora se espera a que el número de plazas cercanas deje de crecer (M.LOTS_WAIT_S) y entonces se busca.
+    if not h.lotsTried then
+      local n = 0
+      for _, r in ipairs(lotRows()) do
+        if math.abs(r[1] - h.x0) <= M.LOT_R and math.abs(r[2] - h.y0) <= M.LOT_R then n = n + 1 end
+      end
+      local now = os.clock()
+      if n ~= h.lotN then h.lotN, h.lotChange = n, now end
+      local waited = now - h.t0
+      local stable = h.lotN and h.lotN >= M.LOT_MIN and now - (h.lotChange or now) >= 1.5 and waited >= M.LOTS_WAIT_S
+      local empty = (h.lotN or 0) < M.LOT_MIN and now - (h.lotChange or now) >= 3.5 and waited >= 5   -- sin plazas en la zona
+      if stable or empty or waited >= M.LOTS_WAIT_MAX_S then
+        h.lotsTried = true
+        if tryLots(h) then return true end
+      else
+        return false
+      end
+    end
     if not h.polys then
       if os.clock() - h.t0 > M.BUILDINGS_WAIT_S then h.polys = {} log('W', TAG, 'buildings: no answer, going on without them') else return false end
     end
