@@ -181,9 +181,28 @@ local function walkRoads(f, f0)
     local cur = (n2 and ahead(n2) > ahead(n1)) and n2 or n1
     local seen, pts, L = { [cur] = true }, { f }, 0
     local px, py = x, y
+    -- ¿la calle que sigue por `via` se acaba pronto (calle sin salida)? Metros que se pueden seguir desde ahí, hasta `limit`
+    -- (21-nov, el usuario: "el TC1 está en una calle sin salida"). MARK:deadend-v1
+    local function reach(from, via, limit)
+      local best, guard = 0, 0
+      local stack = { { via, from, math.sqrt((m.nodes[via].pos.x - m.nodes[from].pos.x) ^ 2 + (m.nodes[via].pos.y - m.nodes[from].pos.y) ^ 2) } }
+      while #stack > 0 and guard < 300 do
+        guard = guard + 1
+        local e = table.remove(stack)
+        if e[3] > best then best = e[3] end
+        if best >= limit then return best end
+        for nb in pairs(props.neighbors(e[1])) do
+          if nb ~= e[2] and m.nodes[nb] then
+            local pa, pb = m.nodes[e[1]].pos, m.nodes[nb].pos
+            stack[#stack + 1] = { nb, e[1], e[3] + math.sqrt((pb.x - pa.x) ^ 2 + (pb.y - pa.y) ^ 2) }
+          end
+        end
+      end
+      return best
+    end
     while L < M.AFTER_M do
       local node = m.nodes[cur]
-      local best, bd = nil, -2
+      local best, bd, bestScore = nil, -2, -99
       for nb in pairs(props.neighbors(cur)) do
         if not seen[nb] and m.nodes[nb] then
           local q = m.nodes[nb].pos
@@ -191,7 +210,11 @@ local function walkRoads(f, f0)
           local vl = math.sqrt(vx * vx + vy * vy)
           if vl > 0.1 then
             local dot = (vx * hx + vy * hy) / vl
-            if dot > bd then best, bd = nb, dot end
+            local score = dot - 5
+            if dot >= 0.3 then score = dot end
+            -- una calle sin salida (< 100 m de camino) solo si no hay otra que siga
+            if dot >= 0.3 and reach(cur, nb, 100) < 100 then score = dot - 1.2 end
+            if score > bestScore then best, bd, bestScore = nb, dot, score end
           end
         end
       end

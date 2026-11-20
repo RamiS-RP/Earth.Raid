@@ -468,6 +468,18 @@ local function place(kind, t, along, right, yaw, fwd, opts)
     end
   end
   local lat, lon, dx, dy = at(t, along, right, fwd)
+  -- opts.chord (vallas en fila): la pieza se orienta según la fila (la cuerda entre sus vecinas a 1,3 m), no según el eje de
+  -- la carretera: en curvas y cruces el eje no es la dirección de la fila (21-nov: vallas de la salida mal orientadas)
+  if lat and opts and opts.chord then
+    local l1, o1 = at(t, along, right, (fwd or 0) - 1.3)
+    local l2, o2 = at(t, along, right, (fwd or 0) + 1.3)
+    if l1 and l2 then
+      local kk = math.cos(math.rad(lat)) * 111195
+      local ex, ny = (o2 - o1) * kk, (l2 - l1) * 111195
+      local L = math.sqrt(ex * ex + ny * ny)
+      if L > 0.5 then dx, dy = ex / L, ny / L end
+    end
+  end
   M._seen = false
   local lat0, lon0 = lat, lon
   -- force: se pone donde se pide (el puesto de un control, que siempre tiene que estar: tcPost)
@@ -655,7 +667,7 @@ local function fenceRow(t, along, side, f0, f1)
       local x, y = lo * k, la * 111195
       if not lx or (x - lx) ^ 2 + (y - ly) ^ 2 >= M.FENCE_PITCH_M ^ 2 then
         lx, ly = x, y
-        place(M.FENCE_KINDS[n % #M.FENCE_KINDS + 1], t, along, side, yaw, f, { row = true, noPush = true })
+        place(M.FENCE_KINDS[n % #M.FENCE_KINDS + 1], t, along, side, yaw, f, { row = true, noPush = true, chord = true })
         n = n + 1
       end
     end
@@ -727,6 +739,44 @@ end
 -- ficha viaja en el sentido +fwd del trazado). clockLado: en qué lado va la carpa con el reloj (-1: derecha de quien
 -- ficha). full: también el STOP y los carteles de cuenta atrás de quien llega (el extremo de un tramo); sin ello es un
 -- TC de enlace (el TC0 a la salida del parque de asistencia).
+-- ---- el sitio de la carpa de un control (21-nov, el usuario: "las casetas dentro de los edificios... siempre visibles desde
+-- el sentido del tramo"): su planta (3x3) sin ningún edificio, muro ni árbol encima (rayos hacia abajo) y a la vista de
+-- quien llega (rayo desde la calzada, 12 m antes, hasta el techo de la carpa). MARK:tent-v1
+M.TENT_SEE_M = 12
+local function solidAt(x, y, z)
+  local ok, d = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
+  return ok and d ~= nil and d < 24.3
+end
+-- true: libre; false: ocupado; nil: no hay terreno cargado por ahí (no se puede saber)
+local function tentFree(t, along, side, f)
+  if M.dry then return true end
+  local sgn = side > 0 and 1 or -1
+  for _, a0 in ipairs({ -1.7, 0, 1.7 }) do
+    for _, l in ipairs({ -1.7, 0, 1.7 }) do
+      local la, lo = at(t, along, side + sgn * l, f + a0)
+      if not la then return nil end
+      local x, y, z = props.ground(la, lo)
+      if not x then return nil end
+      if solidAt(x, y, z) then return false end
+    end
+  end
+  return true
+end
+local function tentSeen(t, along, side, f, approachF)
+  if M.dry then return true end
+  local la0, lo0 = at(t, along, 0, approachF)
+  local la1, lo1 = at(t, along, side, f)
+  if not (la0 and la1) then return true end
+  local x0, y0, z0 = props.ground(la0, lo0)
+  local x1, y1, z1 = props.ground(la1, lo1)
+  if not (x0 and x1) then return true end
+  local dir = vec3(x1 - x0, y1 - y0, (z1 + 1.8) - (z0 + 1.6))
+  local d = dir:length()
+  if d < 1.5 then return true end
+  local ok, h = pcall(castRayStatic, vec3(x0, y0, z0 + 1.6), dir / d, d)
+  return not (ok and h and h < d - 1.3)
+end
+
 function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
   local put = endPlacer(t, endAlong, out)
   local S, P = hw + M.SIGN_SIDE_M, hw + M.SIDE_PAD_M
@@ -776,21 +826,73 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
     return true
   end
   local done = false
-  -- forceBooth (el TC0 en el pasillo de los boxes): en su sitio y lado exactos, sin buscar otro (dentro de un aparcamiento
-  -- los pasillos cuentan como calzada y la caseta acababa 18 m más allá)
-  if forceBooth then booth(clockLado, 0, true) done = true end
-  if not done then
-  for _, c in ipairs({ { clockLado, 0 }, { -clockLado, 0 }, { clockLado, 6 }, { clockLado, -6 }, { -clockLado, 6 },
-    { -clockLado, -6 }, { clockLado, 12 }, { -clockLado, 12 } }) do
-    if booth(c[1], c[2], false) then done = true break end
+  -- Los sitios posibles, del más cercano al punto al más lejano (su lado, el otro lado; hasta 23 m a cada lado)
+  local cands = {}
+  for _, sh in ipairs({ 0, -4, 4, -8, 8, -12, 12, -17, 17, -23, 23 }) do
+    cands[#cands + 1] = { clockLado, sh }
+    cands[#cands + 1] = { -clockLado, sh }
   end
-  if not done then booth(clockLado, 0, true) end
+  local function usable(c, seen)
+    local side, f = out * c[1] * (hw + g), out * D + c[2]
+    if tentFree(t, endAlong, side, f) == false then return false end
+    return not seen or tentSeen(t, endAlong, side, f, out * D - M.TENT_SEE_M)
+  end
+  -- forceBooth (el TC0 en el pasillo de los boxes): se pone sin las comprobaciones de calzada (dentro de un aparcamiento
+  -- los pasillos cuentan como calzada), pero en un sitio libre de edificios y a la vista
+  if forceBooth then
+    for _, seen in ipairs({ true, false }) do
+      for _, c in ipairs(cands) do
+        if usable(c, seen) then booth(c[1], c[2], true) done = true break end
+      end
+      if done then break end
+    end
+  end
+  if not done then
+    for _, seen in ipairs({ true, false }) do
+      for _, c in ipairs(cands) do
+        if usable(c, seen) and booth(c[1], c[2], false) then done = true break end
+      end
+      if done then break end
+    end
+  end
+  if not done then
+    -- ningún sitio libre y a la vista en 23 m: pegada a la calzada en el mejor que no tenga un edificio encima; si ni así,
+    -- sin carpa (antes se metía dentro del edificio)
+    for _, c in ipairs(cands) do
+      if usable(c, false) then booth(c[1], c[2], true) done = true break end
+    end
+    if not done then log('W', TAG, 'control post: no free place for the tent within 23 m') end
   end
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
   centreCones(t, endAlong, out * D, -10, 10, 5)
 end
 
-M.END_FENCE_IN_M, M.END_FENCE_OUT_M = 30, 25
+M.END_FENCE_IN_M, M.END_FENCE_OUT_M, M.END_FENCE_SIDE_M = 30, 25, 1.6
+
+-- Vallas repetidas (21-nov: "algunas duplicadas"): de cada pareja a menos de minD m, se quita la segunda
+function M.dedupeFences(minD)
+  minD = minD or 1.6
+  local list = {}
+  for _, it in ipairs(props.all()) do
+    if it.lat and not it.hidden and not it.dead and tostring(it.kind):find('^fence') then list[#list + 1] = it end
+  end
+  if #list < 2 then return 0 end
+  local k = math.cos(math.rad(list[1].lat)) * 111195
+  local removed = 0
+  for i = 1, #list do
+    local a0 = list[i]
+    if not a0.hidden then
+      for j = i + 1, #list do
+        local b = list[j]
+        if not b.hidden then
+          local ex, ny = (a0.lon - b.lon) * k, (a0.lat - b.lat) * 111195
+          if ex * ex + ny * ny < minD * minD then props.hide(b) removed = removed + 1 end
+        end
+      end
+    end
+  end
+  return removed
+end
 -- role: 'start' (aquí sale el tramo que se corre) o 'finish' (aquí llega). Devuelve el semáforo / reloj de este extremo.
 function M.endKit(t, endAlong, out, hw, D, role)
   local put = endPlacer(t, endAlong, out)
@@ -807,10 +909,12 @@ function M.endKit(t, endAlong, out, hw, D, role)
   end
   paintLine(t, endAlong, hw, 0, role == 'start' and 'start' or 'finish')
   -- vallas publicitarias a los dos lados, de 30 m dentro a 25 m fuera, público detrás (y su murmullo)
+  -- (21-nov, el usuario: "más pegadas a la calzada, protegiendo la acera de peatones": el borde de la calzada + 1,6 m, no
+  -- 3,5 m, que las dejaba contra las fachadas)
   for _, sg in ipairs({ 1, -1 }) do
-    local side = out * sg * (hw + 3.5)
+    local side = out * sg * (hw + M.END_FENCE_SIDE_M)
     fenceRow(t, endAlong, side, out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M)
-    local tside = out * sg * (hw + 6)
+    local tside = out * sg * (hw + M.END_FENCE_SIDE_M + 2.5)
     local from = tside > 0 and tside - 2.5 or tside + 2.5
     for i = 0, 5 do
       local tk = ({ 'specTarp', 'specTarp2', 'specTarp3' })[i % 3 + 1]
@@ -836,6 +940,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
     clock = place('tree', t, endAlong, out * (hw + M.TREE_SIDE_M), M.TREE_YAW + ((out > 0) and 0 or 180), out * M.TREE_FWD_M)
     M.crowdZones[#M.crowdZones + 1] = { at = endAlong - 40, mid = endAlong - 6 }
   end
+  pcall(M.dedupeFences, 1.6)
   return clock and clock.obj
 end
 

@@ -34,3 +34,10 @@ El tramo de referencia es **Obejo** (43 Rally Sierra Morena 2026), comprobado en
 
 ## Banderas
 `earthRaid/flags/*.png` (30×20): banderas de países por código ISO 3166-1 alfa-2, para el menú. Las banderas nacionales son de dominio público.
+
+## Control horario y vallas (21-nov)
+- **Carpa del TC siempre visible y sin edificio encima:** `dressing.tcPost` prueba hasta 23 m a cada lado, en su lado y en el otro; la planta 3x3 se comprueba con rayos hacia abajo (`tentFree`) y la vista desde la calzada 12 m antes (`tentSeen`). Sin sitio libre no se pone carpa (antes se metía en el edificio). El TC0 usa la misma búsqueda sin las comprobaciones de calzada.
+- **Parking:** vallas publicitarias en la envolvente convexa de las plazas, 4 m hacia fuera, con la publicidad adentro y hueco de 13 m en la salida (`servicepark.lotFence`).
+- **Vallas de la salida/meta:** a 1,6 m del borde de la calzada (no 3,5), orientadas por la fila (`opts.chord`), sin repetidas (`dressing.dedupeFences`).
+- **Calles sin salida:** `stage.walkRoads` no sigue una calle de menos de 100 m de recorrido si hay otra que continúe (el TC1 y el STOP).
+- **GPS:** el destino de la ruta del tramo va 30 m pasada la meta, para que la línea verde llegue a la línea.

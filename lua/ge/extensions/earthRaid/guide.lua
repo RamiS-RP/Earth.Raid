@@ -4,6 +4,7 @@ local M = {}
 local TAG = 'earthRaid'
 
 M.GPS_POINTS = 11          -- lo que admite gpsSetRoute (10 waypoints + destino)
+M.GPS_PAST_M = 30          -- el destino, tras la línea de meta
 
 local function api() return rawget(_G, 'beamngEarth_api') end
 
@@ -19,10 +20,25 @@ function M.along(t, name)
   local a = api()
   if not (a and a.gpsSetRoute) then return false end
   local pts = {}
-  for i = 1, M.GPS_POINTS do
-    local along = t.total * i / M.GPS_POINTS
-    local lat, lon = geo.toGeo(t, geo.at(t, along))
-    pts[#pts + 1] = { lat = lat, lon = lon, name = i == M.GPS_POINTS and name or nil }
+  for i = 1, M.GPS_POINTS - 1 do
+    local along = t.total * i / (M.GPS_POINTS - 1)
+    -- (la última no está en la meta, sino M.GPS_PAST_M m pasada: el planificador de rutas corta la línea en el nodo de
+    -- carretera anterior al destino y la verde terminaba antes de la línea de meta, 21-nov)
+    if i < M.GPS_POINTS - 1 then
+      local lat, lon = geo.toGeo(t, geo.at(t, along))
+      pts[#pts + 1] = { lat = lat, lon = lon }
+    end
+  end
+  do
+    local lat, lon
+    if t.after and t.after.total > 10 then
+      lat, lon = geo.toGeo(t.after, geo.at(t.after, math.min(M.GPS_PAST_M + (t.afterOff or 0), t.after.total)))
+    else
+      local x, y = geo.at(t, t.total)
+      local dx, dy = geo.dirAt(t, t.total)
+      lat, lon = geo.toGeo(t, x + dx * M.GPS_PAST_M, y + dy * M.GPS_PAST_M)
+    end
+    pts[#pts + 1] = { lat = lat, lon = lon, name = name }
   end
   local ok, err = a.gpsSetRoute(pts)
   if not ok then log('W', TAG, 'gps: ' .. tostring(err)) end

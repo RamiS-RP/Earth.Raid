@@ -655,6 +655,80 @@ function M.parkedCars(n, mine)
   return out
 end
 
+-- Vallas publicitarias alrededor del aparcamiento (21-nov, el usuario: "perimetrar el parking con ballas publicitarias"):
+-- la envolvente convexa de las plazas, 4 m hacia fuera (la carpa sobresale 3 m del centro de su plaza), con la publicidad
+-- mirando adentro y un hueco de GAP m a cada lado de la salida del recinto (por donde se sale y está el TC0). Una pieza
+-- no se pone si cae contra un edificio o en una pendiente (el borde del aparcamiento). MARK:lotfence-v1
+M.LOT_FENCE_OFF_M, M.LOT_FENCE_GAP_M, M.LOT_FENCE_MAX, M.LOT_FENCE_PITCH_M = 4.0, 13, 90, 2.75
+M.LOT_FENCE_KINDS = { 'fenceNgrc', 'fenceBlastr', 'fenceRotopad', 'fenceApm', 'fenceApmSpecial' }
+local function hullOf(pts)
+  local p = {}
+  for _, s in ipairs(pts) do p[#p + 1] = { s[1], s[2] } end
+  table.sort(p, function(u, v) return u[1] < v[1] or (u[1] == v[1] and u[2] < v[2]) end)
+  local function cross(o, u, v) return (u[1] - o[1]) * (v[2] - o[2]) - (u[2] - o[2]) * (v[1] - o[1]) end
+  local lo, up = {}, {}
+  for _, q in ipairs(p) do
+    while #lo >= 2 and cross(lo[#lo - 1], lo[#lo], q) <= 0 do lo[#lo] = nil end
+    lo[#lo + 1] = q
+  end
+  for i = #p, 1, -1 do
+    local q = p[i]
+    while #up >= 2 and cross(up[#up - 1], up[#up], q) <= 0 do up[#up] = nil end
+    up[#up + 1] = q
+  end
+  lo[#lo] = nil
+  up[#up] = nil
+  for _, q in ipairs(up) do lo[#lo + 1] = q end
+  return lo              -- antihorario: el interior queda a la izquierda de cada lado
+end
+local function lotFence(site)
+  local a = api()
+  if not (a and site and site.stalls and #site.stalls >= 6) then return 0 end
+  local h = hullOf(site.stalls)
+  if #h < 3 then return 0 end
+  local gates = {}
+  if M.tcSpot then gates[#gates + 1] = { M.tcSpot.x, M.tcSpot.y } end
+  if site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
+  local z0 = site.z or terrainZ(site.x, site.y) or 0
+  local n, skipped = 0, 0
+  for i = 1, #h do
+    local A, B = h[i], h[i % #h + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 1 then
+      ex, ey = ex / L, ey / L
+      local ox, oy = ey * M.LOT_FENCE_OFF_M, -ex * M.LOT_FENCE_OFF_M       -- hacia fuera (derecha del lado)
+      local la0, lo0 = a.toGeo(A[1], A[2], z0)
+      local la1, lo1 = a.toGeo(A[1] + ex * 10, A[2] + ey * 10, z0)
+      local kk = math.cos(math.rad(la0)) * 111195
+      local gx, gy = (lo1 - lo0) * kk, (la1 - la0) * 111195
+      local gl = math.sqrt(gx * gx + gy * gy)
+      if gl > 0.01 then gx, gy = gx / gl, gy / gl else gx, gy = 0, 1 end
+      for d = 0, L, M.LOT_FENCE_PITCH_M do
+        local x, y = A[1] + ex * d + ox, A[2] + ey * d + oy
+        local z = terrainZ(x, y)
+        local ok = z ~= nil and math.abs(z - z0) < 2.5 and n < M.LOT_FENCE_MAX
+        if ok then
+          for _, g in ipairs(gates) do
+            if (x - g[1]) ^ 2 + (y - g[2]) ^ 2 < M.LOT_FENCE_GAP_M ^ 2 then ok = false break end
+          end
+        end
+        if ok then
+          local hitOk, hd = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
+          if hitOk and hd and hd < 24.3 then ok = false end
+        end
+        if ok then
+          local la, lo = a.toGeo(x, y, z)
+          if props.add(M.LOT_FENCE_KINDS[n % #M.LOT_FENCE_KINDS + 1], la, lo, gx, gy, 0, { row = true, noPush = true }) then n = n + 1 end
+        else skipped = skipped + 1 end
+      end
+    end
+  end
+  log('I', TAG, ('lot fence: %d pieces, %d spots skipped'):format(n, skipped))
+  return n
+end
+M.lotFence = lotFence
+
 local function buildOnStalls(site)
   local a = api()
   -- los ejes son los de las plazas (su rumbo = el largo de la plaza; una fila de plazas, a lo ancho), no los del rectángulo
@@ -756,6 +830,8 @@ local function buildOnStalls(site)
       box = { lat = la, lon = lo, faceLat = fla, faceLon = flo }
     end
   end
+  local okF, errF = pcall(lotFence, site)
+  if not okF then log('W', TAG, 'lot fence: ' .. tostring(errF)) end
   return box
 end
 
