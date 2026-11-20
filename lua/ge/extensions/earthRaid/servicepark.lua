@@ -61,12 +61,37 @@ local function polyDist(poly, x, y)
   return math.sqrt(best), inside
 end
 
+
+-- Parques colocados a mano por el usuario (20-nov): donde la búsqueda automática no da con un sitio como quiere, sus
+-- cruces sobre una captura. lat/lon (no coordenadas del juego: valen en cualquier zona cargada).
+--   boxes: un box (carpa + coche + extintores) en cada punto; los coches salen marcha atrás hacia 'aisle' (grados, 0 = N, 90 = E)
+--   tc0: el puesto del TC0; out = hacia dónde se sale (grados), face = hacia dónde miran los boxes desde él
+M.MANUAL = {
+  { name = 'cristian-lopez', lat = 43.31945, lon = -3.85400, radius = 500, aisle = 90,
+    boxes = { { 43.3195570, -3.8541923 }, { 43.3194202, -3.8541603 }, { 43.3193689, -3.8539816 }, { 43.3193626, -3.8538706 } },
+    tc0 = { lat = 43.3195651, lon = -3.8536733, out = 90, face = 180 } },
+}
+local function manualFor(lat, lon)
+  for _, m in ipairs(M.MANUAL) do
+    local dy = (lat - m.lat) * 111320
+    local dx = (lon - m.lon) * 111320 * math.cos(math.rad(lat))
+    if dx * dx + dy * dy <= m.radius * m.radius then return m end
+  end
+end
+M.manualFor = manualFor
+
 -- Empieza la búsqueda. toward: hacia dónde se sale (el primer control), para orientar la salida.
 function M.search(lat, lon, towardLat, towardLon)
   local a = api()
   if not (a and a.toGame) then return nil end
   local x0, y0 = a.toGame(lat, lon, 0)
   if not x0 then return nil end
+  local man = manualFor(lat, lon)
+  if man then
+    local cx, cy = a.toGame(man.tc0.lat, man.tc0.lon, 0)
+    return { x0 = x0, y0 = y0, lat = lat, lon = lon, t0 = os.clock(), phase = 'done',
+      site = { manual = man, x = cx, y = cy, z = terrainZ(cx, cy) or 0, exitX = cx, exitY = cy, hx = 0, hy = 1, len = 40, wid = 40 } }
+  end
   local h = { x0 = x0, y0 = y0, lat = lat, lon = lon, t0 = os.clock(), n = math.floor(2 * M.R / M.STEP) + 1,
     grid = {}, z = {}, i = 1, phase = 'buildings', polys = nil, site = nil, tx = nil, ty = nil }
   if towardLat then h.tx, h.ty = a.toGame(towardLat, towardLon, 0) end
@@ -730,10 +755,49 @@ local function buildOnStalls(site)
   return box
 end
 
+
+-- Boxes en los puntos de M.MANUAL: la misma pieza que en la fila (carpa girada 90°, coche de morro, extintores atrás)
+local function buildManual(site)
+  local a = api()
+  local man = site.manual
+  local rad = math.rad(man.aisle)
+  local mx, my = math.sin(rad), math.cos(rad)       -- "marcha": hacia donde sale el coche (el pasillo)
+  local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
+  local n = #man.boxes
+  local mine = n                                      -- el coche del jugador, en el box más cercano al camino
+  local cars = M.parkedCars(n, mine)
+  local box
+  local function put(kind, la, lo, back, along, yaw, opts)
+    local x, y = a.toGame(la, lo, 0)
+    x, y = x - mx * back - my * along, y - my * back + mx * along
+    local pla, plo = a.toGeo(x, y, terrainZ(x, y) or site.z)
+    return props.add(kind, pla, plo, mx, my, yaw or 0, opts)
+  end
+  for i, b in ipairs(man.boxes) do
+    put(kinds[(i - 1) % #kinds + 1], b[1], b[2], 0, 0, 90)
+    if cars[i] then put('rallyCar', b[1], b[2], 0, 0, 180, { vehicle = cars[i] }) end
+    put('extinguisher', b[1], b[2], M.EXT_BACK_M + 0.05, 0.7, 40)
+    put('extinguisher', b[1], b[2], M.EXT_BACK_M, 0.95, 250)
+    if i == mine then
+      local x, y = a.toGame(b[1], b[2], 0)
+      local fla, flo = a.toGeo(x - mx * 12, y - my * 12, site.z)
+      box = { lat = b[1], lon = b[2], faceLat = fla, faceLon = flo }
+    end
+  end
+  local o, f = math.rad(man.tc0.out), math.rad(man.tc0.face)
+  M.tcSpot = { x = site.x, y = site.y, z = site.z, ux = math.sin(o), uy = math.cos(o), fx = math.sin(f), fy = math.cos(f) }
+  return box
+end
+
 function M.build(site)
   local a = api()
   M.tcSpot = nil
   if not (a and site) then return nil end
+  if site.manual then
+    local ok, box = pcall(buildManual, site)
+    if ok then return box end
+    log('W', TAG, 'manual: ' .. tostring(box))
+  end
   if site.stalls then
     local ok, box = pcall(buildOnStalls, site)
     if ok and box then return box end
