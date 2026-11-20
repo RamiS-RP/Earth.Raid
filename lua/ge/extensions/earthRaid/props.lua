@@ -314,12 +314,21 @@ local function takeSpare(it)
 end
 
 -- lo de este tramo pasa a ser de repuesto para el siguiente (las luces, sonidos y líneas pintadas no: se borran)
+-- el parque de asistencia (boxes, casetas, vallas, TC0) se queda hasta que arranca el tramo (M.releasePark)
+M.group = nil
+local function parkKeep(it) return it.park == true end
+
 function M.retire()
   phys.clear()
-  for _, it in ipairs(queue) do it.dead = true end
-  queue = {}
+  local kept = {}
+  for _, it in ipairs(queue) do if parkKeep(it) then kept[#kept + 1] = it else it.dead = true end end
+  local keepQ = {}
+  for _, it in ipairs(queue) do if parkKeep(it) then keepQ[#keepQ + 1] = it end end
+  queue = keepQ
+  kept = {}
   for _, it in ipairs(items) do
-    if it.obj and not it.line and it.kind ~= 'lamp' and not M.SOUNDS[it.kind] then
+    if parkKeep(it) then kept[#kept + 1] = it
+    elseif it.obj and not it.line and it.kind ~= 'lamp' and not M.SOUNDS[it.kind] then
       it.key = optsKey(it.opts)
       local l = spare[it.kind] or {}
       spare[it.kind] = l
@@ -328,8 +337,21 @@ function M.retire()
       dropObj(it)
     end
   end
-  items = {}
+  items = kept
   M.reused = 0
+end
+
+-- el tramo empieza: el parque de asistencia se libera (memoria)
+function M.releasePark()
+  local rest, n = {}, 0
+  for _, it in ipairs(items) do
+    if it.park then dropObj(it) n = n + 1 else rest[#rest + 1] = it end
+  end
+  local q = {}
+  for _, it in ipairs(queue) do if it.park then it.dead = true else q[#q + 1] = it end end
+  queue, items = q, rest
+  if n > 0 then M.collisionDirty = true end
+  return n
 end
 
 -- borra los de repuesto que no pasen keep(item) (sin keep: todos)
@@ -355,7 +377,7 @@ end
 function M.add(kind, lat, lon, dx, dy, yaw, opts)
   local shape, prefab, snd = M.SHAPES[kind], M.PREFABS[kind], M.SOUNDS[kind]
   if not (shape or prefab or snd or kind == 'lamp') then return nil end
-  local it = { kind = kind, lat = lat, lon = lon, dx = dx, dy = dy, yaw = yaw or 180, dz = opts and opts.dz, opts = opts }
+  local it = { kind = kind, lat = lat, lon = lon, dx = dx, dy = dy, yaw = yaw or 180, dz = opts and opts.dz, opts = opts, park = M.group == 'park' or nil }
   items[#items + 1] = it
   if takeSpare(it) then return it end
   if M.IMMEDIATE[kind] or M.sync then

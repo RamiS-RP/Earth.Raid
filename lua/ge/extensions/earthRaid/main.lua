@@ -1195,7 +1195,15 @@ function M.uiStartRally(eventId, fromRun, force)
   pcall(props.clear)
   S.box, S.park, S.tc0Done, S.forceRoad = nil, nil, nil, nil
   servicepark.tcSpot = nil
-  local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
+  local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end,
+    onReturnToBox = function()
+      -- vuelta a box (primer tramo inverso): el parque de asistencia se monta otra vez, y se libera al empezar el siguiente tramo
+      local site = S.park and S.park.site
+      if not site then return end
+      props.group = 'park'
+      pcall(servicepark.build, site)
+      props.group = nil
+    end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
   -- (18-nov) ya no se añaden apps a las disposiciones del jugador: las del juego van en earthRaidLoop/earthRaidStage
@@ -1217,6 +1225,8 @@ function M.uiStartRally(eventId, fromRun, force)
       description = M.loadingText(full, nil, es),
       near = { { start[1], start[2], 150 } },
       dress = function()
+        props.group = 'park'   -- lo que se monte aquí es del parque de asistencia: se queda hasta que arranque el tramo
+        local r1, r2 = (function()
         -- el parque de asistencia: en la mejor explanada cerca del punto del organizador (un aparcamiento, un
         -- descampado con salida a la carretera, llano: servicepark.lua), con sus boxes y el TC0 a la salida; si no
         -- hay sitio, el box de siempre junto a la asistencia
@@ -1258,6 +1268,9 @@ function M.uiStartRally(eventId, fromRun, force)
         local pl, po = a.position()
         if pl then dressing.runJobsNear(pl, po, 2) end
         return (pl and dressing.pendingJobsNear(pl, po) or 0) + props.pump(loader.PUMP_MS)
+        end)()
+        props.group = nil
+        return r1, r2
       end,
       place = function()
         -- de cara al primer control horario (norma 17-nov: orientado hacia el siguiente TC)

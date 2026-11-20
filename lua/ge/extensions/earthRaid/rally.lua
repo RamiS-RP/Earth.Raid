@@ -412,6 +412,9 @@ function M.onStageFinish(res)
   R.total = R.total + res.time
   -- las penalizaciones del tramo (salida en falso, fuera de hora en la línea, recuperaciones) van a su bloque
   for _, pn in ipairs(res.penalties or {}) do penalise('SS' .. cur.run, pn.s, pn.kind) end
+  -- primer tramo en sentido inverso: la meta cae junto al parque de asistencia; el box vuelve a montarse para simular
+  -- la vuelta a box (el parque se liberó al empezar el tramo)
+  if cur and cur.reverse and cur.run == 1 and R.hooks.onReturnToBox then pcall(R.hooks.onReturnToBox) end
 end
 
 -- parado en el STOP: empieza el enlace al siguiente control (con tráfico)

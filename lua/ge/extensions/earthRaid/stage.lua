@@ -1280,6 +1280,7 @@ function M.update(dtSim, dtReal)
     if S.opt.voice and c >= 1 and c <= 5 and not S.saidCount[c] then S.saidCount[c] = true audio.say({ 'system_countdown' .. c }, true) end
     local function go(falseStart)
       S.phase, S.time, S.hint = 'running', 0, 1
+      pcall(props.releasePark)   -- el tramo empieza: el parque de asistencia fuera (memoria)
       if falseStart and S.opt.falseStart then
         penalise('falseStart', M.FALSE_START_S)
         if S.opt.voice then audio.say({ 'system_falseStart' }, true) end
