@@ -8,8 +8,8 @@
 local M = {}
 local TAG = 'earthRaid'
 
-M.ON_M = 180
-M.OFF_M = 280
+M.ON_M = 70                   -- (20-nov, el usuario: física solo a una distancia prudente; eran 180 / 280)
+M.OFF_M = 120
 M.MAX = 24                    -- como mucho a la vez
 M.SPAWN_EVERY_S = 0.45        -- uno cada tanto: crear un vehículo cuesta de 100 a 800 ms (18-nov, medido: era la causa
                               -- de los tirones; en la pantalla de carga se crean los de la salida de golpe)

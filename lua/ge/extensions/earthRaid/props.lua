@@ -188,7 +188,10 @@ end
 
 M.SOLID = { hayBale = true, hayBale2 = true, plasticBarrier = true, plasticBarrierW = true, table = true, chair = true, cushion = true, bigToolbox = true, bigToolbox2 = true, smallToolbox = true,
   tireRack = true, workbench = true, stool = true, gazeboFrame = true }
-function M.isSolid(kind) return M.SOLID[kind] or tostring(kind):find('^fence') ~= nil end
+-- (20-nov, norma del usuario: las vallas que delimitan el circuito NO chocan, para ahorrar; lo que cierra una calle o una
+-- zona de escape —pacas y barreras de plástico— sí, con la malla visible, para que el coche no se salga del tramo)
+M.HARD = { hayBale = true, hayBale2 = true, plasticBarrier = true, plasticBarrierW = true }
+function M.isSolid(kind) return M.SOLID[kind] == true end
 
 -- Coloca un objeto: kind (clave de SHAPES o PREFABS), lat, lon, dx, dy (dirección de marcha), yaw (grados, horario)
 local baleMats = false
@@ -232,7 +235,10 @@ local function create(kind, opts)
     -- malla de colisión. Carteles, conos y cintas no: son papel en un palo o plástico, y cerca del coche se cambian
     -- por su versión con física (phys.lua), que se cae o se rompe al tocarla.
     if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
-    else M.collisionDirty = true end
+    else
+      if M.HARD[kind] then o:setField('collisionType', 0, 'Visible Mesh') end
+      M.collisionDirty = true
+    end
   end
   if kind == 'ambulance' or phys.PHYS_ONLY[kind] then pcall(function() o:setHidden(true) end) end
   register(o, kind)

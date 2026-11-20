@@ -749,14 +749,12 @@ local function buildOnStalls(site)
     if cars[i] then put('rallyCar', 0, 0, 180, { vehicle = cars[i] }) end
     put('extinguisher', -M.EXT_BACK_M - 0.05, -0.7, 40)
     put('extinguisher', -M.EXT_BACK_M, -0.95, 250)
-    put('coneS', 4.6, 1.3, 0)
+    -- (20-nov, norma del usuario: sin conos en los boxes; cada cono cerca del coche es un objeto con física)
     if i == mine then
       local la, lo = a.toGeo(p[1], p[2], p[3])
       local fla, flo = a.toGeo(p[1] - fx * 12, p[2] - fy * 12, p[3])       -- de morro: mirando al fondo
       box = { lat = la, lon = lo, faceLat = fla, faceLon = flo }
     end
-    if i == 1 then put('coneS', 4.6, -3.4, 0) end
-    if i == #picks then put('coneS', 4.6, 3.4, 0) end
   end
   return box
 end
@@ -853,9 +851,6 @@ function M.build(site)
       box = { lat = la, lon = lo, faceLat = fla, faceLon = flo }
     end
   end
-  -- conos en los extremos de la fila
-  put('coneS', along0 - 3.4, rowSide - sideSign * 4.6, 0)
-  put('coneS', along0 + (n - 1) * M.PAIR_M + 3.4, rowSide - sideSign * 4.6, 0)
   local _ = exitAlong
   return box
 end

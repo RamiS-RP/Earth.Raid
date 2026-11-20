@@ -574,8 +574,6 @@ function M.serviceBox(lat, lon, towardLat, towardLon)
   put('workbench', 3.9, 1.0, 180)
   put('stool', 3.4, -0.4, 0)
   put('tireRack', -3.9, 1.2, 0)
-  put('coneS', -4.2, -1.6, 0)
-  put('coneS', 4.2, -1.6, 0)
   local la, lo = a.toGeo(cx, cy, z)
   local fla, flo = a.toGeo(cx + hx * 10, cy + hy * 10, z)
   return { lat = la, lon = lo, faceLat = fla, faceLon = flo }
@@ -1182,24 +1180,26 @@ function M.closures(t, from, to)
                       local qx, qy = -uy, ux
                       local w = (on.radius or 3)
                       local d0 = (node.radius or 3) + 5
-                      -- pacas cuadradas (1,8 x 2,5 m) a lo ancho de la calle y una segunda fila encima
+                      -- pacas cuadradas (1,8 x 2,5 m) cruzadas: el lado largo a lo ancho de la calle (20-nov, el usuario:
+                      -- estaban a lo largo, giradas 90°), y una segunda fila encima a tresbolillo. MARK:bales-across-v1
                       local kinds = {}
-                      local nb = math.max(2, math.floor((2 * w) / 1.9 + 0.5))
+                      local nb = math.max(2, math.floor((2 * w) / 2.6 + 0.5))
+                      local stepB = (2 * w - 2.6) / math.max(1, nb - 1)
                       for i = 0, nb - 1 do
-                        local off = -w + 0.95 + i * ((2 * w - 1.9) / math.max(1, nb - 1))
+                        local off = -w + 1.3 + i * stepB
                         kinds[#kinds + 1] = { 'hayBale2', off, 0, 0 }
-                        if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + 0.95, 0, 1.3 } end
+                        if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + stepB / 2, 0, 1.3 } end
                       end
                       for _, k in ipairs(kinds) do
                         local bx, by = nx + ux * (d0 + k[3]) + qx * k[2], ny + uy * (d0 + k[3]) + qy * k[2]
                         local bl, bo = geo.toGeo(t, bx, by)
-                        -- la paca con su lado largo (Y, 2,5 m) en el sentido de la calle y el corto (1,8 m) a lo ancho
-                        local it3 = props.add(k[1], bl, bo, ux, uy, 0, k[4] > 0 and { dz = k[4] } or nil)
+                        -- la paca con su lado largo (Y, 2,5 m) a lo ancho de la calle y el corto (1,8 m) en su sentido
+                        local it3 = props.add(k[1], bl, bo, ux, uy, 90, k[4] > 0 and { dz = k[4] } or nil)
                         if it3 then it3.roadOk = true it3.closure = true end
                       end
                       local nB = 0
                       for off = -w + 0.8, w - 0.8, 1.58 do
-                        local bx, by = nx + ux * (d0 + 3.2) + qx * off, ny + uy * (d0 + 3.2) + qy * off
+                        local bx, by = nx + ux * (d0 + 2.7) + qx * off, ny + uy * (d0 + 2.7) + qy * off
                         local bl, bo = geo.toGeo(t, bx, by)
                         local it3 = props.add(nB % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', bl, bo, ux, uy, 90)
                         if it3 then it3.roadOk = true it3.closure = true end
