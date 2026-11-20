@@ -704,8 +704,6 @@ local function controlPoint(t, along, hw, label, fwd, bothSides, gap)
     place('gazebo3x3', t, along, side, sg > 0 and 180 or 0, f)
     place('table', t, along, side - sg * 0.5, sg > 0 and 180 or 0, f)
     place('chair', t, along, side + sg * 0.5, (sg > 0 and 0 or 180) + M.CHAIR_YAW, f)
-    -- el reloj de fichar (el LED del juego, en su trípode) a la entrada del puesto, mirando a la carretera
-    place('tree', t, along, side - sg * 0.6, sg > 0 and 90 or -90, f - ff * 1.9)
   end
   -- el generador de la carpa (sonido) detrás del puesto
   place('sndGenerator', t, along, hw + g + 2.5, 0, f + 1)
@@ -822,7 +820,13 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
     place('extinguisher', t, endAlong, side - sgn * 1.5, 250, f + 1.6, o())
     -- de noche, una luz bajo la carpa (de día no se nota)
     place('lamp', t, endAlong, side, 0, f, o({ dz = 2.4 }))
-    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, f - 1.4, o())
+    -- vallas como las de NGRC Rally Utah (mainPrefab, medidas respecto al cartel): una detrás de la carpa junto a la
+    -- carretera, otra delante, y una enfrente al otro lado del asfalto. Sin reloj: solo las salidas lo llevan. MARK:tcfence-v1
+    local fo = { row = true, noPush = true, chord = true }
+    local fy = sgn > 0 and 0 or 180
+    place(M.FENCE_KINDS[1], t, endAlong, side - sgn * 0.6, fy, f - 1.9, fo)
+    place(M.FENCE_KINDS[2], t, endAlong, side + sgn * 0.7, fy, f + 2.0, fo)
+    place(M.FENCE_KINDS[3], t, endAlong, -side, fy + 180, f + 2.6, fo)
     return true
   end
   local done = false
@@ -937,7 +941,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
   if role == 'start' then
     clock = place('tree', t, endAlong, out * -(hw + M.TREE_SIDE_M), M.TREE_YAW + ((out > 0) and 180 or 0), -out * M.TREE_FWD_M)
   else
-    clock = place('tree', t, endAlong, out * (hw + M.TREE_SIDE_M), M.TREE_YAW + ((out > 0) and 0 or 180), out * M.TREE_FWD_M)
+    -- (sin reloj en la meta ni en los controles: como NGRC Rally Utah, solo las salidas llevan el reloj LED)
     M.crowdZones[#M.crowdZones + 1] = { at = endAlong - 40, mid = endAlong - 6 }
   end
   pcall(M.dedupeFences, 1.6)

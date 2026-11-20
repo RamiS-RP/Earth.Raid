@@ -428,7 +428,7 @@ end
 
 M.OUTLINE_PTS = 140        -- puntos por tramo en el dibujo del menú
 M.NATIVE_VISUAL = 'RallyVisualPacenotes'
-M.NOTES_TOP = '70px'
+M.NOTES_TOP = '13.2%'        -- donde estaba la ventana de la cámara del reloj (la misma altura que en el juego)
 local U = { open = false, q = '', sel = nil, filters = { country = '', type = '', category = '', surface = '', status = '', near = '' } }
 
 -- categorías de un evento: los campeonatos de su "championship" ("ERC · S-CER" -> ERC, S-CER)

@@ -92,12 +92,14 @@ local function fromStage(S, R, api)
     d.activeState = 'vehicleProximity'
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
     if S.startAt then sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(S.startAt), hhmm(S.startAt) end
+    sc.timeDiff = math.max(0, math.ceil(S.stagingLeft or 0))   -- el mismo valor que pinta el reloj de la salida
     d.vehicleProximity = prox(S.distM, true)
     canSkip = S.staged == true
   elseif ph == 'countdown' then
     -- la cuenta atrás va en el reloj LED real de la salida (startclock.lua, con la cámara y el marco): sin el semáforo
     -- 2D del juego (como hace el juego con rallyStartCountdownDisplay = 3d)
-    d.activeState = 'vehicleProximity'
+    d.activeState = 'countdown'
+    d.countdownData = { countdown = math.max(0, math.ceil(S.countdown or 0)), state = 'countdown_running' }
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
     d.vehicleProximity = prox(0, true)
   elseif ph == 'running' then
@@ -207,8 +209,12 @@ function M.update(stage, rally, api)
   end
   if data then
     data.timecardData = data.timecardData or {}
-    if okC and UiColors.updateForStage then pcall(UiColors.updateForStage, colors, false) end
-    if not colors.theme then colors.theme = '#1f8fff' end
+    -- como el juego: dentro de un rally (bucle) la barra va en verde, un tramo suelto en azul (uiColors del juego)
+    if okC then
+      local fn = R and UiColors.updateForLoop or UiColors.updateForStage
+      if fn then pcall(fn, colors, false) end
+    end
+    if not colors.theme then colors.theme = R and '#009a1a' or '#1f8fff' end
     data.uiColors = colors
     guihooks.queueStream('rallyLoop', data)
     wasActive = true

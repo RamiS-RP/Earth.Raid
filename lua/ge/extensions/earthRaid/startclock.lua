@@ -8,12 +8,11 @@ local TAG = 'earthRaid'
 M.VIEW_NAME = 'earthRaidStartClockView'
 M.WIDTH_RATIO = 0.2
 M.ASPECT = 400 / 164
-M.TOP_RATIO = 0.225         -- debajo de la tarjeta STAGED / SLOW del juego (acaba al 21 % de la pantalla): a 0,132 la
-                            -- ventana de la cámara la tapaba (19-nov)
+M.TOP_RATIO = 0.132         -- como el juego (rallyStartClock): la ventana tapa el panel de la cuenta atrás y deja el HUD limpio
 M.FOV = 25
 M.DIST_M = 1.0
 M.SHIFT = 1 / 3
-M.LINGER_S = 1.5
+M.LINGER_S = 0              -- la ventana se quita al instante al salir (el juego la deja 1,5 s): ahí salen las notas
 M.MASK = 29
 
 local view, linger, clockObj, linePos = nil, 0, nil, nil
