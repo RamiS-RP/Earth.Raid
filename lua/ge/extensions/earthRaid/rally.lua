@@ -8,6 +8,7 @@
 -- fichar con penalización, y un enlace se puede saltar (teletransporte al control a su hora, sin penalización).
 -- Los enlaces siguen los trazados reales del evento (liaisons del KMZ) encadenados; si no hay, el GPS de BeamNG.Earth.
 local geo = require('earthRaid/geo')
+local tz = require('earthRaid/trafficzones')
 local stage = require('earthRaid/stage')
 local dressing = require('earthRaid/dressing')
 local guide = require('earthRaid/guide')
@@ -21,6 +22,8 @@ M.PENALTY_PER_MIN = 10
 M.START_MARGIN_S = 35       -- salida: el siguiente minuto entero con al menos esto tras fichar
 M.TC_ZONE_M = 12            -- radio del punto de fichaje
 M.TC_HOLD_S = 0.5           -- parado en él este tiempo: ficha
+M.TC0_NEAR_M, M.TC0_PASSED_M, M.TC0_FAR_M = 30, 90, 400   -- TC0 pasado de largo: visto a menos de 30 m y ya a más de 90,
+                            -- o 400 m más lejos de lo más cerca que se estuvo (salida por otro lado): se ficha solo
 M.BUILD_M = 2500            -- el montaje del siguiente tramo se coloca al acercarse a esto de su control
 M.JOIN_M = 900              -- un enlace del KMZ vale para salir de A / llegar a B si empieza / acaba a menos de esto
 M.LINK_M = 600              -- dos enlaces se encadenan si el final de uno queda a menos de esto del inicio del otro...
@@ -206,8 +209,7 @@ function M.start(ev, fromRun, hooks)
   local opt = settings.get()
   local it, err = M.itinerary(ev, fromRun, M.LIAISON_AVG_KMH)
   if not it then return false, err end
-  local tm = os.date('*t')
-  local now = tm.hour * 3600 + tm.min * 60 + tm.sec
+  local now = geo.dayClock()
   local startMin = math.floor(now / 60) + 2
   schedule(it, startMin)
   R = { ev = ev, it = it, idx = 1, clock = now, startMin = startMin, phase = 'service', total = 0, penalties = {},
@@ -237,6 +239,7 @@ function M.stop()
   if not R then return end
   if stage.active() then stage.stop() end
   stage.trafficBack()
+  pcall(tz.clear)
   guide.clear()
   R = nil
   guihooks.trigger('EarthRaidRally', { active = false })
@@ -246,13 +249,52 @@ end
 
 local function item() return R and R.it.items[R.idx] end
 
-local function setGps()
+-- El GPS del enlace (19-nov, el usuario: "a veces se vuelve loco y no me manda donde tengo que ir"): la ruta se pide
+-- SIEMPRE desde donde está el coche (antes, desde el principio del enlace: al reponerla a medio camino mandaba de
+-- vuelta al primer punto), con pocos puntos de paso del recorrido oficial (cada uno puede caer en la calzada contraria
+-- y forzar un cambio de sentido) y acabando en el punto de fichaje de verdad. Lejos del recorrido oficial, o si la
+-- ruta planeada sale disparatada (update), la más corta del GPS directa al control. MARK:gps-v2
+M.GPS_OFF_M = 500           -- más lejos que esto del recorrido oficial: ruta directa al control
+M.GPS_WP_M = 1500           -- un punto de paso cada tantos metros, como poco
+M.GPS_CRAZY = 1.8           -- la ruta planeada mide más que esto x el enlace (+1 km): directa al control
+local function setGps(direct)
   local cur = item()
   if not cur then return end
-  local t = geo.track(cur.liaison.path)
+  -- en el enlace, siempre la línea azul del GPS (y la de carrera, fuera)
+  guide.liaison(settings.get().hardcore == true)
   local label = cur.label .. (cur.stage and (' · ' .. cur.stage.title) or '')
-  if cur.liaison.real and #cur.liaison.path > 2 then guide.along(t, label)
-  else local a = api() if a and a.gpsSet then pcall(a.gpsSet, cur.pos[1], cur.pos[2], label) end end
+  local a = api()
+  if not a then return end
+  local tgt, pts = cur.pos, nil
+  if not direct and R.gpsDirect ~= R.idx and cur.liaison.real and #cur.liaison.path > 2 and a.gpsSetRoute then
+    local t = geo.track(cur.liaison.path)
+    local p = a.ready and a.ready() and a.pose and a.pose() or nil
+    local from, off = 0, 0
+    if p and p.lat then
+      local x, y = geo.toLocal(t, p.lat, p.lon)
+      from, off = geo.project(t, x, y, 1, 1, #t.pts)
+    end
+    if off <= M.GPS_OFF_M then
+      local ex, ey = geo.toLocal(t, tgt[1], tgt[2])
+      local to = geo.project(t, ex, ey, 1, 1, #t.pts)
+      if to > from then
+        pts = {}
+        local step = math.max(M.GPS_WP_M, (to - from) / (guide.GPS_POINTS - 1))
+        local al = from + step
+        while al < to - step * 0.5 and #pts < guide.GPS_POINTS - 1 do
+          local la, lo = geo.toGeo(t, geo.at(t, al))
+          pts[#pts + 1] = { lat = la, lon = lo }
+          al = al + step
+        end
+        pts[#pts + 1] = { lat = tgt[1], lon = tgt[2], name = label }
+      end
+    end
+  end
+  if pts and #pts > 1 then
+    local ok, res = pcall(a.gpsSetRoute, pts)
+    if ok and res then return end
+  end
+  if a.gpsSet then pcall(a.gpsSet, tgt[1], tgt[2], label) end
 end
 
 -- Salida de la asistencia (TC0): el reloj corre y empieza el primer enlace
@@ -261,6 +303,7 @@ local function leaveService()
   if not r0.actual then r0.actual, r0.status = R.clock, 'ok' end
   R.phase = 'liaison'
   stage.trafficBack()
+  guide.liaison(settings.get().hardcore == true)
   setGps()
 end
 
@@ -270,6 +313,8 @@ function M.setTc0(lat, lon)
   if not R then return end
   R.tc0 = lat and { lat, lon } or nil
   if R.tc0 and R.phase == 'service' then
+    -- del box al TC0, con la línea azul del GPS
+    guide.liaison(settings.get().hardcore == true)
     local a = api()
     if a and a.gpsSet then pcall(a.gpsSet, lat, lon, 'TC0') end
   end
@@ -469,8 +514,7 @@ function M.hold(on)
   if on then R.hold = true return end
   if not R.hold then return end
   R.hold = nil
-  local tm = os.date('*t')
-  local now = tm.hour * 3600 + tm.min * 60 + tm.sec
+  local now = geo.dayClock()
   R.clock = now
   R.startMin = math.floor(now / 60) + 2
   schedule(R.it, R.startMin)
@@ -490,14 +534,56 @@ function M.update(dtSim, dtReal)
   if not R then return end
   if R.hold then return end
   R.clock = R.clock + (dtSim or 0)
+  -- el sol y el reloj van a la par: si el reloj salta (saltar enlace, esperar al minuto), la hora del mapa lo sigue
+  if math.abs(((R.clock - geo.dayClock() + 43200) % 86400) - 43200) > 2 then geo.setDayClock(R.clock) end
   local a = api()
   local p = a and a.ready and a.ready() and a.pose() or nil
   local cur = item()
+  -- zonas sin tráfico: los controles, la salida, la meta y el tramo montado (se recalculan cada 3 s)
+  R.zoneT = (R.zoneT or 3) + (dtSim or 0)
+  if R.zoneT >= 3 then
+    R.zoneT = 0
+    local zl = {}
+    if R.tc0 then zl[#zl + 1] = { lat = R.tc0[1], lon = R.tc0[2] } end
+    if cur and cur.pos then zl[#zl + 1] = { lat = cur.pos[1], lon = cur.pos[2] } end
+    local sst = stage.state()
+    local tk = sst and sst.track
+    if tk and tk.pts and #tk.pts > 1 then
+      local la, lo = geo.toGeo(tk, tk.pts[1][1], tk.pts[1][2])
+      zl[#zl + 1] = { lat = la, lon = lo }
+      la, lo = geo.toGeo(tk, tk.pts[#tk.pts][1], tk.pts[#tk.pts][2])
+      zl[#zl + 1] = { lat = la, lon = lo }
+      for al = tz.CORRIDOR_STEP_M, (tk.total or 0) - 1, tz.CORRIDOR_STEP_M do
+        la, lo = geo.toGeo(tk, geo.at(tk, al))
+        zl[#zl + 1] = { lat = la, lon = lo, r = tz.CORRIDOR_R_M + 45 }
+      end
+    end
+    pcall(tz.set, zl)
+  end
+  pcall(tz.update, dtSim)
   -- en la asistencia: con TC0 a la salida del parque se ficha ahí (parado en el punto); sin él, a tu minuto se sale solo
   if R.phase == 'service' then
     if R.tc0 then
       if p and not p.camera then
         local d = dist(p.lat, p.lon, R.tc0[1], R.tc0[2])
+        -- el GPS al TC0 mientras se está en la asistencia (si se perdió, se vuelve a poner)
+        R.gpsT = (R.gpsT or 0) + dtSim
+        if R.gpsT > 4 then
+          R.gpsT = 0
+          local g = a.gps and a.gps()
+          -- (mientras planea, o ya en el punto, no se toca: reponerla cada 4 s no la dejaba acabar nunca)
+          if d > 25 and not (g and (g.planning or (g.remaining and g.remaining < 5000))) and a.gpsSet then
+            pcall(a.gpsSet, R.tc0[1], R.tc0[2], 'TC0')
+          end
+        end
+        -- pasado de largo sin fichar (19-nov: sin caseta a la vista, el rally se quedaba en la asistencia para siempre,
+        -- sin enlace ni GPS): se ficha con la hora de paso, con su penalización si no es tu minuto
+        R.tc0Min = math.min(R.tc0Min or d, d)
+        if (R.tc0Min < M.TC0_NEAR_M and d > M.TC0_PASSED_M) or d > R.tc0Min + M.TC0_FAR_M then
+          R.tc0Min, R.holdT, R.early = nil, 0, false
+          checkInTc0()
+          return
+        end
         if d < M.TC_ZONE_M and (p.speed or 0) < 0.6 then
           local early = math.floor(R.clock / 60) < R.startMin
           R.early = early
@@ -511,7 +597,23 @@ function M.update(dtSim, dtReal)
       end
     elseif R.clock >= R.startMin * 60 then leaveService() end
   end
+  -- el GPS del enlace: si se perdió (limpieza de pantalla del tramo, recarga), se vuelve a poner
   if R.phase == 'liaison' and cur and p and not p.camera then
+    R.gpsT = (R.gpsT or 0) + (dtSim or 0)
+    if R.gpsT > 4 then
+      R.gpsT = 0
+      local g = a.gps and a.gps()
+      if not (g and (g.remaining or g.planning)) then setGps()
+      elseif g.remaining and not g.planning and R.gpsDirect ~= R.idx then
+        -- una ruta disparatada (vueltas por puntos de paso mal caídos): la más corta, directa al control
+        local plan = math.max(cur.liaison.lengthM or 0, dist(p.lat, p.lon, cur.pos[1], cur.pos[2]) * M.DETOUR)
+        if g.remaining > plan * M.GPS_CRAZY + 1000 then
+          R.gpsDirect = R.idx
+          log('I', TAG, string.format('gps: planned %.1f km for a %.1f km liaison, straight to the control', g.remaining / 1000, plan / 1000))
+          setGps(true)
+        end
+      end
+    end
     -- el punto de fichaje, tal como lo ancla el tramo al eje de la carretera
     local sst = R.built == R.idx and stage.state()
     if sst and sst.tcLat then cur.pos = { sst.tcLat, sst.tcLon } end

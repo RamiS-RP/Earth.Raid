@@ -99,4 +99,16 @@ function M.project(t, x, y, hint, back, fwd)
   return bAlong, sqrt(best), bi
 end
 
+-- El reloj del rally es la hora del mapa (scenetree.tod: 0 = mediodía, 0.5 = medianoche), no la del ordenador
+-- (19-nov: el reloj marcaba las 19:36 con el sol de las 9 de la mañana). Sin escena de hora, la del ordenador.
+function M.dayClock()
+  local ok, v = pcall(function() local t = scenetree.tod return t and t.time end)
+  if ok and type(v) == 'number' then return math.floor(((v + 0.5) % 1) * 86400 + 0.5) % 86400 end
+  local tm = os.date('*t')
+  return tm.hour * 3600 + tm.min * 60 + tm.sec
+end
+function M.setDayClock(secs)
+  pcall(function() local t = scenetree.tod if t then t.time = ((secs % 86400) / 86400 + 0.5) % 1 end end)
+end
+
 return M

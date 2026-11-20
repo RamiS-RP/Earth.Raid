@@ -506,6 +506,88 @@ function M.active(h) return h ~= nil and h.phase ~= 'done' end
 -- Son vehículos de verdad solo cerca del coche (phys.lua): como mucho M.PARK_CARS.
 M.PARK_CARS = 2       -- (3 con la fila grande)
 M.surface = 'asphalt'
+-- El TC0 en el pasillo de los boxes (19-nov, el usuario lo colocó a mano con F11 y lo quiere así): al final de la fila, del
+-- lado de la salida del recinto, 18 m más allá del último box y a 5,5 m de ellos (en el pasillo), de modo que desde el
+-- box no se sale del recinto sin pasar por él. build() guarda aquí el sitio { x, y, z, ux, uy } (ux,uy: hacia la salida).
+M.TC0_BEYOND_M, M.TC0_AISLE_M = 18, 5.5
+M.tcSpot = nil
+-- ¿cuál de los dos extremos de la fila queda más cerca de una carretera de verdad (nodos del grafo con paso, 2+ enlaces)?
+-- Las calles del propio aparcamiento son nodos sueltos (1 enlace) y no cuentan. Sin grafo, la salida que encontró la
+-- búsqueda. Devuelve true si gana el primero.
+local function firstEndIsNearer(x1, y1, x2, y2, exitX, exitY)
+  local okM, m = pcall(map.getMap)
+  if okM and m and m.nodes then
+    local d1, d2 = 1e9, 1e9
+    for _, nd in pairs(m.nodes) do
+      local n = 0
+      for _ in pairs(nd.links or {}) do n = n + 1 if n >= 2 then break end end
+      if n >= 2 then
+        local a1 = (nd.pos.x - x1) ^ 2 + (nd.pos.y - y1) ^ 2
+        local a2 = (nd.pos.x - x2) ^ 2 + (nd.pos.y - y2) ^ 2
+        if a1 < d1 then d1 = a1 end
+        if a2 < d2 then d2 = a2 end
+      end
+    end
+    if d1 < 1e9 or d2 < 1e9 then return d1 <= d2 end
+  end
+  return (x1 - exitX) ^ 2 + (y1 - exitY) ^ 2 <= (x2 - exitX) ^ 2 + (y2 - exitY) ^ 2
+end
+-- La salida del recinto según el grafo de carreteras: la calle del aparcamiento (vía de servicio, drivability <= 0,5)
+-- que desemboca en una carretera de verdad. El TC0 va en esa calle, unos metros antes de la incorporación: quien sale
+-- del recinto pasa por él y para ahí (19-nov, el usuario: "la línea donde están las ruedas delanteras... fichar a la
+-- salida"). Devuelve el sitio { x, y, z, ux, uy (hacia la carretera), bx, by (hacia los boxes), hw } o nil (sin calle
+-- de salida en el grafo: vale el extremo de la fila). MARK:gate-v1
+M.GATE_SEARCH_M, M.GATE_BACK_M, M.LOT_DRIV = 220, 7, 0.5
+local function exitGate(cx, cy, z)
+  local okM, m = pcall(map.getMap)
+  if not (okM and m and m.nodes) then return nil end
+  local adj, R2 = {}, M.GATE_SEARCH_M ^ 2
+  local function near(nd) return (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 end
+  for k, nd in pairs(m.nodes) do
+    for nb, ed in pairs(nd.links or {}) do
+      local o = m.nodes[nb]
+      if o and (near(nd) or near(o)) then
+        local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+        adj[k] = adj[k] or {}
+        adj[nb] = adj[nb] or {}
+        adj[k][nb], adj[nb][k] = dr, dr
+      end
+    end
+  end
+  local function class(k)
+    local hi = 0
+    for _, d in pairs(adj[k] or {}) do if d > hi then hi = d end end
+    return hi
+  end
+  local bp, bj, bd
+  for p, links in pairs(adj) do
+    if class(p) <= M.LOT_DRIV then
+      for j, d in pairs(links) do
+        if d <= M.LOT_DRIV and class(j) > M.LOT_DRIV then
+          local P, J = m.nodes[p].pos, m.nodes[j].pos
+          local dP = math.sqrt((P.x - cx) ^ 2 + (P.y - cy) ^ 2)
+          local dJ = math.sqrt((J.x - cx) ^ 2 + (J.y - cy) ^ 2)
+          -- la calle sale desde nuestro lado (no la de un aparcamiento al otro lado de la carretera)
+          if dP < dJ + 5 and (not bd or dJ < bd) then bp, bj, bd = p, j, dJ end
+        end
+      end
+    end
+  end
+  if not bp then return nil end
+  local P, J = m.nodes[bp], m.nodes[bj]
+  local dx, dy = J.pos.x - P.pos.x, J.pos.y - P.pos.y
+  local L = math.sqrt(dx * dx + dy * dy)
+  if L < 6 then return nil end
+  dx, dy = dx / L, dy / L
+  local back = math.min(L * 0.75, (J.radius or 3) + M.GATE_BACK_M)
+  local x, y = J.pos.x - dx * back, J.pos.y - dy * back
+  local bx, by = cx - x, cy - y
+  local bl = math.sqrt(bx * bx + by * by)
+  if bl < 0.5 then bx, by, bl = -dy, dx, 1 end
+  log('I', TAG, string.format('TC0 at the lot exit: %.0f m before the road, %.0f m from the boxes', back, bl))
+  return { x = x, y = y, z = z or P.pos.z, ux = dx, uy = dy, bx = bx / bl, by = by / bl,
+    hw = math.max(2.5, math.min(3.5, (P.radius or 2) + 1)), gate = true }
+end
 function M.parkedCars(n, mine)
   local out = {}
   local okS, st = pcall(function() return require('earthRaid/settings').get() end)
@@ -576,6 +658,27 @@ local function buildOnStalls(site)
   local box
   local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
   local cars = M.parkedCars(#picks, mine)
+  do
+    -- el extremo de la fila más cercano a la salida del recinto, y el sitio del TC0 más allá
+    local cx, cy = 0, 0
+    for _, p in ipairs(picks) do cx, cy = cx + p[1] / #picks, cy + p[2] / #picks end
+    local e1, e2 = picks[1], picks[#picks]
+    local e = firstEndIsNearer(e1[1], e1[2], e2[1], e2[2], site.exitX, site.exitY) and e1 or e2
+    local hdg = math.rad(e[4] or 0)
+    local fx, fy = math.cos(hdg), math.sin(hdg)
+    if (site.x - e[1]) * fx + (site.y - e[2]) * fy < 0 then fx, fy = -fx, -fy end
+    local ux, uy = fy, -fx
+    if (e[1] - cx) * ux + (e[2] - cy) * uy < 0 then ux, uy = -ux, -uy end
+    if #picks == 1 then
+      -- una sola plaza: hacia la salida
+      local dx, dy = site.exitX - e[1], site.exitY - e[2]
+      local dl = math.sqrt(dx * dx + dy * dy)
+      if dl > 1 then ux, uy = dx / dl, dy / dl end
+    end
+    M.tcSpot = { x = e[1] + ux * M.TC0_BEYOND_M + fx * M.TC0_AISLE_M, y = e[2] + uy * M.TC0_BEYOND_M + fy * M.TC0_AISLE_M, z = e[3], ux = ux, uy = uy, fx = fx, fy = fy }
+    local okG, gate = pcall(exitGate, cx, cy, e[3])
+    if okG and gate then M.tcSpot = gate end
+  end
   for i, p in ipairs(picks) do
     local hdg = math.rad(p[4] or 0)
     local fx, fy = math.cos(hdg), math.sin(hdg)
@@ -607,6 +710,7 @@ end
 
 function M.build(site)
   local a = api()
+  M.tcSpot = nil
   if not (a and site) then return nil end
   if site.stalls then
     local ok, box = pcall(buildOnStalls, site)
@@ -634,6 +738,16 @@ function M.build(site)
   local mine = math.floor((n + 1) / 2)
   local box
   local cars = M.parkedCars(n, mine)
+  do
+    local hl = (n - 1) * M.PAIR_M / 2
+    local sg = firstEndIsNearer(site.x + hx * hl + rx * rowSide, site.y + hy * hl + ry * rowSide,
+      site.x - hx * hl + rx * rowSide, site.y - hy * hl + ry * rowSide, site.exitX, site.exitY) and 1 or -1
+    local al = sg * ((n - 1) * M.PAIR_M / 2 + M.TC0_BEYOND_M)
+    local sd = rowSide - sideSign * M.TC0_AISLE_M
+    M.tcSpot = { x = site.x + hx * al + rx * sd, y = site.y + hy * al + ry * sd, z = z, ux = hx * sg, uy = hy * sg, fx = -sideSign * rx, fy = -sideSign * ry }
+    local okG, gate = pcall(exitGate, site.x + rx * rowSide, site.y + ry * rowSide, z)
+    if okG and gate then M.tcSpot = gate end
+  end
   for i = 1, n do
     local along = along0 + (i - 1) * M.PAIR_M
     local k = kinds[(i - 1) % #kinds + 1]
@@ -659,6 +773,29 @@ end
 -- de un tramo (dressing.tcPost). Devuelve { lat, lon } del punto de fichaje.
 function M.tc0(site, dressing)
   local a = api()
+  local sp = M.tcSpot
+  if a and sp and not (site and site.byRoad) then
+    -- el puesto en el pasillo de los boxes: un trazado recto hacia la salida del recinto (20 m antes y 40 después)
+    local gpath = {}
+    for d = -20, 40, 10 do
+      local la, lo = a.toGeo(sp.x + sp.ux * d, sp.y + sp.uy * d, sp.z or 0)
+      gpath[#gpath + 1] = { la, lo }
+    end
+    local t = geo.track(gpath)
+    -- la caseta al lado del pasillo que mira a los boxes (como la puso el usuario): a la derecha de quien sale si la
+    -- "delantera" de los boxes cae a su derecha
+    local lado = -1
+    if sp.bx then
+      -- en la calle de salida: la caseta en el lado de los boxes
+      -- (tcPost: lateral = out * lado, con out = -1; los boxes a la derecha de quien sale -> lado -1)
+      lado = (sp.ux * sp.by - sp.uy * sp.bx) < 0 and -1 or 1
+    elseif sp.fx and (sp.uy * sp.fx - sp.ux * sp.fy) < 0 then lado = 1 end
+    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true)
+    if ok then
+      local la, lo = geo.toGeo(t, geo.at(t, 20))
+      return { lat = la, lon = lo }
+    end
+  end
   if not (a and site and site.n1) then return nil end
   local m = map.getMap()
   local A, B = m.nodes[site.n1], m.nodes[site.n2]
@@ -740,14 +877,58 @@ function M.tc0(site, dressing)
     for _, q in ipairs(statics) do if (q[1] - gx) ^ 2 + (q[2] - gy) ^ 2 < 5 ^ 2 then return false end end
     return true
   end
-  local along = math.min(t.total - 10, exitAlong + 7)
-  for _, extra in ipairs({ 0, 6, 12, 20, 30 }) do
-    local al = math.min(t.total - 10, exitAlong + 7 + extra)
-    if al > 20 and clearAt(al) then along = al break end
+  -- el fichaje EN la boca de salida del parque (19-nov, el usuario: la caseta TC0 donde se para el coche al salir del
+  -- aparcamiento, desde ahí corre el tiempo del enlace); si el sitio no está libre, un poco más adelante
+  local along = math.min(t.total - 10, math.max(12, exitAlong))
+  for _, extra in ipairs({ 0, 5, 10, 18, 28 }) do
+    local al = math.min(t.total - 10, math.max(12, exitAlong) + extra)
+    if al > 12 and clearAt(al) then along = al break end
   end
   dressing.tcPost(t, along, -1, hw, 0, -1, false)
   local la, lo = geo.toGeo(t, geo.at(t, along))
   return { lat = la, lon = lo }
+end
+
+-- Sin salida de aparcamiento a la vista (el parque cae en un descampado o el box de siempre): la salida se "crea" en la
+-- carretera del juego más cercana (hasta ROAD_SITE_M), eligiendo la zona más llana (pendiente a lo largo del tramo de
+-- calle que cuenta el doble que la distancia). Devuelve un sitio como el de la búsqueda, para M.tc0.
+M.ROAD_SITE_M = 300
+function M.roadSite(lat, lon, towardLat, towardLon)
+  local a = api()
+  if not (a and lat) then return nil end
+  local okM, m = pcall(map.getMap)
+  if not (okM and m and m.nodes) then return nil end
+  local bx, by = a.toGame(lat, lon, 0)
+  if not bx then return nil end
+  local tx, ty
+  if towardLat then tx, ty = a.toGame(towardLat, towardLon, 0) end
+  local best, bs = nil, 1e9
+  for n1, A in pairs(m.nodes) do
+    local ax, ay = A.pos.x - bx, A.pos.y - by
+    if ax * ax + ay * ay < (M.ROAD_SITE_M + 60) ^ 2 and (A.radius or 3) >= 2 then
+      for n2 in pairs(A.links or {}) do
+        local B = m.nodes[n2]
+        if B and n1 < n2 then
+          local ex, ey = B.pos.x - A.pos.x, B.pos.y - A.pos.y
+          local el = math.sqrt(ex * ex + ey * ey)
+          if el > 5 then
+            local u = math.max(0, math.min(1, ((bx - A.pos.x) * ex + (by - A.pos.y) * ey) / (el * el)))
+            local px, py = A.pos.x + ex * u, A.pos.y + ey * u
+            local d = math.sqrt((px - bx) ^ 2 + (py - by) ^ 2)
+            if d <= M.ROAD_SITE_M then
+              local slope = math.abs(B.pos.z - A.pos.z) / el
+              local score = d + slope * 600
+              if score < bs then
+                bs = score
+                best = { n1 = n1, n2 = n2, exitX = px, exitY = py, z = A.pos.z + (B.pos.z - A.pos.z) * u, tx = tx, ty = ty, roadD = d, byRoad = true }
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return best
 end
 
 M._lots = lots   -- (pruebas)

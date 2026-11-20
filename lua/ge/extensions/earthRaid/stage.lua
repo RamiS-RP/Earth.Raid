@@ -45,7 +45,8 @@ M.CALL_MIN_M = 70
 M.INTO_M = 40              -- dos notas a menos de esto se encadenan con "into"
 M.RELIEF_S = 1.5
 M.CLOSURES_S = 8           -- las cintas se completan en marcha, según BeamNG.Earth carga el grafo de carreteras
-M.DONE_SHOW_S = 10         -- el resultado en pantalla
+M.DONE_SHOW_S = 10         -- el resultado en pantalla (rally completo)
+M.DONE_ACCEPT_S = 90       -- tramo suelto: el resultado se queda hasta aceptarlo con Mayús+E, o esto
 M.CLEANUP_M = 300          -- el montaje se retira al alejarse esto de la meta...
 M.CLEANUP_S = 120          -- ... o pasado este tiempo
 M.REGROUND_S = 1.5         -- cada esto, los objetos cercanos se recolocan en altura (terreno recién cargado)
@@ -452,8 +453,9 @@ function M.start(ev, st, info)
   if props.spareCount() > 0 or dropped > 0 then
     log('I', TAG, ('recycling: %d objects kept from the previous stage, %d removed'):format(props.spareCount(), dropped))
   end
-  -- la línea del mod Racing Line, solo dentro del tramo
+  -- la línea del mod Racing Line, solo dentro del tramo; fuera de él, la azul del GPS
   guide.hold()
+  guide.liaison(opt.hardcore == true)
   local splitAt = t.total > 1500 and math.floor(t.total / 2 / 100 + 0.5) * 100 or nil
   local hazards = hazardsOf(st, t)
   S = { eventId = ev.id, eventName = ev.name, stageId = st.id, title = st.title, runs = st.runs or {}, track = t,
@@ -523,6 +525,14 @@ function M.start(ev, st, info)
         if ap then
           t.after, t._snapT, t.afterOff = geo.track(ap), nil, nil
           t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, t.after.total))
+        elseif t.after then
+          -- sin red de carreteras desde la meta nueva: el enlace de antes, pero empezando EN la meta nueva. Si no,
+          -- todo lo de "pasada la meta" se medía desde la meta vieja (19-nov, Córdoba SS1: la meta retrocedió 45 m y
+          -- los carteles del otro sentido y el reloj quedaron 46 m más allá de la línea, como otra meta)
+          local np = { f }
+          for _, q in ipairs(t.after.pts) do np[#np + 1] = { geo.toGeo(t.after, q[1], q[2]) } end
+          t.after, t._snapT, t.afterOff = geo.track(np), nil, nil
+          t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, t.after.total - 5))
         end
         log('W', TAG, ('finish off the road: moved %.0f m back onto the road'):format(cut))
         return
@@ -696,8 +706,7 @@ function M.start(ev, st, info)
   M.refreshLine()
   audio.setPack(settings.voiceDir())
   audio.clear()
-  local tm = os.date('*t')
-  S.wall = tm.hour * 3600 + tm.min * 60 + tm.sec
+  S.wall = geo.dayClock()
   if not S.session then
     local a0 = api()
     if a0 and a0.gpsSet then pcall(a0.gpsSet, S.tcLat, S.tcLon, 'TC · ' .. (st.title or '')) end
@@ -928,6 +937,34 @@ local function noseToLine(t, ahead)
   return -(ahead + M.CAR_HALF_M)
 end
 
+-- ---- precarga del mapa por delante ---------------------------------------------------------------------------------------
+-- BeamNG.Earth guarda en disco lo que descarga (relieve, imágenes, datos del mapa) y tiene una orden para traer un
+-- sitio por adelantado (core.preloadPlace: la que usa su mapa antes de un viaje). Aquí se le pide el tramo por delante
+-- del coche, un punto cada PRELOAD_STEP_M hasta PRELOAD_AHEAD_M, de uno en uno: así al llegar ya está en la caché y no
+-- hay que esperar a la descarga mientras se conduce (19-nov, el usuario: "¿se está precacheando el mapa?").
+-- No es de la API estable de complementos: si no existe, no se hace nada. MARK:preload-v1
+M.PRELOAD_STEP_M = 1200
+M.PRELOAD_AHEAD_M = 6000
+M.PRELOAD_EVERY_S = 1.0
+local function preloadAhead(dt)
+  if not (S and S.track) then return end
+  S.preT = (S.preT or 0) + dt
+  if S.preT < M.PRELOAD_EVERY_S then return end
+  S.preT = 0
+  local t = S.track
+  S.preNext = S.preNext or 0
+  if S.preNext > t.total or S.preNext > (S.along or 0) + M.PRELOAD_AHEAD_M then return end
+  local core = rawget(_G, 'beamngEarth_core')
+  if not (core and type(core.preloadPlace) == 'function') then S.preNext = math.huge return end
+  local x, y = geo.at(t, math.min(t.total, S.preNext))
+  local la, lo = geo.toGeo(t, x, y)
+  local ok, sent = pcall(core.preloadPlace, la, lo)
+  if ok and sent then
+    S.preSent = (S.preSent or 0) + 1
+    S.preNext = math.max(S.preNext, (S.along or 0)) + M.PRELOAD_STEP_M
+  end
+end
+
 -- ---- cada fotograma -----------------------------------------------------------------------------------------------------
 
 local regroundT = 0
@@ -984,6 +1021,7 @@ function M.update(dtSim, dtReal)
   clock = clock + (dtReal or dtSim)
   -- los objetos encolados, poco a poco; la colisión se rehace una vez cuando ya están todos (no tras cada tanda)
   guide.tick(dtReal or dtSim)
+  pcall(preloadAhead, dtReal or dtSim or 0)
   -- carteles, conos y cintas con física cerca del coche
   if props.count() > 0 then
     local v = be:getPlayerVehicle(0)
@@ -1039,8 +1077,7 @@ function M.update(dtSim, dtReal)
   audio.update(dtReal or dtSim)
   -- la hora del reloj: la del ordenador (con ella se fija la hora de salida en el TC), suave entre segundos
   S.wall = (S.wall or 0) + dtSim
-  local tm = os.date('*t')
-  local osNow = tm.hour * 3600 + tm.min * 60 + tm.sec
+  local osNow = geo.dayClock()
   local drift = ((osNow - S.wall + 43200) % 86400) - 43200
   if math.abs(drift) > 1.2 then S.wall = osNow elseif drift > 0.5 then S.wall = S.wall + 0.05 end
   local code = (S.phase == 'running' or S.phase == 'toStop') and 'G' or (S.phase == 'countdown' and S.countdown <= 5) and 'A' or 'R'
@@ -1081,8 +1118,7 @@ function M.update(dtSim, dtReal)
     if (S.distM < M.TC_ZONE_M and speed < M.STOP_MS) or atStart then
       S.tcHold = S.tcHold + dtSim
       if S.tcHold >= 0.5 or atStart then
-        local tm = os.date('*t')
-        local now = tm.hour * 3600 + tm.min * 60 + tm.sec
+        local now = geo.dayClock()
         S.tcTime = now
         S.startAt = math.ceil((now + M.TC_MARGIN_S) / 60) * 60
         S.stagingInit = S.startAt - now
@@ -1180,7 +1216,8 @@ function M.update(dtSim, dtReal)
       end
       audio.clear()
       pcall(function() guihooks.trigger('clearAllVisualPacenotes') end)
-      -- el GPS al STOP, donde hay que parar
+      -- el GPS al STOP, donde hay que parar: otra vez la línea azul
+      guide.liaison(S.opt.hardcore == true)
       local a2 = api()
       local slat, slon = M.stopPoint(t)
       if a2 and a2.gpsSet then pcall(a2.gpsSet, slat, slon, 'STOP') end
@@ -1191,7 +1228,8 @@ function M.update(dtSim, dtReal)
     local stopAt = dressing.stopAt(t)
     S.distM = math.max(0, stopAt - past)
     if (math.abs(S.distM) < 12 and speed < M.STOP_MS) or past > stopAt + 80 then
-      S.phase, S.doneLeft = 'done', M.DONE_SHOW_S
+      -- el resultado: en un rally, unos segundos; en un tramo suelto, hasta aceptarlo (Mayús+E) o DONE_ACCEPT_S
+      S.phase, S.doneLeft = 'done', S.session and M.DONE_SHOW_S or M.DONE_ACCEPT_S
       guide.clear()
       if S.session and S.session.onStop then pcall(S.session.onStop) end
     end
@@ -1204,9 +1242,15 @@ function M.update(dtSim, dtReal)
       local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
       -- en un rally, lo de este tramo puede servir al siguiente (se recicla al limpiar)
       post = { at = clock, lat = flat, lon = flon, recycle = S.session ~= nil }
+      local accepted = S.accepted
+      local keepGps = S.session ~= nil
       S = nil
-      clearScreen()
+      -- en un rally el GPS del enlace al siguiente control ya está puesto: no se borra (19-nov: tras la meta del
+      -- segundo tramo no salía la línea azul)
+      if keepGps then audio.clear() pcall(function() guihooks.trigger('clearAllVisualPacenotes') end) else clearScreen() end
       guihooks.trigger('EarthRaidHud', { phase = 'idle' })
+      -- aceptado: el montaje se retira ya (sin esperar a alejarse)
+      if accepted then post = nil cleanupProps(false, false) end
       return
     end
   end
@@ -1226,6 +1270,11 @@ function M.skipWait()
   end
   if S and S.phase == 'staging' and S.staged then
     S.stagingLeft = math.min(S.stagingLeft, M.COUNTDOWN_S)
+    return true
+  end
+  -- en el resultado: aceptar (se cierra y se retira el montaje del tramo)
+  if S and S.phase == 'done' and not S.session then
+    S.accepted, S.doneLeft = true, 0
     return true
   end
   return false

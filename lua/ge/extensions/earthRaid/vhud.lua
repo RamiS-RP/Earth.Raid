@@ -20,14 +20,14 @@ local function hhmm(secs)
   return { time = string.format('%02d:%02d', math.floor(secs / 3600), math.floor(secs % 3600 / 60)), ampm = '' }
 end
 local function nowSecs()
-  local tm = os.date('*t')
-  return tm.hour * 3600 + tm.min * 60 + tm.sec
+  return require('earthRaid/geo').dayClock()
 end
 local function fmtStage(t)
   if not t then return nil end
   local m = math.floor(t / 60)
   return string.format('%d:%04.1f', m, t - m * 60)
 end
+local function r1(x) return math.floor((x or 0) * 10 + 0.5) / 10 end   -- 103.4995... se veía tal cual en la hoja
 local function speedNow()
   local v = getPlayerVehicle and getPlayerVehicle(0)
   if not v then return 0 end
@@ -115,7 +115,7 @@ local function fromStage(S, R, api)
   end
   d.scheduleData = sc
   d.rallyClock = { wallClockSecs = now, wallClockTime = clockTime(now), epochTime = os.time(), day = 1,
-    totalPenalty = (R and R.total and 0) or (S.penalty or 0), totalTime = (R and R.total) or S.time or 0, use24hFormat = true,
+    totalPenalty = (R and R.total and 0) or (S.penalty or 0), totalTime = r1((R and R.total) or S.time or 0), use24hFormat = true,
     canSkipTimeControls = canSkip, isTimeControlSkipAvailable = canSkip, canSkipCountdown = false, isNgrcMode = false }
   d.penaltyData = { totalPenalty = S.penalty or 0, groups = {} }
   return d
@@ -158,7 +158,22 @@ local function fromRally(R, cur, a)
     sc.speedLimit, sc.speedLimitDisplay = k, tostring(k)
     sc.isSpeeding = speedNow() * 3.6 > k + 5
     local g = a and a.gps and a.gps()
-    d.vehicleProximity = prox(g and g.remaining or 9999, false)
+    local dM, tgt = g and g.remaining, cur.pos
+    -- en la asistencia con TC0 a la salida: el control que toca es ese (19-nov: ponía "TC1 10.00km" parado en el TC0)
+    if R.phase == 'service' and R.tc0 then
+      sc.label, sc.ssLabel, tgt, dM = 'TC0', nil, R.tc0, nil
+      sc.eventWallClockStart = hhmm(R.startMin * 60)
+      sc.eventWallClockEnd = hhmm(R.startMin * 60 + 60)
+    end
+    -- sin ruta del GPS (planeando, perdida): la distancia en línea recta, no un "10.00km" fijo
+    if not dM and tgt and a and a.pose then
+      local okP, p = pcall(a.pose)
+      if okP and p and p.lat then
+        local k = math.cos(math.rad(p.lat))
+        dM = math.sqrt(((tgt[1] - p.lat) * 111195) ^ 2 + ((tgt[2] - p.lon) * 111195 * k) ^ 2)
+      end
+    end
+    d.vehicleProximity = prox(dM or 9999, false)
   end
   d.scheduleData = sc
   d.stageData = { currentSSTime = nil, isActive = false, isComplete = false, label = nil, unit = 'km',
@@ -166,7 +181,7 @@ local function fromRally(R, cur, a)
   d.countdownData = { countdown = nil, state = nil }
   local early = R.phase == 'service' or R.early
   d.rallyClock = { wallClockSecs = R.clock, wallClockTime = clockTime(R.clock), epochTime = os.time(), day = 1,
-    totalPenalty = 0, totalTime = R.total or 0, use24hFormat = true, canSkipTimeControls = early == true,
+    totalPenalty = 0, totalTime = r1(R.total or 0), use24hFormat = true, canSkipTimeControls = early == true,
     isTimeControlSkipAvailable = early == true, canSkipCountdown = false, isNgrcMode = false }
   local pt = 0
   for _, p in ipairs(R.penalties or {}) do pt = pt + (p.s or 0) end

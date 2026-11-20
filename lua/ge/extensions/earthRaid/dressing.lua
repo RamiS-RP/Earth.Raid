@@ -430,7 +430,8 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   -- sonido de ambiente: solo si el jugador lo activa (por defecto no; el audio se entrecortaba en los tirones)
   if M.SOUND_KINDS[kind] and not M.sounds and not M.dry then return nil end
   if kind == 'lamp' and not M.dry and not M.night() then return nil end
-  if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) then
+  local force = opts and opts.force
+  if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) and not force then
     local from = opts and opts.from or 0
     local hit = freeTo(t, along, right, fwd, from)
     -- piezas de una fila (vallas, lonas, mallas): si en su sitio hay un árbol o un muro, hueco. Antes se buscaba sitio
@@ -446,7 +447,9 @@ local function place(kind, t, along, right, yaw, fwd, opts)
       if not moved and not (opts and opts.keepSide) then
         for _, sh in ipairs({ 0, 5, -5, 10, -10 }) do
           if not freeTo(t, along + sh, -right, fwd, from and -from) then
-            along, right, yaw, hit, moved = along + sh, -right, (yaw or 0) + 180, nil, true
+            -- al otro lado, un cartel de frente a la calzada gira 180; el semáforo/reloj (de cara a quien llega por el eje)
+            -- se refleja (19-nov: en la meta de Córdoba quedaba de espaldas al coche)
+            along, right, yaw, hit, moved = along + sh, -right, (kind == 'tree') and -(yaw or 0) or ((yaw or 0) + 180), nil, true
             break
           end
         end
@@ -465,8 +468,9 @@ local function place(kind, t, along, right, yaw, fwd, opts)
   local lat, lon, dx, dy = at(t, along, right, fwd)
   M._seen = false
   local lat0, lon0 = lat, lon
-  lat, lon = offRoad(kind, lat, lon)
-  local seen = M._seen
+  -- force: se pone donde se pide (el puesto de un control, que siempre tiene que estar: tcPost)
+  if not force then lat, lon = offRoad(kind, lat, lon) end
+  local seen = M._seen or force
   if not lat then return nil end
   -- piezas de un perímetro (mallas, barreras en fila): si no caben donde toca, no se ponen desplazadas (18-nov, Salas:
   -- junto a un cruce las mallas se iban monte abajo)
@@ -477,7 +481,7 @@ local function place(kind, t, along, right, yaw, fwd, opts)
     M.counts[kind] = (M.counts[kind] or 0) + 1
     return { kind = kind, lat = lat, lon = lon }
   end
-  if M.tooClose(kind, lat, lon) then M.skipped = M.skipped + 1 return nil end
+  if not force and M.tooClose(kind, lat, lon) then M.skipped = M.skipped + 1 return nil end
   local it = props.add(kind, lat, lon, dx, dy, yaw, opts)
   if it and seen then it.roadOk = true end
   return it
@@ -723,7 +727,7 @@ end
 -- ficha viaja en el sentido +fwd del trazado). clockLado: en qué lado va la carpa con el reloj (-1: derecha de quien
 -- ficha). full: también el STOP y los carteles de cuenta atrás de quien llega (el extremo de un tramo); sin ello es un
 -- TC de enlace (el TC0 a la salida del parque de asistencia).
-function M.tcPost(t, endAlong, out, hw, D, clockLado, full)
+function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth)
   local put = endPlacer(t, endAlong, out)
   local S, P = hw + M.SIGN_SIDE_M, hw + M.SIDE_PAD_M
   paintLine(t, endAlong, hw, out * D, full and 'stop' or 'tc')
@@ -743,22 +747,44 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full)
   -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
   -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
   local _ = both
-  local lados = { clockLado }
   local g = 2.6
-  for _, lado in ipairs(lados) do
+  -- SIEMPRE hay caseta de comisario en un control (19-nov, norma del usuario: el TC0 a la salida de un aparcamiento se
+  -- quedaba sin carpa, mesa ni reloj porque no cabían "fuera de toda calzada" entre los pasillos del aparcamiento, y
+  -- el control pasaba inadvertido). Se prueba en su lado, en el otro y unos metros antes o después; y si en ningún
+  -- sitio cabe, se pone en su lado de todos modos, pegada al borde de la carretera del control. MARK:booth-v1
+  local function booth(lado, shift, force)
     local side = out * lado * (hw + g)
     local sgn = side > 0 and 1 or -1
     local ty = sgn > 0 and 180 or 0
-    place('gazebo3x3', t, endAlong, side, ty, out * D)
-    place('table', t, endAlong, side - sgn * 0.9, ty, out * D + 0.6)
-    place('table', t, endAlong, side - sgn * 0.9, ty, out * D - 0.6)
-    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, out * D + 0.6, { dz = 0.75 })
-    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, out * D + 0.6)
-    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, out * D + 1.5)
-    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, out * D + 1.6)
+    local f = out * D + shift
+    local function o(extra)
+      if not force then return extra end
+      local r = { force = true }
+      for k2, v2 in pairs(extra or {}) do r[k2] = v2 end
+      return r
+    end
+    if not place('gazebo3x3', t, endAlong, side, ty, f, o({ keepSide = true })) then return false end
+    place('table', t, endAlong, side - sgn * 0.9, ty, f + 0.6, o())
+    place('table', t, endAlong, side - sgn * 0.9, ty, f - 0.6, o())
+    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, f + 0.6, o({ dz = 0.75 }))
+    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, f + 0.6, o())
+    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, f + 1.5, o())
+    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, f + 1.6, o())
     -- de noche, una luz bajo la carpa (de día no se nota)
-    place('lamp', t, endAlong, side, 0, out * D, { dz = 2.4 })
-    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, out * D - 1.4)
+    place('lamp', t, endAlong, side, 0, f, o({ dz = 2.4 }))
+    place('tree', t, endAlong, side - sgn * 1.3, sgn > 0 and 90 or -90, f - 1.4, o())
+    return true
+  end
+  local done = false
+  -- forceBooth (el TC0 en el pasillo de los boxes): en su sitio y lado exactos, sin buscar otro (dentro de un aparcamiento
+  -- los pasillos cuentan como calzada y la caseta acababa 18 m más allá)
+  if forceBooth then booth(clockLado, 0, true) done = true end
+  if not done then
+  for _, c in ipairs({ { clockLado, 0 }, { -clockLado, 0 }, { clockLado, 6 }, { clockLado, -6 }, { -clockLado, 6 },
+    { -clockLado, -6 }, { clockLado, 12 }, { -clockLado, 12 } }) do
+    if booth(c[1], c[2], false) then done = true break end
+  end
+  if not done then booth(clockLado, 0, true) end
   end
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
   centreCones(t, endAlong, out * D, -10, 10, 5)
@@ -1405,9 +1431,9 @@ function M.medicPost(t, along, side, fwd)
             if L >= 30 then
               local qx, qy, qz, ux, uy = streetAt(pts, 6)
               local fx, fy, fz = streetAt(pts, 24)
-              if qx and fx and math.abs(ux * gx + uy * gy) < 0.8 then
+              if qx and fx and math.abs(ux * gx + uy * gy) < 0.5 then
                 local fla, flo = a.toGeo(fx, fy, fz)
-                if farFromStage(t, fla, flo, 12) then
+                if farFromStage(t, fla, flo, 28) then
                   best, bs = { name = name, other = other, pts = pts, node = node }, math.abs(al)
                 end
               end

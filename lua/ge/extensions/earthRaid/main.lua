@@ -1179,7 +1179,8 @@ function M.uiStartRally(eventId, fromRun, force)
   stage.stop()
   -- los objetos de la carrera anterior (boxes, TC0 del parque) fuera: si no, al reiniciar quedaban dos TC juntos
   pcall(props.clear)
-  S.box, S.park = nil, nil
+  S.box, S.park, S.tc0Done = nil, nil, nil
+  servicepark.tcSpot = nil
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
@@ -1218,6 +1219,15 @@ function M.uiStartRally(eventId, fromRun, force)
             if ok and tc then rally.setTc0(tc.lat, tc.lon) else log('W', TAG, 'TC0: ' .. tostring(tc)) end
           end
           if not S.box then S.box = dressing.serviceBox(start[1], start[2], tw and tw[1], tw and tw[2]) or false end
+          -- sin salida de aparcamiento: el TC0 se crea en la carretera más cercana y llana, junto al box
+          if S.box and not S.tc0Done and not (rally.state() and rally.state().tc0) then
+            S.tc0Done = true
+            local okS, site2 = pcall(servicepark.roadSite, S.box.lat or start[1], S.box.lon or start[2], tw and tw[1], tw and tw[2])
+            if okS and site2 then
+              local ok2, tc2 = pcall(servicepark.tc0, site2, dressing)
+              if ok2 and tc2 then rally.setTc0(tc2.lat, tc2.lon) else log('W', TAG, 'TC0 (road): ' .. tostring(tc2)) end
+            end
+          end
         end
         local pl, po = a.position()
         if pl then dressing.runJobsNear(pl, po, 2) end

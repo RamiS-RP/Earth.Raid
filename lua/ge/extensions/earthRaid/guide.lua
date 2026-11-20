@@ -146,6 +146,31 @@ racingLineOffForce = function()
   blueLine(true)
 end
 
+-- Fuera del tramo (en la asistencia, en los enlaces, hacia el TC, tras la meta hacia el STOP): SIEMPRE la línea azul
+-- del GPS y nunca la línea de carrera (19-nov, el usuario: salía la verde al dejar el box y la azul había desaparecido:
+-- el ajuste del juego se había quedado apagado tras una recarga a mitad de tramo). Se fuerza todo, sin fiarse de lo
+-- guardado: el mod Racing Line deja de seguir el GPS y de ocultarlo, se borra su línea y los marcadores azules se
+-- encienden. En hardcore no (main.hardcoreTick los apaga). MARK:liaison-v1
+function M.liaison(hardcore)
+  rl.on, rl.wait, rl.held = false, nil, true
+  rlAction('tg_navFollow', false)
+  rlAction('clear')
+  rlAction('tg_hideNav', false)
+  rlAction('tg_navFollow', false)
+  if hardcore then return end
+  pcall(function()
+    rl.saved = nil
+    if FS:fileExists(M.RL_FILE) then FS:removeFile(M.RL_FILE) end
+    local changed = false
+    if settings.getValue('showNavigationGroundmarkers') ~= true then settings.setValue('showNavigationGroundmarkers', true) changed = true end
+    if settings.getValue('showNavigationArrows') ~= true then settings.setValue('showNavigationArrows', true) changed = true end
+    if changed then
+      local gm = core_groundMarkers or rawget(_G, 'core_groundmarkers')
+      if gm and gm.onSettingsChanged then gm.onSettingsChanged() end
+    end
+  end)
+end
+
 function M.clear()
   racingLineOff()
   local a = api() if a and a.gpsClear then pcall(a.gpsClear) end
