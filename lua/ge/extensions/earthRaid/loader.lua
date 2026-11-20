@@ -18,6 +18,14 @@ M.PUMP_MS = 12               -- presupuesto para crear objetos por fotograma dur
 M.COVER_S = 0.4              -- la pantalla aparece en 0,2 s; con margen, a esto ya es opaca
 M.LEAVE_S = 0.8              -- abandonar: lo que se queda la pantalla tras limpiar el tramo
 M.TP_RETRY_S = 25            -- BeamNG.Earth rechaza el viaje mientras carga el suelo: se reintenta hasta esto
+-- (20-nov, Trans Sierra Nevada: el coche se colocó en un aparcamiento a 492 m, en un bloque de terreno sin cargar, y
+-- cayó al vacío.) Dos garantías: 1) lo que se monta lejos del coche se alcanza con un viaje de BeamNG.Earth (carga el
+-- bloque y deja el coche en el suelo) antes de montarlo y colocar; 2) antes de soltar el coche se comprueba que está
+-- sobre suelo firme, y si no, se viaja de nuevo y se prueba otra colocación (hasta M.GROUND_TRIES veces).
+M.GROUND_WAIT_S = 5          -- lo que se espera, tras colocar, a que el coche quede sobre suelo firme
+M.GROUND_TRIES = 3
+M.PLACE_WAIT_S = 6           -- la colocación puede decir «aún no hay suelo fiable»: se reintenta hasta esto
+M.HOP_ROADS_S = 25           -- tras un viaje intermedio, lo que se espera a que haya carretera en el destino
 
 local L                      -- la carga en curso
 local shownAt                -- desde cuándo está puesta la pantalla (os.clock), o nil
@@ -58,6 +66,19 @@ local function freeze(on)
   local v = getPlayerVehicle and getPlayerVehicle(0) or be:getPlayerVehicle(0)
   if v then pcall(function() v:queueLuaCommand('controller.setFreeze(' .. (on and 1 or 0) .. ')') end) end
 end
+
+-- ¿está el coche sobre suelo firme (no cayendo, con superficie sólida justo debajo)? true | false, motivo
+local function standing()
+  local v = getPlayerVehicle and getPlayerVehicle(0) or be:getPlayerVehicle(0)
+  if not v then return true end
+  local p, vel = v:getPosition(), v:getVelocity()
+  if p.z < -400 or vel.z < -8 then return false, 'falling' end
+  local hz = be:getSurfaceHeightBelow(vec3(p.x, p.y, p.z + 1.5))
+  if type(hz) ~= 'number' or hz < -1e5 then return false, 'no ground below' end
+  if p.z - hz > 3 then return false, 'in the air' end
+  return true
+end
+M.standing = standing
 
 local function roadNear(lat, lon, r)
   local a = api()
@@ -121,6 +142,7 @@ local function travel()
   if L.t - L.refusedAt >= M.TP_RETRY_S then fail(err) else L.retryAt = L.t + 1 end
 end
 
+function M.hopped(key) return L ~= nil and L.hopDone ~= nil and L.hopDone[key] == true end
 function M.active() return L ~= nil end
 function M.covering() return L ~= nil and L.only == true end
 function M.roadsOk() return L ~= nil and L.roadsOk == true end
@@ -205,24 +227,74 @@ function M.update(dt)
     end
   elseif L.step == 'dress' then
     local left = 0
+    -- un viaje intermedio en curso (lo que hay que montar queda lejos del coche): se espera a que llegue
+    if L.hop then
+      local h = L.hop
+      h.t = h.t + (dt or 0)
+      if not h.sent then
+        local okT = a.teleport(h.lat, h.lon, L.title)
+        if okT then h.sent, h.t, L.teleported, L.tpT = true, 0, false, 0
+        elseif h.t >= M.TP_RETRY_S then
+          log('W', TAG, 'loading: intermediate travel refused')
+          L.hopDone[h.key], L.hop, L.t = true, nil, 0
+        end
+      else
+        if L.teleported then L.tpT = (L.tpT or 0) + (dt or 0) end
+        local ready = L.teleported and L.tpT > 2 and a.ready and a.ready()
+        if ready and (roadNear(h.lat, h.lon, 80) or h.t > M.HOP_ROADS_S) or h.t > M.TIMEOUT.tp + M.HOP_ROADS_S then
+          note('Mundo: llegado al parque de asistencia', 'World: arrived at the service park')
+          L.hopDone[h.key], L.hop, L.t = true, nil, 0
+        end
+      end
+      L.frac = 0.5
+      return
+    end
     if L.dress then
-      local ok, n = pcall(L.dress, dt)
+      local ok, n, hop = pcall(L.dress, dt)
       left = ok and (n or 0) or 0
       if not ok then log('W', TAG, 'loading dress: ' .. tostring(n)) end
+      L.hopDone = L.hopDone or {}
+      if ok and type(hop) == 'table' and hop.lat and not L.hopDone[hop.key or 'hop'] then
+        L.hop = { lat = hop.lat, lon = hop.lon, key = hop.key or 'hop', t = 0 }
+        send()
+        return
+      end
     end
     L.left0 = math.max(L.left0 or 0, left)
     L.frac = L.left0 > 0 and (1 - left / L.left0) or 1
     if (left == 0 and L.t > 0.5) or L.t > M.TIMEOUT.dress then nextStep('place') end
   elseif L.step == 'place' then
+    local placed = true
     if L.place then
-      local ok, err = pcall(L.place)
-      if not ok then log('W', TAG, 'loading place: ' .. tostring(err)) end
+      local ok, res = pcall(L.place)
+      if not ok then log('W', TAG, 'loading place: ' .. tostring(res)) end
+      placed = not ok or res ~= false
     end
-    nextStep('settle')
+    -- «false»: aún no hay suelo fiable donde colocar el coche; se reintenta un rato (si no, la comprobación de después
+    -- lo resuelve con un viaje nuevo)
+    if placed or L.t > M.PLACE_WAIT_S then
+      if not placed then log('W', TAG, 'loading: could not place the car, relying on the ground check') end
+      nextStep('settle')
+    end
   elseif L.step == 'settle' then
-    -- un momento para que el coche se asiente y la colisión de los objetos se rehaga
-    L.frac = L.t / M.TIMEOUT.settle
-    if L.t >= M.TIMEOUT.settle then finish() end
+    -- un momento para que el coche se asiente y la colisión de los objetos se rehaga; y la comprobación de suelo firme
+    L.frac = math.min(1, L.t / M.TIMEOUT.settle)
+    if L.t < M.TIMEOUT.settle then return end
+    local okS, why = standing()
+    L.okT = okS and ((L.okT or 0) + (dt or 0)) or 0
+    if L.okT >= 0.6 then finish() return end
+    if L.t > M.TIMEOUT.settle + M.GROUND_WAIT_S then
+      L.groundTries = (L.groundTries or 0) + 1
+      log('W', TAG, ('loading: the car is not on solid ground (%s), attempt %d/%d'):format(tostring(why), L.groundTries, M.GROUND_TRIES))
+      if L.groundTries >= M.GROUND_TRIES then
+        fail(L.lang == 'es' and 'no se ha podido colocar el coche en suelo firme' or 'could not place the car on solid ground')
+        return
+      end
+      if L.onGroundFail then pcall(L.onGroundFail, L.groundTries) end
+      -- otra vez desde el principio: viaje (BeamNG.Earth deja el coche en el suelo), carreteras, montaje y colocación
+      L.hopDone, L.hop, L.okT, L.refusedAt, L.retryAt, L.roadsOk, L.left0 = {}, nil, 0, nil, nil, nil, nil
+      L.step, L.t, L.frac = 'cover', M.COVER_S, 0     -- (el paso 'cover' ya sabe viajar y reintentar)
+    end
   end
 end
 

@@ -1193,7 +1193,7 @@ function M.uiStartRally(eventId, fromRun, force)
   stage.stop()
   -- los objetos de la carrera anterior (boxes, TC0 del parque) fuera: si no, al reiniciar quedaban dos TC juntos
   pcall(props.clear)
-  S.box, S.park, S.tc0Done = nil, nil, nil
+  S.box, S.park, S.tc0Done, S.forceRoad = nil, nil, nil, nil
   servicepark.tcSpot = nil
   local ok, err = rally.start(full, tonumber(fromRun), { onEnd = function() M.publishState() end })
   if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
@@ -1226,6 +1226,16 @@ function M.uiStartRally(eventId, fromRun, force)
           if not S.park then S.park = servicepark.search(start[1], start[2], tw and tw[1], tw and tw[2]) or false end
           if S.park and not servicepark.step(S.park, 8) then return 1 end
           local site = S.park and S.park.site
+          -- el sitio queda lejos del coche (otro bloque de terreno): primero se viaja allí con BeamNG.Earth, que carga el
+          -- suelo; montar y colocar sin él dejaba el coche a z = 0 (Trans Sierra Nevada, 20-nov)
+          if site and not site.manual and not loader.hopped('park') then
+            local pv = be:getPlayerVehicle(0)
+            local pp = pv and pv:getPosition()
+            if pp and (site.x - pp.x) ^ 2 + (site.y - pp.y) ^ 2 > M.HOP_M ^ 2 then
+              local hla, hlo = a.toGeo(site.x, site.y, site.z or 0)
+              if hla then return 1, { lat = hla, lon = hlo, key = 'park' } end
+            end
+          end
           if site then
             servicepark.surface = dressing.normSurface(full.surface)
             S.box = servicepark.build(site) or false
@@ -1251,8 +1261,13 @@ function M.uiStartRally(eventId, fromRun, force)
         -- de cara al primer control horario (norma 17-nov: orientado hacia el siguiente TC)
         local first = rs.it and rs.it.items and rs.it.items[1]
         local tw = first and first.stage and first.stage.start
-        if S.box then M.placeAt(S.box.lat, S.box.lon, S.box.faceLat or (tw and tw[1]), S.box.faceLon or (tw and tw[2]))
-        else M.placeOnRoad(start[1], start[2]) end
+        -- (si el parque no dio suelo firme, la segunda vez se coloca en la carretera de la asistencia)
+        if S.box and not S.forceRoad then return M.placeAt(S.box.lat, S.box.lon, S.box.faceLat or (tw and tw[1]), S.box.faceLon or (tw and tw[2])) end
+        return M.placeOnRoad(start[1], start[2])
+      end,
+      onGroundFail = function(n)
+        if n >= 2 then S.forceRoad = true end
+        log('W', TAG, 'service park: the car did not stand on solid ground; ' .. (n >= 2 and 'using the road at the service point' or 'travelling again'))
       end,
       done = function() if rally.active() and not S.noPre then M.preStart('rally', eventId) else freezeCar(false) end end })
     rally.hold(true)
@@ -1353,6 +1368,7 @@ function M.onExtensionLoaded()
 end
 
 M.TP_BEFORE_TC_M = 100
+M.HOP_M = 80                 -- un parque a más de esto del coche: primero se viaja allí
 -- la carretera que sale de la salida del tramo hacia fuera, por el enlace del organizador que la toca (o nil)
 function M.roadFromStart(full, s)
   local f = s.path and s.path[1]
@@ -1380,18 +1396,80 @@ function M.snapAfter(lat, lon) S.afterTp = { lat = lat, lon = lon, snap = true, 
 -- El coche, en la calzada de la carretera más cercana (en su carril, el derecho si es de doble sentido), mirando hacia
 -- (lat, lon): nunca en el monte ni dentro de una casa tras un teletransporte
 -- el coche en (lat, lon), en el suelo, mirando hacia (faceLat, faceLon) (el box del parque de asistencia)
+-- Altura del suelo fiable en (x, y). BeamNG.Earth carga el terreno por bloques alrededor del coche: fuera del bloque
+-- cargado el juego devuelve 0 o basura (20-nov, Trans Sierra Nevada: el coche se colocó a z = 0 en un aparcamiento a
+-- 492 m, en un bloque sin cargar, y cayó al vacío). ref = una altura que ya se sabe buena (la del coche tras el viaje):
+-- una altura a más de GROUND_TOL_M de ella no vale. Devuelve nil si no hay suelo fiable: quien llama espera o viaja.
+M.GROUND_TOL_M = 40
+local function plausible(h, ref, tol)
+  return type(h) == 'number' and h > -1e5 and h < 1e5 and (ref == nil or math.abs(h - ref) <= (tol or M.GROUND_TOL_M))
+end
+-- tol: cuánto puede distar en vertical de ref (por defecto GROUND_TOL_M; más margen si el punto queda lejos del coche)
+function M.groundZ(x, y, ref, tol)
+  if ref ~= nil and not (plausible(ref) and ref > M.VOID_Z) then ref = nil end
+  local tz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
+  if not plausible(tz, ref, tol) then tz = nil end
+  local base = tz or ref
+  if not base then return nil end
+  -- la superficie sólida de verdad (calzada, aparcamiento) justo sobre el terreno: nunca el techo de un edificio
+  for _, up in ipairs({ 0.6, 2.5 }) do
+    local hz = be:getSurfaceHeightBelow(vec3(x, y, base + up))
+    if plausible(hz, base, 6) then return hz end
+  end
+  return tz
+end
 function M.placeAt(lat, lon, faceLat, faceLon)
   local a, v = api(), be:getPlayerVehicle(0)
   if not (a and v and lat) then return false end
   local x, y = a.toGame(lat, lon, 0)
   local fx, fy = a.toGame(faceLat or lat, faceLon or lon, 0)
-  local gz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0)) or v:getPosition().z
-  local hz = be:getSurfaceHeightBelow(vec3(x, y, (gz or 0) + 0.6))
-  local z = (type(hz) == 'number' and hz > -1e5) and hz or gz
+  local cp = v:getPosition()
+  local z = M.groundZ(x, y, cp.z, M.GROUND_TOL_M + 0.35 * math.sqrt((x - cp.x) ^ 2 + (y - cp.y) ^ 2))
+  if not z then
+    log('W', TAG, 'placeAt: no reliable ground yet')
+    return false
+  end
   local dir = vec3((fx or x + 1) - x, (fy or y) - y, 0)
   if dir:length() < 0.1 then dir = vec3(1, 0, 0) end
   spawn.safeTeleport(v, vec3(x, y, z + 0.3), quatFromDir(dir:normalized(), vec3(0, 0, 1)), nil, nil, false, nil, true)
   return true
+end
+
+-- Red de seguridad (20-nov): el coche nunca cae al vacío. Cada segundo, si está sobre suelo firme se anota el sitio; si
+-- cae en picado (o está bajo el nivel del mundo), vuelve al último sitio bueno con un aviso (en un tramo cronometrado,
+-- con la penalización de recuperar el coche).
+M.FALL_VZ, M.FALL_S, M.VOID_Z = -38, 1.0, -400
+local fall = { t = 0, ok = nil, bad = 0 }
+function M.fallGuard(dt)
+  local v = be:getPlayerVehicle(0)
+  if not v then return end
+  if not (stage.active() or rally.active() or loader.active() or S.pre) then fall.ok = nil fall.bad = 0 return end
+  local p, vel = v:getPosition(), v:getVelocity()
+  local falling = p.z < M.VOID_Z or vel.z < M.FALL_VZ
+  if falling then
+    fall.bad = fall.bad + (dt or 0)
+    if fall.bad >= M.FALL_S and fall.ok and not loader.active() then
+      fall.bad = 0
+      local es = spanish()
+      local q = fall.ok.q
+      pcall(function() spawn.safeTeleport(v, vec3(fall.ok.x, fall.ok.y, fall.ok.z + 0.4), q, nil, nil, false, nil, true) end)
+      pcall(function() v:queueLuaCommand('obj:setVelocity(0,0,0)') end)
+      M.toast(es and 'Caída al vacío: coche recuperado en el último sitio firme.' or 'Fell into the void: car recovered at the last solid spot.', 6)
+      log('W', TAG, ('fall guard: recovered from z=%.0f'):format(p.z))
+      if stage.active() then pcall(stage.onReset) end
+    end
+    return
+  end
+  fall.bad = 0
+  fall.t = fall.t + (dt or 0)
+  if fall.t >= 1 then
+    fall.t = 0
+    local hz = be:getSurfaceHeightBelow(vec3(p.x, p.y, p.z + 1.5))
+    if type(hz) == 'number' and hz > -1e5 and p.z - hz < 2.5 and vel:length() < 60 then
+      local ok, rot = pcall(function() return quat(v:getRotation()) end)
+      fall.ok = { x = p.x, y = p.y, z = p.z, q = ok and rot or quat(0, 0, 0, 1) }
+    end
+  end
 end
 
 function M.placeOnRoad(lat, lon, atLat, atLon)
@@ -1444,9 +1522,12 @@ function M.placeOnRoad(lat, lon, atLat, atLon)
   local r = m.nodes[n1].radius or 3
   local off = (link and link.oneWay) and 0 or r * 0.5
   local px, py = cx + hy * off, cy - hx * off
-  local gz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(px, py, 0)) or p.z
-  local hz = be:getSurfaceHeightBelow(vec3(px, py, (gz or p.z) + 0.6))
-  local z = (type(hz) == 'number' and hz > -1e5) and hz or gz or p.z
+  local cp = v:getPosition()
+  local z = M.groundZ(px, py, cp.z, M.GROUND_TOL_M + 0.35 * math.sqrt((px - cp.x) ^ 2 + (py - cp.y) ^ 2))
+  if not z then
+    log('W', TAG, 'placeOnRoad: no reliable ground yet')
+    return false
+  end
   local q = quatFromDir(vec3(hx, hy, 0), vec3(0, 0, 1))
   spawn.safeTeleport(v, vec3(px, py, z + 0.3), q, nil, nil, false, nil, true)
   log('I', TAG, ('placed on the road (%.0f m from where it landed)'):format(math.sqrt((px - p.x) ^ 2 + (py - p.y) ^ 2)))
@@ -1559,6 +1640,7 @@ function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
+  pcall(M.fallGuard, dtReal)
   if audit.active() then pcall(audit.update, dtReal) end
   if not loader.active() and not audit.active() then
     pcall(guard.update, stage, rally, function()

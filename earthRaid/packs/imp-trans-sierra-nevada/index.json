@@ -21,8 +21,8 @@
       "radiusKm":42.2,
       "short":"Trans Sierra Nevada",
       "source":"import",
-      "stageCount":16,
-      "stageKm":836.2,
+      "stageCount":6,
+      "stageKm":559.4,
       "stages":[
         {
           "id":"ss01",
@@ -103,12 +103,10 @@
           "title":"Transnevada · Sector 6"
         },
         {
-          "id":"ss07",
-          "kind":"ss",
+          "id":"ruta-a",
+          "kind":"shakedown",
           "km":20.35,
-          "runs":[
-            7
-          ],
+          "runs":{},
           "start":[
             37.159619,
             -3.438911
@@ -116,12 +114,10 @@
           "title":"Ruta A: Güéjar Sierra – Peña Partida"
         },
         {
-          "id":"ss08",
-          "kind":"ss",
+          "id":"ruta-b",
+          "kind":"shakedown",
           "km":35.55,
-          "runs":[
-            8
-          ],
+          "runs":{},
           "start":[
             37.165578,
             -3.14072
@@ -129,12 +125,10 @@
           "title":"Ruta B: Lanteira – Postero Alto – Lanteira"
         },
         {
-          "id":"ss09",
-          "kind":"ss",
+          "id":"ruta-c",
+          "kind":"shakedown",
           "km":33.57,
-          "runs":[
-            9
-          ],
+          "runs":{},
           "start":[
             37.131234,
             -2.80002
@@ -142,12 +136,10 @@
           "title":"Ruta C: Abrucena – La Polarda"
         },
         {
-          "id":"ss10",
-          "kind":"ss",
+          "id":"ruta-d",
+          "kind":"shakedown",
           "km":28.16,
-          "runs":[
-            10
-          ],
+          "runs":{},
           "start":[
             36.991023,
             -2.904205
@@ -155,12 +147,10 @@
           "title":"Ruta D: Laujar de Andarax – Loma Raspa – Laujar de Andarax"
         },
         {
-          "id":"ss11",
-          "kind":"ss",
+          "id":"ruta-e",
+          "kind":"shakedown",
           "km":30.26,
-          "runs":[
-            11
-          ],
+          "runs":{},
           "start":[
             37.030158,
             -2.995326
@@ -168,12 +158,10 @@
           "title":"Ruta E: Bayárcal – Laguna Seca"
         },
         {
-          "id":"ss12",
-          "kind":"ss",
+          "id":"ruta-f",
+          "kind":"shakedown",
           "km":16.6,
-          "runs":[
-            12
-          ],
+          "runs":{},
           "start":[
             36.99647,
             -3.082539
@@ -181,12 +169,10 @@
           "title":"Ruta F: Válor – Fuente de las Primeras Aguas"
         },
         {
-          "id":"ss13",
-          "kind":"ss",
+          "id":"ruta-g",
+          "kind":"shakedown",
           "km":36.44,
-          "runs":[
-            13
-          ],
+          "runs":{},
           "start":[
             36.980776,
             -3.122121
@@ -194,12 +180,10 @@
           "title":"Ruta G: Yegen – Mecina Bombarón – Yegen"
         },
         {
-          "id":"ss14",
-          "kind":"ss",
+          "id":"ruta-h",
+          "kind":"shakedown",
           "km":22.41,
-          "runs":[
-            14
-          ],
+          "runs":{},
           "start":[
             36.96074,
             -3.355813
@@ -207,12 +191,10 @@
           "title":"Ruta H: Capileira – Refugio Poqueira"
         },
         {
-          "id":"ss15",
-          "kind":"ss",
+          "id":"ruta-i",
+          "kind":"shakedown",
           "km":28.87,
-          "runs":[
-            15
-          ],
+          "runs":{},
           "start":[
             36.977607,
             -3.538782
@@ -220,12 +202,10 @@
           "title":"Ruta I: Nigüelas – La Rinconada – Nigüelas"
         },
         {
-          "id":"ss16",
-          "kind":"ss",
+          "id":"ruta-j",
+          "kind":"shakedown",
           "km":24.62,
-          "runs":[
-            16
-          ],
+          "runs":{},
           "start":[
             36.942902,
             -3.309663
