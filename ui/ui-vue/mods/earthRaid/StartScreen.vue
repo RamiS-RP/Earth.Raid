@@ -105,14 +105,14 @@ const stageDesc = computed(() => {
   if (!st) return ""
   const es = s.value && s.value.lang === "es"
   const k = String(st.kind || "")
-  const kind = k === "ss" ? (es ? "Tramo cronometrado" : "Special stage") : /sd|shake/i.test(k) ? "Shakedown" : /test|qual/i.test(k) ? (es ? "Test / calificación" : "Test / qualifying") : (es ? "Tramo" : "Stage")
+  const kind = k === "ss" ? (es ? "Tramo cronometrado" : "Special stage") : /super|sss/i.test(k) ? (es ? "Superespecial" : "Super special stage") : /special|especial/i.test(k) ? (es ? "Tramo especial (fuera del rally)" : "Special stage (not in the rally)") : /sd|shake/i.test(k) ? "Shakedown" : /test|qual/i.test(k) ? (es ? "Test / calificación" : "Test / qualifying") : (es ? "Tramo" : "Stage")
   return `${kind} · ${sel.value.name}` + (list(st.runs).length > 1 ? (es ? ` · pasadas ${list(st.runs).join(" y ")}` : ` · runs ${list(st.runs).join(" and ")}`) : "")
 })
 // (las pasadas inversas llevan el id del tramo con R al final)
 const byId = id => stages.value.find(y => y.id === id || y.id === String(id || "").replace(/R$/, ""))
 function stageKm(id) { const x = byId(id); return x ? x.km : null }
 function stageSurface(id) { const x = byId(id); return (x && x.surface) || "" }
-function plate(st) { const r = list(st.runs); return r.length ? "SS" + r.join("/") : "SD" }
+function plate(st) { const r = list(st.runs); if (r.length) return "SS" + r.join("/"); const k = String(st.kind || ""); return /super|sss/i.test(k) ? "SSS" : /special|especial/i.test(k) ? (s.value && s.value.lang === "es" ? "ES" : "SP") : "SD" }
 function go() { started = true; call("uiPreGo") }
 function back() { started = true; call("uiPreBack") }
 

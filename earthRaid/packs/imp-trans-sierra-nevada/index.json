@@ -104,7 +104,7 @@
         },
         {
           "id":"ruta-a",
-          "kind":"shakedown",
+          "kind":"special",
           "km":20.35,
           "runs":{},
           "start":[
@@ -115,7 +115,7 @@
         },
         {
           "id":"ruta-b",
-          "kind":"shakedown",
+          "kind":"special",
           "km":35.55,
           "runs":{},
           "start":[
@@ -126,7 +126,7 @@
         },
         {
           "id":"ruta-c",
-          "kind":"shakedown",
+          "kind":"special",
           "km":33.57,
           "runs":{},
           "start":[
@@ -137,7 +137,7 @@
         },
         {
           "id":"ruta-d",
-          "kind":"shakedown",
+          "kind":"special",
           "km":28.16,
           "runs":{},
           "start":[
@@ -148,7 +148,7 @@
         },
         {
           "id":"ruta-e",
-          "kind":"shakedown",
+          "kind":"special",
           "km":30.26,
           "runs":{},
           "start":[
@@ -159,7 +159,7 @@
         },
         {
           "id":"ruta-f",
-          "kind":"shakedown",
+          "kind":"special",
           "km":16.6,
           "runs":{},
           "start":[
@@ -170,7 +170,7 @@
         },
         {
           "id":"ruta-g",
-          "kind":"shakedown",
+          "kind":"special",
           "km":36.44,
           "runs":{},
           "start":[
@@ -181,7 +181,7 @@
         },
         {
           "id":"ruta-h",
-          "kind":"shakedown",
+          "kind":"special",
           "km":22.41,
           "runs":{},
           "start":[
@@ -192,7 +192,7 @@
         },
         {
           "id":"ruta-i",
-          "kind":"shakedown",
+          "kind":"special",
           "km":28.87,
           "runs":{},
           "start":[
@@ -203,7 +203,7 @@
         },
         {
           "id":"ruta-j",
-          "kind":"shakedown",
+          "kind":"special",
           "km":24.62,
           "runs":{},
           "start":[

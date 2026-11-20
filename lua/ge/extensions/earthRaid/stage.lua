@@ -67,7 +67,45 @@ function M.state() return S end
 
 -- ---- tráfico ------------------------------------------------------------------------------------------------------------
 
+-- Como el juego (gameplay/rally/trafficExclusion.lua): el tráfico NO se borra al empezar un tramo ni se vuelve a crear
+-- al acabarlo (eso es lo que daba el tirón al salir del TC0): la carretera del tramo se marca como zona de exclusión
+-- del tráfico (map.setTrafficExclusionZones, círculos cada 1,5 radios) y el sistema de tráfico del juego sigue con su
+-- propia lógica (aparece lejos, fuera de la vista). En tramos largos las zonas cubren solo una ventana alrededor del
+-- coche y se rehacen al avanzar. Sin esa función en el juego, se vuelve a lo de antes (borrar y recrear).
+M.TRAFFIC_EXCL_M = 12          -- radio de cada zona (el juego usa 10)
+M.TRAFFIC_WINDOW_M = 2500      -- a cada lado del coche
+M.TRAFFIC_REBUILD_M = 900      -- se rehacen al alejarse tanto del centro de la ventana
+local wantExcl, exclT, exclAt, exclOn = false, nil, nil, false
+
+local function exclusionSupported()
+  return type(map) == 'table' and type(map.setTrafficExclusionZones) == 'function' and type(map.clearTrafficExclusionZones) == 'function'
+end
+
+local function applyExclusion(t, center)
+  local a = api()
+  if not (t and a and a.toGame and exclusionSupported()) then return false end
+  local zones = {}
+  local step = M.TRAFFIC_EXCL_M * 1.5
+  local d0, d1 = math.max(0, center - M.TRAFFIC_WINDOW_M), math.min(t.total, center + M.TRAFFIC_WINDOW_M)
+  for d = d0, d1, step do
+    local x, y = geo.at(t, d)
+    local la, lo = geo.toGeo(t, x, y)
+    local gx, gy = a.toGame(la, lo, 0)
+    if gx then
+      local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(gx, gy, 0)) or 0
+      zones[#zones + 1] = { pos = vec3(gx, gy, z or 0), radius = M.TRAFFIC_EXCL_M }
+    end
+  end
+  local ok = pcall(function() map.setTrafficExclusionZones(zones) map.reset() end)
+  if ok then exclT, exclAt, exclOn = t, center, true log('I', TAG, ('traffic exclusion: %d zones'):format(#zones)) end
+  return ok
+end
+
+-- el tramo marca "sin tráfico" (en un rally, antes de montarlo): las zonas se ponen al conocer el trazado
 function M.trafficOff()
+  wantExcl = true
+  if S and S.track and applyExclusion(S.track, S.along or 0) then return end
+  if exclusionSupported() then return end
   local tr = rawget(_G, 'gameplay_traffic')
   if not tr then return end
   pcall(function()
@@ -81,10 +119,25 @@ function M.trafficOff()
 end
 
 function M.trafficBack()
+  wantExcl = false
+  if exclOn then
+    exclOn, exclT, exclAt = false, nil, nil
+    pcall(function() map.clearTrafficExclusionZones() map.reset() end)
+  end
   local n = trafficWas
   trafficWas = nil
   local tr = rawget(_G, 'gameplay_traffic')
   if n and tr and tr.setupTraffic then pcall(tr.setupTraffic, n) end
+end
+
+-- cada segundo, desde el bucle del tramo: la ventana de zonas sigue al coche
+local exclTick = 0
+local function exclusionUpdate(dt)
+  if not (exclOn and exclT and S and S.along) then return end
+  exclTick = exclTick + dt
+  if exclTick < 1 then return end
+  exclTick = 0
+  if math.abs(S.along - (exclAt or 0)) > M.TRAFFIC_REBUILD_M and exclT.total > 2 * M.TRAFFIC_WINDOW_M then applyExclusion(exclT, S.along) end
 end
 
 -- ---- resultados ---------------------------------------------------------------------------------------------------------
@@ -507,7 +560,7 @@ function M.start(ev, st, info)
     end
     if not S.session then S.phase, S.tcHold = 'tc', 0 end
   end
-  if opt.noTraffic and not S.session then M.trafficOff() end
+  if opt.noTraffic or wantExcl then M.trafficOff() end
   startclock.ensure()
   -- la meta y todo lo de más allá de la salida se monta al acercarse (M.DRESS_AHEAD_M): calzada y edificios reales
   -- Norma: el tramo termina siempre en la calzada (asfalto o tierra). Si el final del archivo se sale de la carretera
@@ -1099,6 +1152,7 @@ function M.update(dtSim, dtReal)
   end
   if not S then return end
   audio.update(dtReal or dtSim)
+  exclusionUpdate(dtReal or dtSim)
   -- la hora del reloj: la del ordenador (con ella se fija la hora de salida en el TC), suave entre segundos
   S.wall = (S.wall or 0) + dtSim
   local osNow = geo.dayClock()

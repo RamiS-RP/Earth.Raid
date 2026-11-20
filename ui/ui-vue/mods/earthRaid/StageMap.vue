@@ -21,12 +21,12 @@
       <!-- tramos (el elegido, el último: encima) -->
       <template v-for="s in stagePts" :key="s.id">
         <polyline :points="s.pts" class="halo" :class="{ on: s.on }" />
-        <polyline :points="s.pts" class="ss" :class="{ on: s.on, run: s.run }" />
+        <polyline :points="s.pts" class="ss" :class="{ on: s.on, run: s.run, extra: s.extra, past: s.past }" />
         <polyline :points="s.pts" class="hit" @click="$emit('pick', s.id)" />
       </template>
       <template v-for="s in stagePts" :key="'m' + s.id">
         <g :transform="`translate(${s.a[0]},${s.a[1]})`" class="mk">
-          <circle r="7" class="start" :class="{ on: s.on }" />
+          <circle r="7" class="start" :class="{ on: s.on, past: s.past }" />
           <polygon points="-2.5,-4 3.5,0 -2.5,4" class="tri" />
         </g>
         <g :transform="`translate(${s.b[0]},${s.b[1]})`" class="mk">
@@ -56,10 +56,12 @@ const props = defineProps({
   plate: { type: Function, default: s => s.id },
   dark: { type: Boolean, default: false },
   lang: { type: String, default: "es" },
+  mode: { type: String, default: "stage" },      // "rally": solo los tramos del rally; "stage": todos
+  fromRun: { type: [Number, String], default: null },   // salida desde este SS: los anteriores, en gris
 })
 defineEmits(["pick"])
 
-const TILE = 256, PAD = 36, MAX_Z = 15, MIN_Z = 3
+const TILE = 256, PAD = 18, MAX_Z = 15, MIN_Z = 3
 const box = ref(null)
 const w = ref(0), h = ref(0)
 const view = ref(null)            // { lat, lon, z }
@@ -69,7 +71,11 @@ const credit = "© EOX IT Services (maps.eox.at) · © OpenStreetMap contributor
 const waitText = computed(() => (props.lang === "es" ? "Cargando el mapa…" : "Loading the map…"))
 
 const pts = v => list(v).map(p => list(p)).filter(p => p.length >= 2 && isFinite(p[0]) && isFinite(p[1]))
-const stList = computed(() => list(props.stages).filter(s => s && s.outline))
+// El papel de cada tramo en el mapa: del rally (rojo), fuera del rally (azul, solo en "tramo suelto") y ya recorrido
+// porque se sale desde más adelante (gris). En "rally completo" solo se dibujan los del rally.
+const inRally = s => list(s.runs).length > 0
+const isPast = s => props.mode === "rally" && props.fromRun && list(s.runs).length > 0 && Math.max(...list(s.runs).map(Number)) < Number(props.fromRun)
+const stList = computed(() => list(props.stages).filter(s => s && s.outline && (props.mode !== "rally" || inRally(s))))
 
 // ---- Mercator
 const R = TILE / (2 * Math.PI)
@@ -82,7 +88,8 @@ function project(lat, lon, z) {
 function fit() {
   if (!w.value || !h.value) return
   let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity, n = 0
-  for (const s of [...stList.value, ...list(props.liaisons)]) for (const p of pts(s.outline)) { a = Math.min(a, p[0]); b = Math.min(b, p[1]); c = Math.max(c, p[0]); d = Math.max(d, p[1]); n++ }
+  const base = stList.value.filter(s => !isPast(s))
+  for (const s of (base.length ? base : stList.value)) for (const p of pts(s.outline)) { a = Math.min(a, p[0]); b = Math.min(b, p[1]); c = Math.max(c, p[0]); d = Math.max(d, p[1]); n++ }
   if (!n) { view.value = null; return }
   const lat = (a + c) / 2, lon = (b + d) / 2
   // el zoom justo (con decimales: las teselas del nivel entero, escaladas)
@@ -123,7 +130,7 @@ const stagePts = computed(() => {
   const out = stList.value.map(s => {
     const o = pts(s.outline).map(p => toScreen(p[0], p[1]))
     if (o.length < 2) return null
-    return { id: s.id, on: s.id === props.pickId, run: s.id === props.runId, pts: o.map(p => p.join(",")).join(" "), a: o[0], b: o[o.length - 1], plate: props.plate(s) }
+    return { id: s.id, on: s.id === props.pickId, run: s.id === props.runId, extra: !inRally(s), past: isPast(s), pts: o.map(p => p.join(",")).join(" "), a: o[0], b: o[o.length - 1], plate: props.plate(s) }
   }).filter(Boolean)
   // el elegido al final: queda encima
   return out.sort((p, q) => (p.on ? 1 : 0) - (q.on ? 1 : 0))
@@ -177,7 +184,7 @@ onMounted(() => {
   if (window.ResizeObserver && box.value) { ro = new ResizeObserver(measure); ro.observe(box.value) }
 })
 onBeforeUnmount(() => { gone = true; if (timer) clearTimeout(timer); if (ro) ro.disconnect() })
-watch([stList, () => list(props.liaisons).length], fit)
+watch([stList, () => list(props.liaisons).length, () => props.fromRun, () => props.mode], fit)
 </script>
 
 <style scoped lang="scss">
@@ -188,16 +195,19 @@ watch([stList, () => list(props.liaisons).length], fit)
 .dark .tile.overlay { filter: invert(1) hue-rotate(180deg) brightness(1.15); }
 .lines { position: absolute; inset: 0; width: 100%; height: 100%; }
 polyline { fill: none; stroke-linejoin: round; stroke-linecap: round; }
-.liaison { stroke: #3d9df0; stroke-width: 2.5; stroke-dasharray: 7 6; opacity: .9; }
+.liaison { stroke: #d6dae0; stroke-width: 2.5; stroke-dasharray: 7 6; opacity: .85; }
 .halo { stroke: rgba(0, 0, 0, .55); stroke-width: 7; }
 .halo.on { stroke: #fff; stroke-width: 9; }
 .ss { stroke: #e0393e; stroke-width: 3.5; }
+.ss.extra { stroke: #2f8fe0; }
+.ss.past { stroke: #8a8f98; opacity: .7; }
 .ss.on { stroke: var(--bng-orange, #ff6600); stroke-width: 5; }
 .ss.run { stroke: #17c936; }
 .hit { stroke: transparent; stroke-width: 14; cursor: pointer; pointer-events: stroke; }
 .mk { pointer-events: none; }
 .start { fill: #17c936; stroke: #fff; stroke-width: 2; }
 .start.on { fill: var(--bng-orange, #ff6600); }
+.start.past { fill: #8a8f98; }
 .tri { fill: #fff; }
 .fin { fill: #fff; stroke: #111; stroke-width: 1.5; }
 .chk { fill: #111; }

@@ -150,7 +150,7 @@
             <div class="col mapcol">
               <h2 class="sect"><span class="slash small"></span>{{ t("map") }}</h2>
               <div class="mapbox">
-                <StageMap :stages="stages" :liaisons="list(sel.liaisons)" :pick-id="mapPick" :run-id="runningId" :plate="plate" :lang="s.lang" @pick="id => { mode = 'stage'; pickId = id }" />
+                <StageMap :stages="stages" :liaisons="list(sel.liaisons)" :pick-id="mapPick" :run-id="runningId" :plate="plate" :lang="s.lang" :mode="mode" :from-run="fromRun" @pick="id => { mode = 'stage'; pickId = id }" />
               </div>
               <p class="dim small maphelp">{{ t("mapHelp") }}</p>
             </div>
@@ -452,9 +452,15 @@ function saveMeta(i) { typing(false); call("uiImportMeta", i.key, JSON.stringify
 function openImported(i) { call("uiImportOpen", false); open(i.id) }
 function close() { call("uiClose") }
 function escape() { if (s.value && s.value.importOpen) call("uiImportOpen", false); else if (sel.value) back(); else close() }
+// la sigla de un tramo: SS + sus pasadas en el rally; fuera del rally, por su clase (superespecial SSS, especial ES / SP,
+// shakedown SD)
 function plate(st) {
   const r = list(st.runs)
-  return r.length ? "SS" + r.join("/") : "SD"
+  if (r.length) return "SS" + r.join("/")
+  const k = String(st.kind || "")
+  if (/super|sss/i.test(k)) return "SSS"
+  if (/special|especial/i.test(k)) return s.value && s.value.lang === "es" ? "ES" : "SP"
+  return "SD"
 }
 function isRunning(st) {
   const a = s.value && s.value.stageActive

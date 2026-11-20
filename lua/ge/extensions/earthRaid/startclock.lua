@@ -12,7 +12,7 @@ M.TOP_RATIO = 0.132         -- como el juego (rallyStartClock): la ventana tapa 
 M.FOV = 25
 M.DIST_M = 1.0
 M.SHIFT = 1 / 3
-M.LINGER_S = 0              -- la ventana se quita al instante al salir (el juego la deja 1,5 s): ahí salen las notas
+M.LINGER_S = 1.5
 M.MASK = 29
 
 local view, linger, clockObj, linePos = nil, 0, nil, nil
