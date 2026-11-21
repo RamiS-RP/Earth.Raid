@@ -936,6 +936,7 @@ function M.start(ev, st, info)
     add(t)
     add(t.after)
     props.setVirtualRoad(pts, hw)
+    if winter.active() then winter.setRoad(pts, hw) end   -- bancos de nieve a los lados del tramo
   end
   pcall(S.setVirtual)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
@@ -1283,6 +1284,7 @@ function M.update(dtSim, dtReal)
   clock = clock + (dtReal or dtSim)
   -- los objetos encolados, poco a poco; la colisión se rehace una vez cuando ya están todos (no tras cada tanda)
   guide.tick(dtReal or dtSim)
+  winter.update(dtReal or dtSim)
   pcall(preloadAhead, dtReal or dtSim or 0)
   -- carteles, conos y cintas con física cerca del coche
   if props.count() > 0 then
