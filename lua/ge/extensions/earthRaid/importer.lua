@@ -15,6 +15,9 @@ M.MIN_STEP_M = 3            -- puntos más juntos que esto se descartan
 M.MAX_POINTS = 6000
 M.SAME_STAGE_M = 60         -- dos tramos con la salida y la meta a menos de esto (y casi igual de largos) son el mismo
 M.ATTACH_M = 400            -- un punto suelto se asigna al tramo más cercano si está a menos de esto
+M.CIRCUIT_M = 300           -- salida y meta a menos de esto (y el tramo, mucho más largo): circuito cerrado, con vueltas
+M.MAX_LINES = 4000          -- más líneas que esto: no es una ruta (un volcado de mapa entero)
+M.JUMP_WARN_M = 5000        -- un salto así entre dos puntos seguidos: aviso de trazado roto
 
 local function dist(a, b)
   local a1, a2 = rad(a[1]), rad(b[1])
@@ -55,12 +58,31 @@ end
 -- ---- lectores: cada uno devuelve { name, lines = { { name, cat, path = {{lat, lon}...}, where = {nombres de carpeta} } },
 -- points = { { name, cat, pos = {lat, lon}, where } } }
 
+-- una coordenada que se puede usar: números de verdad, dentro del mundo y no el (0, 0) de un dato vacío
+function M.validLL(lat, lon)
+  if type(lat) ~= 'number' or type(lon) ~= 'number' then return false end
+  if lat ~= lat or lon ~= lon then return false end
+  if lat < -85 or lat > 85 or lon < -180 or lon > 180 then return false end
+  if abs(lat) < 1e-7 and abs(lon) < 1e-7 then return false end
+  return true
+end
+local function cleanSource(src)
+  for _, l in ipairs(src.lines or {}) do
+    local p = {}
+    for _, q in ipairs(l.path or {}) do if type(q) == 'table' and M.validLL(q[1], q[2]) then p[#p + 1] = q end end
+    l.path = p
+  end
+  local pts = {}
+  for _, p in ipairs(src.points or {}) do if type(p.pos) == 'table' and M.validLL(p.pos[1], p.pos[2]) then pts[#pts + 1] = p end end
+  src.points = pts
+end
+
 local function kmlCoords(s)
   local out = {}
   for tok in tostring(s or ''):gmatch('%S+') do
     local lon, lat = tok:match('^([%-%d%.eE]+),([%-%d%.eE]+)')
     lon, lat = tonumber(lon), tonumber(lat)
-    if lat and lon then out[#out + 1] = { lat, lon } end
+    if M.validLL(lat, lon) then out[#out + 1] = { lat, lon } end
   end
   return out
 end
@@ -253,7 +275,8 @@ end
 -- "Special Stage - SS 2/5 Valleseco" -> 'Special Stage', 'SS 2/5 Valleseco'
 local function splitCat(name)
   local a, b = tostring(name or ''):match('^(.-)%s+%-%s+(.+)$')
-  if a and #a <= 32 then return a, b end
+  -- "Regrouping (Umeå - Nolia)": el guion va dentro del paréntesis, no separa nada
+  if a and #a <= 32 and select(2, a:gsub('%(', '')) <= select(2, a:gsub('%)', '')) then return a, b end
   return '', tostring(name or '')
 end
 
@@ -292,7 +315,7 @@ function M.pointKind(name)
   if has(n, 'service', 'asistencia', 'parque de asistencia') then return 'service' end
   if has(n, 'refuel', 'repostaje', 'gas station', 'petrol') then return 'refuel' end
   if has(n, 'regroup', 'reagrup') then return 'regroup' end
-  if has(n, 'parc ferm', 'parque cerrado') then return 'parcFerme' end
+  if has(n, 'parc ferm', 'park ferm', 'parque cerrado') then return 'parcFerme' end
   if has(n, 'passage control', 'control de paso') then return 'passageControl' end
   if n:match('^tc') or has(n, 'time control', 'control horario', ' tc ') then return 'tc' end
   if has(n, 'amb', 'first aid', 'crane', 'grúa', 'fire', 'bomberos', 'miv', 'safety car', 'medical', 'médico') then return 'safety' end
@@ -303,6 +326,7 @@ end
 function M.runsOf(text)
   -- "Tc1/Tc3", "SS1/SS3": el prefijo repetido tras la barra
   local t = tostring(text or ''):gsub('/%s*[TtSs][CcSs][Ss]?%s*(%d)', '/%1')
+  t = t:gsub('(%d)%s*%+%s*(%d)', '%1/%2')   -- "SS 1+18": las dos pasadas, como "1/18"
   local sss, nums, rest = t:match('^%s*([Ss][Ss][Ss]?)%s*([%d][%d%s/,%-y&]*)(.*)$')
   if not sss then
     nums, rest = t:match('^%s*[Tt][Cc]%s*([%d][%d%s/,%-]*)(.*)$')
@@ -345,7 +369,9 @@ local function slug(s)
   s = low(s)
   for _, r in ipairs({ { 'á', 'a' }, { 'à', 'a' }, { 'ä', 'a' }, { 'Á', 'a' }, { 'é', 'e' }, { 'è', 'e' }, { 'ë', 'e' },
     { 'É', 'e' }, { 'í', 'i' }, { 'ì', 'i' }, { 'ï', 'i' }, { 'Í', 'i' }, { 'ó', 'o' }, { 'ò', 'o' }, { 'ö', 'o' },
-    { 'Ó', 'o' }, { 'ú', 'u' }, { 'ù', 'u' }, { 'ü', 'u' }, { 'Ú', 'u' }, { 'ñ', 'n' }, { 'Ñ', 'n' }, { 'ç', 'c' } }) do
+    { 'Ó', 'o' }, { 'ú', 'u' }, { 'ù', 'u' }, { 'ü', 'u' }, { 'Ú', 'u' }, { 'ñ', 'n' }, { 'Ñ', 'n' }, { 'ç', 'c' },
+    { 'å', 'a' }, { 'Å', 'a' }, { 'Ä', 'a' }, { 'Ö', 'o' }, { 'Ü', 'u' }, { 'ø', 'o' }, { 'Ø', 'o' }, { 'æ', 'ae' }, { 'Æ', 'ae' },
+    { 'ß', 'ss' }, { 'â', 'a' }, { 'ã', 'a' }, { 'ê', 'e' }, { 'î', 'i' }, { 'ô', 'o' }, { 'õ', 'o' }, { 'û', 'u' } }) do
     s = s:gsub(r[1], r[2])
   end
   return (s:gsub('[^%w]+', '-'):gsub('^%-+', ''):gsub('%-+$', ''))
@@ -358,12 +384,20 @@ function M.build(sources, id, meta)
   meta = meta or {}
   local lines, points, docName = {}, {}, nil
   for _, src in ipairs(sources) do
+    cleanSource(src)
     docName = docName or src.name
     for _, l in ipairs(src.lines or {}) do lines[#lines + 1] = l end
     for _, p in ipairs(src.points or {}) do points[#points + 1] = p end
   end
   local report = { lines = #lines, points = #points, warnings = {} }
   if #lines == 0 then return nil, 'no lines (tramos) in the file' end
+  if #lines > M.MAX_LINES then return nil, 'too many lines (' .. #lines .. '): not a route file' end
+  do
+    local keep = {}
+    for _, l in ipairs(lines) do if #l.path >= 2 then keep[#keep + 1] = l end end
+    lines = keep
+    if #lines == 0 then return nil, 'no valid coordinates in the file' end
+  end
 
   -- 1. tramos y enlaces
   local stages, liaisons = {}, {}
@@ -454,7 +488,12 @@ function M.build(sources, id, meta)
   for _, p in ipairs(points) do
     local k = low(key(p.where))
     if k:find('service park', 1, true) or k:find('parque de asistencia', 1, true) then
-      table.insert(evPoints, 1, { kind = 'service', name = (p.where[#p.where] or 'Service Park'), pos = { p.pos[1], p.pos[2] } })
+      local first = { kind = 'service', name = (p.where[#p.where] or 'Service Park'), pos = { p.pos[1], p.pos[2] } }
+      -- el mismo parque ya estaba en la lista por su propio punto: uno solo
+      for i = #evPoints, 1, -1 do
+        if evPoints[i].kind == 'service' and dist(evPoints[i].pos, first.pos) < 150 then table.remove(evPoints, i) end
+      end
+      table.insert(evPoints, 1, first)
       break
     end
   end
@@ -475,6 +514,13 @@ function M.build(sources, id, meta)
     st.path = thin(path)
     st.rawPoints = #path
     st.start, st.finish = st.path[1], st.path[#st.path]
+    if dist(st.start, st.finish) < M.CIRCUIT_M and st.lengthM > 4 * M.CIRCUIT_M then st.circuit = true end
+    for k = 2, #path do
+      if dist(path[k - 1], path[k]) > M.JUMP_WARN_M then
+        report.warnings[#report.warnings + 1] = (st.road or st.name or '?') .. ': salto de más de 5 km entre dos puntos (¿trazado roto?)'
+        break
+      end
+    end
     -- nombre y pasadas: de la carpeta del tramo (si es solo suya) o de su propia línea
     local folder = perKey[key(st.where)] == 1 and st.where[#st.where] or nil
     local _, lineName = splitCat(st.name)
@@ -643,7 +689,7 @@ function M.build(sources, id, meta)
     stages = {} }
   for _, s in ipairs(stages) do
     entry.stages[#entry.stages + 1] = { id = s.id, title = s.title, km = floor(s.lengthM / 10 + 0.5) / 100,
-      start = s.start, kind = s.kind, runs = s.runs }
+      start = s.start, kind = s.kind, runs = s.runs, circuit = s.circuit }
   end
   report.stages, report.liaisons, report.eventPoints = #stages, #liaisons, #evPoints
   return ev, entry, report

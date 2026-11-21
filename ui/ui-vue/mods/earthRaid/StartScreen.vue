@@ -33,8 +33,14 @@
           <template v-else-if="stage">
             <p class="desc">{{ stageDesc }}</p>
             <ul class="bul">
-              <li>{{ t("distance") }}: {{ km(stage.km) }}</li>
+              <li>{{ t("distance") }}: {{ km(stage.km) }}<template v-if="pre.circuit && pre.laps > 1"> × {{ pre.laps }} = {{ km(stage.km * pre.laps) }}</template></li>
               <li>{{ t("surface") }}: {{ t(stage.surface) }} 100%</li>
+              <li v-if="pre.circuit" class="laps-row">{{ t("laps") }}:
+                <button class="lapbtn" :disabled="pre.laps <= 1" @click="laps(-1)">−</button>
+                <b class="lapn">{{ pre.laps }}</b>
+                <button class="lapbtn" :disabled="pre.laps >= (pre.maxLaps || 20)" @click="laps(1)">+</button>
+                <span class="dim small">{{ t("lapsNote") }}</span>
+              </li>
               <li v-if="stage.road">{{ t("roadLbl") }}: {{ stage.road }}</li>
               <li v-if="pre.reverse">{{ t("dirReverse") }}</li>
               <li v-if="stage.best" class="gold">{{ t("best") }}: {{ clock(stage.best) }}</li>
@@ -42,7 +48,7 @@
           </template>
           <h2 class="sect"><span class="slash small"></span>{{ t("rules") }}</h2>
           <ul class="bul">
-            <li v-for="k in (rally ? ['ruleR1','ruleR2','ruleR3','ruleR4','rule2','rule3','rule4','rule5'] : ['rule1','rule2','rule3','rule4','rule5','rule6'])" :key="k">{{ t(k) }}</li>
+            <li v-for="k in (rally ? ['ruleR1','ruleR2','ruleR3','ruleR4','rule2','rule3','rule4','rule5'] : pre.circuit ? ['ruleC1','ruleC2','ruleC3','ruleC4','ruleC5'] : ['rule1','rule2','rule3','rule4','rule5','rule6'])" :key="k">{{ t(k) }}</li>
           </ul>
         </div>
         <div class="col">
@@ -115,6 +121,7 @@ function stageSurface(id) { const x = byId(id); return (x && x.surface) || "" }
 function plate(st) { const r = list(st.runs); if (r.length) return "SS" + r.join("/"); const k = String(st.kind || ""); return /super|sss/i.test(k) ? "SSS" : /special|especial/i.test(k) ? (s.value && s.value.lang === "es" ? "ES" : "SP") : "SD" }
 function go() { started = true; call("uiPreGo") }
 function back() { started = true; call("uiPreBack") }
+function laps(d) { if (pre.value) call("uiSetLaps", (pre.value.laps || 1) + d) }
 
 // ---- los ajustes (los que se pueden cambiar con el tramo ya montado: copiloto, notas, pantalla, sanciones; y en el
 // rally, la media de los enlaces). Los que cambian el montaje (cortes, ambiente, flechas) están en Ajustes del menú.
@@ -229,4 +236,9 @@ h1 { margin: 0; font-size: 30px; line-height: 1.1; font-style: italic; font-weig
 .settings :deep(.toggle .knob) { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #ddd; transition: left .15s; }
 .settings :deep(.toggle.on) { background: var(--or); }
 .settings :deep(.toggle.on .knob) { left: 20px; background: #fff; }
+.laps-row { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; }
+.lapbtn { width: 1.8em; height: 1.8em; border: 0; border-radius: 0.25em; background: rgba(255,255,255,0.14); color: #fff; font-size: 1em; font-weight: 700; cursor: pointer; }
+.lapbtn:disabled { opacity: 0.35; cursor: default; }
+.lapbtn:not(:disabled):hover { background: #ff6600; }
+.lapn { min-width: 1.6em; text-align: center; font-size: 1.15em; }
 </style>

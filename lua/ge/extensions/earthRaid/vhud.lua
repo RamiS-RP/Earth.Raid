@@ -53,6 +53,9 @@ local function fromStage(S, R, api)
   local t = S.track
   local n = S.stageNumber or 1
   local label = tostring(n)
+  -- circuito con vueltas: la app del juego dice "STAGE vuelta / vueltas"
+  local laps = (S.laps or 1) > 1 and S.laps or nil
+  if laps then label = tostring(S.lap or 1) end
   local d = { showStageApps = true, missionName = S.title, showDebugInfo = false }
   d.stageData = { currentSSTime = nil, isActive = false, isComplete = false, label = label, stageHeader = S.title, unit = 'km',
     completion = { distM = 0, distPct = 0, totalDistM = t.total },
@@ -70,7 +73,7 @@ local function fromStage(S, R, api)
     d.stageData.splits = #list > 0 and list or nil
   end
   local sc = baseSchedule()
-  sc.totalSSCount = S.stageCount
+  sc.totalSSCount = laps or S.stageCount
   d.countdownData = { countdown = nil, state = nil }
   local now = (R and R.clock) or nowSecs()
   local canSkip = false
@@ -89,6 +92,11 @@ local function fromStage(S, R, api)
     sc.isSpeeding = speedNow() * 3.6 > k + 5
     d.vehicleProximity = prox(S.distM, false)
     canSkip = ph == 'tc'
+  elseif ph == 'grid' then
+    -- circuito: en la parrilla, esperando el semáforo
+    d.activeState = 'vehicleProximity'
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
+    d.vehicleProximity = prox(0, true)
   elseif ph == 'staging' then
     d.activeState = 'vehicleProximity'
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
@@ -102,7 +110,7 @@ local function fromStage(S, R, api)
     -- como el juego (rallyLoop.getUiStreamData): con la cuenta atrás en el reloj 3D se suprime el panel 2D; con '2d' sí sale
     -- y con 'disabled' no sale ninguno
     local cdMode = startclock.mode()
-    if cdMode == '2d' or (cdMode == '3d' and not startclock.threeD()) then
+    if S.circuitMode or cdMode == '2d' or (cdMode == '3d' and not startclock.threeD()) then
       d.activeState = 'countdown'
       d.countdownData = { countdown = math.max(0, math.ceil(S.countdown or 0)), state = 'countdown_running' }
     else
@@ -120,7 +128,7 @@ local function fromStage(S, R, api)
     d.stageData.isComplete = true
     d.stageData.currentSSTime = S.time
     d.stageData.completion = { distM = t.total, distPct = 1, totalDistM = t.total }
-    sc.label, sc.eventType = 'Stop Control', 'ss_stop'
+    sc.label, sc.eventType = S.circuitMode and 'Finish' or 'Stop Control', 'ss_stop'
     d.vehicleProximity = prox(S.distM, false)
   end
   d.scheduleData = sc

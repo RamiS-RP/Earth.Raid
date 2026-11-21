@@ -1,0 +1,158 @@
+{
+  "pacenote_100.ogg": {
+    "audioLen": 0.441995
+  },
+  "pacenote_200.ogg": {
+    "audioLen": 0.677823
+  },
+  "pacenote_300.ogg": {
+    "audioLen": 0.781111
+  },
+  "pacenote_40.ogg": {
+    "audioLen": 0.477868
+  },
+  "pacenote_400.ogg": {
+    "audioLen": 0.778549
+  },
+  "pacenote_50.ogg": {
+    "audioLen": 0.56839
+  },
+  "pacenote_500.ogg": {
+    "audioLen": 0.681814
+  },
+  "pacenote_70.ogg": {
+    "audioLen": 0.632925
+  },
+  "pacenote_80.ogg": {
+    "audioLen": 0.574943
+  },
+  "pacenote_and.ogg": {
+    "audioLen": 0.332494
+  },
+  "pacenote_big_jump.ogg": {
+    "audioLen": 0.871088
+  },
+  "pacenote_caution.ogg": {
+    "audioLen": 0.925011
+  },
+  "pacenote_crest.ogg": {
+    "audioLen": 0.80424
+  },
+  "pacenote_cut.ogg": {
+    "audioLen": 0.395147
+  },
+  "pacenote_dont_cut.ogg": {
+    "audioLen": 0.997052
+  },
+  "pacenote_extra_long.ogg": {
+    "audioLen": 0.750045
+  },
+  "pacenote_five_left.ogg": {
+    "audioLen": 1.017415
+  },
+  "pacenote_five_right.ogg": {
+    "audioLen": 0.741701
+  },
+  "pacenote_four_left.ogg": {
+    "audioLen": 0.893492
+  },
+  "pacenote_four_right.ogg": {
+    "audioLen": 0.729365
+  },
+  "pacenote_hairpin_left.ogg": {
+    "audioLen": 0.881338
+  },
+  "pacenote_hairpin_right.ogg": {
+    "audioLen": 0.951497
+  },
+  "pacenote_jump.ogg": {
+    "audioLen": 0.557075
+  },
+  "pacenote_keep_left.ogg": {
+    "audioLen": 0.814785
+  },
+  "pacenote_keep_right.ogg": {
+    "audioLen": 0.824127
+  },
+  "pacenote_long.ogg": {
+    "audioLen": 0.579569
+  },
+  "pacenote_narrows.ogg": {
+    "audioLen": 0.777302
+  },
+  "pacenote_one_left.ogg": {
+    "audioLen": 0.806712
+  },
+  "pacenote_one_right.ogg": {
+    "audioLen": 0.739002
+  },
+  "pacenote_onto_gravel.ogg": {
+    "audioLen": 0.844943
+  },
+  "pacenote_onto_mud.ogg": {
+    "audioLen": 0.588322
+  },
+  "pacenote_onto_tarmac.ogg": {
+    "audioLen": 0.516735
+  },
+  "pacenote_open_hairpin_left.ogg": {
+    "audioLen": 0.881338
+  },
+  "pacenote_open_hairpin_right.ogg": {
+    "audioLen": 0.951497
+  },
+  "pacenote_opens.ogg": {
+    "audioLen": 0.674649
+  },
+  "pacenote_over_bridge.ogg": {
+    "audioLen": 0.611315
+  },
+  "pacenote_over_crest_1.ogg": {
+    "audioLen": 0.80424
+  },
+  "pacenote_over_finish.ogg": {
+    "audioLen": 0.604898
+  },
+  "pacenote_six_left.ogg": {
+    "audioLen": 0.92102
+  },
+  "pacenote_six_right.ogg": {
+    "audioLen": 0.888299
+  },
+  "pacenote_system_countdown1_1.ogg": {
+    "audioLen": 0.451791
+  },
+  "pacenote_system_countdown2_1.ogg": {
+    "audioLen": 0.560363
+  },
+  "pacenote_system_countdown3_1.ogg": {
+    "audioLen": 0.464444
+  },
+  "pacenote_system_countdowngo_1.ogg": {
+    "audioLen": 0.568889
+  },
+  "pacenote_system_precountdown_1.ogg": {
+    "audioLen": 4.3
+  },
+  "pacenote_three_left.ogg": {
+    "audioLen": 0.885011
+  },
+  "pacenote_three_right.ogg": {
+    "audioLen": 0.7
+  },
+  "pacenote_tight_hairpin_left.ogg": {
+    "audioLen": 0.881338
+  },
+  "pacenote_tight_hairpin_right.ogg": {
+    "audioLen": 0.951497
+  },
+  "pacenote_tightens.ogg": {
+    "audioLen": 0.676939
+  },
+  "pacenote_two_left.ogg": {
+    "audioLen": 0.918594
+  },
+  "pacenote_two_right.ogg": {
+    "audioLen": 0.779615
+  }
+}

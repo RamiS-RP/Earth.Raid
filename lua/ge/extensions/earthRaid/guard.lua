@@ -39,6 +39,7 @@ local function allowed(stage, rally)
   end
   local S = stage.state()
   if not S then return true end
+  if S.phase == 'grid' then return true end   -- circuito: en la parrilla, hasta pulsar Iniciar
   return S.phase == 'approach' and S.tcTime == nil
 end
 

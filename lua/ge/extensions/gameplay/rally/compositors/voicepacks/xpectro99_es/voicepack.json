@@ -1,0 +1,20 @@
+{
+  "persona": "Xpectro99",
+  "language": "ui.options.rally.languages.spanish.name",
+  "dialect": "es-ES",
+  "compositorStyle": "english/enthusiast",
+  "notebooks": [
+    "enthusiast",
+    "structured"
+  ],
+  "styleLabel": "Voz real (52 avisos)",
+  "styleDetailLevel": 50,
+  "enableSpeedScaling": true,
+  "codriverTimingOffsetSeconds": 0.0,
+  "linkWordGapMs": 0,
+  "cornerGapMs": -30,
+  "phraseGapMs": 0,
+  "pacenoteGapMs": 200,
+  "raidEarthPartialOk": true,
+  "raidEarthNoFallback": true
+}

@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.8.3'
+M.VERSION = '0.8.4'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -117,9 +117,17 @@ local function routeText(f)
   return readFile(f)
 end
 
+M.IMPORT_MAX_BYTES = 25 * 1024 * 1024
+M.GRID_BACK_M = 5           -- circuito: el coche aparece a esto de la línea de salida (la pole)
 local function readRoute(f)
+  -- un archivo enorme no es una ruta (y leerlo entero colgaría el juego)
+  local okS, st = pcall(function() return FS:stat(f) end)
+  if okS and type(st) == 'table' and tonumber(st.filesize) and st.filesize > M.IMPORT_MAX_BYTES then
+    return nil, 'archivo demasiado grande (más de 25 MB)'
+  end
   local text, err = routeText(f)
   if not text then return nil, err end
+  if #text > M.IMPORT_MAX_BYTES then return nil, 'archivo demasiado grande (más de 25 MB)' end
   local e = ext(f)
   if e == 'kml' or e == 'kmz' then return importer.readKml(text) end
   if e == 'gpx' then return importer.readGpx(text) end
@@ -579,7 +587,8 @@ local function buildModel()
     settings = settings.get(), voicepacks = settings.voicepacks(), today = os.date('%Y-%m-%d'),
     racingLineMod = guide.racingLineAvailable(), hotwMod = M.hasHotw(), recMods = M.recommendedState(),
     importDir = M.IMPORT_DIR, packDirs = M.PACK_DIRS, imports = U.importOpen and M.importsModel() or nil,
-    importOpen = U.importOpen or false, pre = S.pre and { kind = S.pre.kind, eventId = S.pre.eventId, stageId = S.pre.stageId, reverse = S.pre.reverse } or nil }
+    importOpen = U.importOpen or false, pre = S.pre and { kind = S.pre.kind, eventId = S.pre.eventId, stageId = S.pre.stageId, reverse = S.pre.reverse,
+      circuit = S.pre.circuit, laps = S.pre.laps, lapKm = S.pre.lapKm, maxLaps = stage.MAX_LAPS } or nil }
   local q = lower(U.q)
   local seen = { country = {}, type = {}, category = {}, surface = {}, status = {} }
   local f = U.filters
@@ -628,7 +637,7 @@ local function buildModel()
         surface = s.surface or full.surface, best = r.best, tries = r.runs or 0, attempts = r.attempts or {},
         km = clean.length(cp) / 1000, hazards = s.hazards or {}, start = s.start, finish = s.finish,
         distM = lat and catalog.dist(lat, lon, s.start[1], s.start[2]) or nil, outline = outline(cp),
-        hasReverse = M.hasReverse(full, s) }
+        hasReverse = M.hasReverse(full, s), circuit = stage.isCircuit(s) }
     end
     sel.ssCount = n
     -- los enlaces, para el mapa de la ficha (línea azul discontinua)
@@ -1119,8 +1128,11 @@ function M.uiPlay(eventId, stageId, reverse, force)
   local t = geo.track(clean.stage(s))
   local dx, dy = geo.dirAt(t, 0)
   local back = dressing.TC_BEFORE_M + M.TP_BEFORE_TC_M
+  -- circuito cerrado: directo a la parrilla, en la pole, justo antes de la línea
+  local circ = stage.isCircuit(s)
+  if circ then back = M.GRID_BACK_M end
   local tlat, tlon = geo.toGeo(t, t.pts[1][1] - dx * back, t.pts[1][2] - dy * back)
-  local road = M.roadFromStart(full, s)
+  local road = not circ and M.roadFromStart(full, s) or nil
   if road then tlat, tlon = geo.toGeo(road, geo.at(road, math.min(back, road.total))) end
   local es = spanish()
   local noPre = S.noPre == true      -- reinicio: sin la pantalla de inicio (se mira ahora: done llega mucho después)
@@ -1155,6 +1167,15 @@ function M.uiPlay(eventId, stageId, reverse, force)
       if not (cur and cur.track) then return end
       stage.retryStart()
       local tt = cur.track
+      -- circuito: a la parrilla (la pole), justo antes de la línea y mirando al trazado
+      if cur.circuitMode then
+        local gl, go = dressing.lineAt(tt, 0, -M.GRID_BACK_M)
+        local fl, fo = dressing.lineAt(tt, 15, 0)
+        if gl and fl then
+          if not M.placeOnRoad(fl, fo, gl, go) then M.placeAt(gl, go, fl, fo) end
+          return
+        end
+      end
       local atLat, atLon = dressing.lineAt(tt, 0, -(dressing.tcAt(tt) + M.TP_BEFORE_TC_M))
       if not M.placeOnRoad(cur.tcLat, cur.tcLon, atLat, atLon) then
         -- sin carretera del juego por ahí: en la calzada del control (que siempre está en carretera), unos metros
@@ -1168,12 +1189,13 @@ function M.uiPlay(eventId, stageId, reverse, force)
     done = function()
       stage.holdJobs(false)
       local cur = stage.state()
-      if cur and cur.tcLat and a.gpsSet then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
+      if cur and cur.tcLat and a.gpsSet and not cur.circuitMode then pcall(a.gpsSet, cur.tcLat, cur.tcLon, 'TC · ' .. s.title) end
       -- la pantalla de inicio (resumen, normas, ajustes, Iniciar); el coche espera congelado
       if cur and not noPre then M.preStart('stage', eventId, stageId, reverse)
       else
         freezeCar(false)
-        if cur then M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
+        if cur and cur.circuitMode then stage.gridGo()
+        elseif cur then M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8) end
       end
     end })
   if not ok then
@@ -1298,10 +1320,19 @@ end
 function M.preStart(kind, eventId, stageId, reverse)
   if S.noPre then return end
   S.pre = { kind = kind, eventId = eventId, stageId = stageId, reverse = reverse == true }
+  -- circuito cerrado (la meta junto a la salida): el número de vueltas se elige aquí
+  local cur = kind == 'stage' and stage.state() or nil
+  if cur and cur.circuit then S.pre.circuit, S.pre.laps, S.pre.lapKm = true, cur.laps or 1, (cur.track and cur.track.total or 0) / 1000 end
   freezeCar(true)
   if kind == 'rally' then rally.hold(true) end
   U.sel, U.open = eventId, true
   navigate('earthRaidStart')
+  M.publishState()
+end
+-- vueltas del circuito (pantalla de inicio)
+function M.uiSetLaps(n)
+  if not (S.pre and S.pre.circuit) then return end
+  S.pre.laps = stage.setLaps(n) or S.pre.laps
   M.publishState()
 end
 -- Iniciar
@@ -1318,6 +1349,8 @@ function M.uiPreGo()
       M.toast((es and 'Rally completo: sales de la asistencia a las ' or 'Full rally: you leave the service park at ')
         .. rally.hhmm(rs.startMin * 60) .. (es and ' (Mayús+E: salir ya).' or ' (Shift+E: leave now).'), 10)
     end
+  elseif stage.state() and stage.state().circuitMode then
+    stage.gridGo()
   else
     M.toast((es and 'Listo: para en el control horario para fichar.' or 'Ready: stop at the time control to check in.'), 8)
   end

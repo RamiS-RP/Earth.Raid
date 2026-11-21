@@ -40,6 +40,11 @@ M.STAGED_OVER_M = 0.3      -- ... y como mucho esto por encima de ella; más: "t
 M.FALSE_START_M = 1.0      -- en la cuenta atrás, avanzar esto: salida en falso
 M.CAR_HALF_M = 2.2         -- si no se puede medir el coche
 M.STOP_MS = 0.6
+M.CIRCUIT_M = 300          -- la meta a menos de esto de la salida: circuito cerrado
+M.DEFAULT_LAPS = 3         -- vueltas de un circuito si el jugador no dice otra cosa (norma del usuario, 21-nov)
+M.MAX_LAPS = 20
+M.GRID_COUNTDOWN_S = 5       -- circuito: la cuenta atrás del semáforo 2D del juego, desde la parrilla
+M.lapsFor = {}             -- las vueltas elegidas por circuito (evento/tramo), para los reinicios
 M.LINE_HALF_M = 5
 M.HUD_S = 0.1
 M.CALL_S = 4.5             -- la nota se dice con este tiempo de antelación a la velocidad actual
@@ -144,9 +149,48 @@ function M.serviceTraffic(x, y)
   log('I', TAG, ('service park: traffic off around the box (%s vehicles were around)'):format(tostring(svcN)))
 end
 
+-- Circuito cerrado (21-nov, el usuario: "si es un circuito no debería haber tráfico dentro de él"): ni tráfico ni coches
+-- aparcados mientras dura. Se desactivan con la función del juego (setActiveAmount), no se borran: sin tirones al
+-- quitarlos ni al devolverlos. Las zonas sin tráfico no bastan: no cubren la llegada al control y no mueven lo que ya está.
+local hid = nil
+function M.trafficHide()
+  local tr, pk = rawget(_G, 'gameplay_traffic'), rawget(_G, 'gameplay_parking')
+  if not hid then
+    hid = { tr = 0, pk = 0 }
+    pcall(function() hid.tr = tr.getNumOfTraffic(true) or 0 end)
+    pcall(function()
+      for _, id in ipairs(pk.getParkedCarsList() or {}) do
+        local v = be:getObjectByID(id)
+        if v and v:getActive() then hid.pk = hid.pk + 1 end
+      end
+    end)
+  end
+  pcall(function() tr.setActiveAmount(0) end)
+  pcall(function() pk.setActiveAmount(0) end)
+end
+function M.trafficShow()
+  if not hid then return end
+  local h = hid
+  hid = nil
+  local tr, pk = rawget(_G, 'gameplay_traffic'), rawget(_G, 'gameplay_parking')
+  if h.tr > 0 then pcall(function() tr.setActiveAmount(h.tr) end) end
+  if h.pk > 0 then pcall(function() pk.setActiveAmount(h.pk) end) end
+end
+local hideTick = 0
+local function hideUpdate(dt)
+  if not (hid and S and S.circuit) then return end
+  hideTick = hideTick + dt
+  if hideTick < 2 then return end
+  hideTick = 0
+  local n = 0
+  pcall(function() n = gameplay_traffic.getNumOfTraffic(true) or 0 end)
+  if n > 0 then M.trafficHide() end
+end
+
 -- withLoad: al salir del TC0, como el juego, con una pequeña carga (setupTrafficWaitForUi) y el tráfico aparece lejos
 function M.trafficBack(withLoad)
   wantExcl = false
+  M.trafficShow()
   if exclOn then
     exclOn, exclT, exclAt = false, nil, nil
     pcall(function() map.clearTrafficExclusionZones() map.reset() end)
@@ -182,9 +226,11 @@ function M.best(eventId, stageId)
   local r = readResults()[eventId .. '/' .. stageId]
   return r and r.best or nil
 end
+-- los tiempos de un circuito a N vueltas se guardan aparte (no se comparan con los de una sola pasada)
+local function resultId() return (S.laps or 1) > 1 and (S.stageId .. '@' .. S.laps .. 'L') or S.stageId end
 local function saveResult()
   local d = readResults()
-  local key = S.eventId .. '/' .. S.stageId
+  local key = S.eventId .. '/' .. resultId()
   local r = d[key] or { runs = 0, attempts = {} }
   r.attempts = r.attempts or {}
   r.runs = (r.runs or 0) + 1
@@ -193,7 +239,7 @@ local function saveResult()
   local newBest = not r.best or total < r.best
   if newBest then r.best = total end
   table.insert(r.attempts, 1, { time = S.time, penalty = S.penalty, total = total, split = S.splitTime, date = os.time(),
-    vehicle = S.vehicle })
+    vehicle = S.vehicle, laps = (S.laps or 1) > 1 and S.laps or nil, lapTimes = (S.laps or 1) > 1 and S.lapTimes or nil })
   while #r.attempts > 10 do table.remove(r.attempts) end
   d[key] = r
   pcall(jsonWriteFile, M.RESULTS, d, true)
@@ -452,6 +498,48 @@ local function afterPath(ev, path) return endRoad(ev, path, true) end
 local function beforePath(ev, path) return endRoad(ev, path, false) end
 
 -- Empieza un tramo: ev (el evento completo), st (su tramo con path), info (stageNumber, stageCount, surface)
+-- ¿circuito cerrado? Lo dice el paquete o se ve en el trazado: la meta junto a la salida y el tramo mucho más largo
+function M.isCircuit(st)
+  if type(st) ~= 'table' then return false end
+  if st.circuit ~= nil then return st.circuit == true end
+  local p = st.path
+  if not (p and #p >= 4) then return false end
+  local gap = distLL(p[1], p[#p])
+  if gap >= M.CIRCUIT_M then return false end
+  local len = 0
+  for i = 2, #p do len = len + distLL(p[i - 1], p[i]) if len > 4 * M.CIRCUIT_M then return true end end
+  return false
+end
+-- Vueltas del circuito montado: solo antes de salir. Devuelve las que quedan puestas.
+function M.setLaps(n)
+  if not (S and S.circuit) or S.session then return S and S.laps or 1 end
+  if S.phase == 'running' or S.phase == 'toStop' or S.phase == 'done' then return S.laps end
+  n = math.max(1, math.min(M.MAX_LAPS, math.floor(tonumber(n) or S.laps or 1)))
+  S.laps = n
+  M.lapsFor[S.eventId .. '/' .. S.stageId] = n
+  S.best = M.best(S.eventId, resultId())
+  return n
+end
+
+-- Circuito: el coche espera en la parrilla; Iniciar arma el semáforo
+function M.gridGo()
+  if not (S and S.phase == 'grid') then return false end
+  local t = S.track
+  S.phase, S.countdown, S.noseAtArm, S.saidCount = 'countdown', M.GRID_COUNTDOWN_S, nil, {}
+  guide.clear()
+  guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+  guide.racingLine(S.opt.hardcore ~= true)   -- en circuito, la línea de carrera hace de copiloto
+  S.lineArmed = true
+  audio.clear()
+  return true
+end
+local function beep(go)
+  pcall(function() Engine.Audio.playOnce('AudioGui', go and 'event:UI_CountdownGo' or 'event:UI_Countdown1') end)
+end
+local function flash(msg, secs, big)
+  pcall(function() guihooks.trigger('ScenarioFlashMessage', { { msg, secs or 2, '', big == true } }) end)
+end
+
 function M.start(ev, st, info)
   -- otro tramo encima: el tráfico sigue fuera (se devolverá al acabar este)
   M.stop(true, true)
@@ -575,6 +663,16 @@ function M.start(ev, st, info)
   S.notes = okN and notes or {}
   if not okN then log('W', TAG, 'pacenotes: ' .. tostring(notes)) end
   S.noteIdx, S.noteSerial, S.shown = 1, 0, {}
+  -- circuito: vueltas (en el rally completo, una pasada como en la prueba real)
+  S.circuit = M.isCircuit(st)
+  -- modo circuito (tramo suelto): parrilla -> cuenta atrás -> vueltas -> bandera -> resultado; sin copiloto
+  S.circuitMode = S.circuit and not (info and info.session) or nil
+  S.lap, S.laps, S.lapTimes, S.lapStart = 1, 1, {}, 0
+  if S.circuit then M.trafficHide() else M.trafficShow() end
+  if S.circuit and not (info and info.session) then
+    S.laps = M.lapsFor[ev.id .. '/' .. st.id] or M.DEFAULT_LAPS
+    S.best = M.best(ev.id, resultId())
+  end
   -- en el rally completo el tráfico lo lleva rally.lua (fuera en los tramos, dentro en los enlaces)
   S.session = info and info.session or nil
   if S.session then S.phase = 'hold' end
@@ -590,6 +688,7 @@ function M.start(ev, st, info)
       S.tcX, S.tcY = geo.toLocal(t, S.tcLat, S.tcLon)
     end
     if not S.session then S.phase, S.tcHold = 'tc', 0 end
+    if S.circuitMode then S.phase = 'grid' end
   end
   if opt.noTraffic or wantExcl then M.trafficOff() end
   startclock.ensure()
@@ -838,7 +937,7 @@ function M.start(ev, st, info)
   end
   pcall(S.setVirtual)
   local okB, startObj = pcall(dressing.build, t, opt.arrows and S.notes or {}, opt.cautions and hazards or {}, splitAt,
-    { ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
+    { circuit = S.circuitMode == true, ambience = opt.ambience, sounds = opt.sounds, closures = opt.closures, finishLater = finishLater, startLater = startLater,
       surface = S.surface,
       -- la salida y el control se montan cuando la carretera de allí se puede usar: el eje encontrado en la línea y en el
       -- punto del TC (con el grafo a medias las líneas quedaban fuera del eje o torcidas). MARK:ends-ready-v1
@@ -1069,7 +1168,7 @@ local function hud()
     totalM = t.total, along = S.along, splitM = S.splitAt, splitTime = S.splitTime, time = S.time, penalty = S.penalty,
     penalties = S.penalties, distM = S.distM, staged = S.staged, stagingLeft = S.stagingLeft, countdown = S.countdown,
     best = S.best, newBest = S.newBest, lang = S.lang, note = S.lastNote, doneLeft = S.doneLeft, overLine = S.overLine, tcTime = S.tcTime, startAt = S.startAt,
-    session = S.session ~= nil })
+    session = S.session ~= nil, lap = S.lap, laps = S.laps, lapTimes = S.lapTimes })
 end
 
 -- Metros del morro del coche a la línea de salida (positivo: antes de la línea): con su caja orientada si se puede
@@ -1237,6 +1336,7 @@ function M.update(dtSim, dtReal)
   if not S then return end
   audio.update(dtReal or dtSim)
   exclusionUpdate(dtReal or dtSim)
+  hideUpdate(dtReal or dtSim)
   -- la hora del reloj: la del ordenador (con ella se fija la hora de salida en el TC), suave entre segundos
   S.wall = (S.wall or 0) + dtSim
   local osNow = geo.dayClock()
@@ -1251,7 +1351,7 @@ function M.update(dtSim, dtReal)
   elseif S.phase == 'running' or S.phase == 'toStop' then left = 0 end
   startclock.feed(S.phase == 'countdown' and 'countdown' or ((S.phase == 'running' or S.phase == 'toStop') and 'stageActive' or 'vehicleProximity'),
     S.wall, left)
-  startclock.update(dtReal or dtSim, S.phase == 'countdown', code)
+  startclock.update(dtReal or dtSim, S.phase == 'countdown' and not S.circuitMode, code)
 
   local a = api()
   if not (a and a.ready and a.ready()) then return end
@@ -1273,6 +1373,8 @@ function M.update(dtSim, dtReal)
 
   if S.phase == 'hold' then
     return
+  elseif S.phase == 'grid' then
+    S.distM = 0
   elseif S.phase == 'tc' then
     -- al control horario y parado en su punto: fichado; la salida, al siguiente minuto entero con 35 s de margen
     S.distM = math.sqrt((x - S.tcX) ^ 2 + (y - S.tcY) ^ 2)
@@ -1333,15 +1435,21 @@ function M.update(dtSim, dtReal)
     end
   elseif S.phase == 'countdown' then
     S.distM = math.max(0, nose)
+    S.noseAtArm = S.noseAtArm or nose
     S.countdown = S.countdown - dtSim
     local c = math.ceil(S.countdown)
-    if S.opt.voice and c >= 1 and c <= 5 and not S.saidCount[c] then S.saidCount[c] = true audio.say({ 'system_countdown' .. c }, true) end
+    if S.circuitMode then
+      if c >= 1 and c <= 3 and not S.saidCount[c] then S.saidCount[c] = true beep(false) end
+    elseif S.opt.voice and c >= 1 and c <= 5 and not S.saidCount[c] then S.saidCount[c] = true audio.say({ 'system_countdown' .. c }, true) end
     local function go(falseStart)
       S.phase, S.time, S.hint = 'running', 0, 1
       pcall(props.releasePark)   -- el tramo empieza: el parque de asistencia fuera (memoria)
       if falseStart and S.opt.falseStart then
         penalise('falseStart', M.FALSE_START_S)
-        if S.opt.voice then audio.say({ 'system_falseStart' }, true) end
+        if S.circuitMode then flash(spanishUI() and 'Salida en falso' or 'False start', 3, false)
+        elseif S.opt.voice then audio.say({ 'system_falseStart' }, true) end
+      elseif S.circuitMode then
+        beep(true)
       elseif S.opt.voice then
         audio.say({ 'system_countdowngo' }, true)
       end
@@ -1349,7 +1457,7 @@ function M.update(dtSim, dtReal)
         guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
         guide.racingLine(S.opt.racingLine)
       end
-      M.callNotes(0, true)
+      if not S.circuitMode then M.callNotes(0, true) end
     end
     if nose < S.noseAtArm - M.FALSE_START_M and S.countdown > 0 then go(true)
     elseif S.countdown <= 0 then go(false) end
@@ -1357,6 +1465,8 @@ function M.update(dtSim, dtReal)
     S.time = S.time + dtSim
     local along, lateral, i = geo.project(t, x, y, S.hint)
     if along >= S.along - 30 then S.along, S.hint = math.max(S.along, along), i end
+    -- entre la meta y la salida de un circuito (vuelta nueva): sin notas hasta volver al trazado
+    if S.lapGap and lateral < 25 then S.lapGap = nil end
     if S.splitAt and not S.splitTime and S.along >= S.splitAt then S.splitTime = S.time end
     S.reliefTimer = S.reliefTimer + dtSim
     if S.reliefTimer > M.RELIEF_S then S.reliefTimer = 0 pcall(scanRelief) end
@@ -1366,31 +1476,49 @@ function M.update(dtSim, dtReal)
       pcall(M.refineNotes)
       if S.opt.props ~= false then pcall(dressing.cheer, t, S.along) end
     end
-    M.callNotes(speed)
+    if not S.lapGap and not S.circuitMode then M.callNotes(speed) end
     M.clearPassed()
     -- meta lanzada
     local fx, fy = t.pts[#t.pts][1], t.pts[#t.pts][2]
     local fdx, fdy = geo.dirAt(t, t.total)
     local past = (x - fx) * fdx + (y - fy) * fdy
     local side = math.abs((x - fx) * fdy - (y - fy) * fdx)
-    if S.along > t.total * 0.9 and past >= 0 and side < 15 then
+    if S.along > t.total * 0.9 and past >= 0 and side < 15 and S.circuit and S.lap < S.laps then
+      -- circuito: paso por meta, vuelta nueva (el crono sigue)
+      S.lapTimes[#S.lapTimes + 1] = S.time - (S.lapStart or 0)
+      S.lapStart = S.time
+      S.lap = S.lap + 1
+      S.along, S.hint, S.noteIdx, S.lapGap = 0, 1, 1, true
+      for _, sh in ipairs(S.shown) do pcall(function() guihooks.trigger('clearOneVisualPacenote', sh.serial) end) end
+      S.shown = {}
+      audio.clear()
+      flash((spanishUI() and 'Vuelta ' or 'Lap ') .. S.lap .. ' / ' .. S.laps, 2.5, false)
+      log('I', TAG, ('stage %s: lap %d / %d (%.1f s)'):format(S.stageId, S.lap, S.laps, S.lapTimes[#S.lapTimes]))
+    elseif S.along > t.total * 0.9 and past >= 0 and side < 15 then
       S.along = t.total
+      if S.circuit then S.lapTimes[#S.lapTimes + 1] = S.time - (S.lapStart or 0) end
       S.phase = 'toStop'
       -- la línea de carrera solo dentro del tramo: en la meta vuelve el GPS normal
       guide.clear()
       S.newBest = saveResult()
-      S.best = M.best(S.eventId, S.stageId)
+      S.best = M.best(S.eventId, resultId())
       if S.session and S.session.onFinish then
         pcall(S.session.onFinish, { time = S.time, penalty = S.penalty, penalties = S.penalties, split = S.splitTime })
       end
       audio.clear()
       pcall(function() guihooks.trigger('clearAllVisualPacenotes') end)
       -- el GPS al STOP, donde hay que parar: otra vez la línea azul
-      guide.liaison(S.opt.hardcore == true)
-      local a2 = api()
+      if not S.circuitMode then guide.liaison(S.opt.hardcore == true) end
+      local a2 = not S.circuitMode and api() or nil
       local slat, slon = M.stopPoint(t)
       if a2 and a2.gpsSet then pcall(a2.gpsSet, slat, slon, 'STOP') end
       log('I', TAG, ('stage %s finished: %.1f s + %d s'):format(S.stageId, S.time, S.penalty))
+      -- circuito: bandera y resultado, sin control STOP
+      if S.circuitMode then
+        S.phase, S.doneLeft = 'done', M.DONE_ACCEPT_S
+        beep(true)
+        flash(spanishUI() and 'META' or 'FINISH', 3, true)
+      end
     end
   elseif S.phase == 'toStop' then
     local past = pastFinish(t, p.lat, p.lon)

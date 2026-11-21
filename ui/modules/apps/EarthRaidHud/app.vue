@@ -230,7 +230,8 @@ const stageLabel = computed(() => {
   const v = d.value
   if (!v) return ""
   const n = v.stageNumber && v.stageCount ? `${v.stageNumber} / ${v.stageCount}` : plate.value
-  return `${t.value.stageWord} ${n} · ${v.title || ""}`
+  const lap = v.laps > 1 ? ` · ${v.lang === "es" ? "Vuelta" : "Lap"} ${v.lap || 1}/${v.laps}` : ""
+  return `${t.value.stageWord} ${n} · ${v.title || ""}${lap}`
 })
 const surfaceText = computed(() => (d.value && d.value.surface ? t.value[d.value.surface] || d.value.surface : ""))
 const pct = computed(() => {

@@ -108,6 +108,7 @@ Puedes añadir más desde el menú (⤓ Importar).
 ## Copiloto y voces
 
 - **Dentro del mod:** el **Copiloto en español (Piper)** (voz neuronal generada con [Piper](https://github.com/rhasspy/piper), modelo `es_ES-davefx-medium`, a partir de `tools/voicepack/es.json`). Va en el propio `earth_raid.zip` de cada release (y guardada en el repositorio): no hay que instalar nada más. Si tenías el antiguo `earth_raid_voice_es.zip`, puedes borrarlo.
+- **Voz real, también dentro del mod:** la de **xpectro99** (Instagram [@xpectro99](https://www.instagram.com/xpectro99/)), de su pack *Rally Copilot Spanish* para Assetto Corsa ([Overtake](https://www.overtake.gg/downloads/csp-rallycopilot-spanish-español-voz-real.80899/)): 52 grabaciones reales, usadas con permiso del autor. Elígela como «Xpectro99». No hace falta descargarla aparte; si ya tienes el mod de voz independiente, no hay conflicto (mismos archivos y rutas). Créditos en [CREDITS.md](CREDITS.md).
 - **Los del juego:** cualquier copiloto de BeamNG.drive (Alex Kihurani, dirtwheel, HighDef…) aparece también en el selector.
 - **Otras voces o idiomas:** traduce `es.json` y ejecuta `tools/voicepack/make_voicepack.py` (Piper, voces de Windows o espeak-ng). Cualquier voicepack con el formato del juego aparece en la pantalla de inicio → Copiloto.
 

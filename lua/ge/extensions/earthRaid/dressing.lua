@@ -1008,7 +1008,7 @@ function M.endKit(t, endAlong, out, hw, D, role)
   end
 
   -- el puesto de control a D m por fuera: TC de quien sale, STOP de quien llega
-  M.tcPost(t, endAlong, out, hw, D, role == 'start' and -1 or 1, true)
+  if not M.circuit then M.tcPost(t, endAlong, out, hw, D, role == 'start' and -1 or 1, true) end
   -- el médico, con su ambulancia
   put('medical', -P, D + 8, 'out')
   M.medicPost(t, endAlong, -out, out * (D + 16))
@@ -1768,6 +1768,7 @@ function M.build(t, notes, hazards, splitAt, opts)
   M.surface = M.normSurface(opts.surface)
   M.reversed = opts.reversed == true
   M.sounds = opts.sounds == true
+  M.circuit = opts.circuit == true   -- circuito cerrado: parrilla y bandera, sin control horario ni STOP
   local hw0 = halfWidth(t.lat0, t.lon0)
   local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])
   local hwF = halfWidth(flat, flon)
