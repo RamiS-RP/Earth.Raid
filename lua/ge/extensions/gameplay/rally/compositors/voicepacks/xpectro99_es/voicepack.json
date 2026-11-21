@@ -1,5 +1,5 @@
 {
-  "persona": "Xpectro99",
+  "persona": "Xpectro99 (voz real, experimental)",
   "language": "ui.options.rally.languages.spanish.name",
   "dialect": "es-ES",
   "compositorStyle": "english/enthusiast",
@@ -7,14 +7,12 @@
     "enthusiast",
     "structured"
   ],
-  "styleLabel": "Voz real (52 avisos)",
+  "styleLabel": "Voz real + Piper (experimental)",
   "styleDetailLevel": 50,
   "enableSpeedScaling": true,
   "codriverTimingOffsetSeconds": 0.0,
   "linkWordGapMs": 0,
   "cornerGapMs": -30,
   "phraseGapMs": 0,
-  "pacenoteGapMs": 200,
-  "raidEarthPartialOk": true,
-  "raidEarthNoFallback": true
+  "pacenoteGapMs": 200
 }
