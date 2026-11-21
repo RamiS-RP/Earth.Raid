@@ -19,6 +19,7 @@ local guide = require('earthRaid/guide')
 local phys = require('earthRaid/phys')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
+local winter = require('earthRaid/winter')
 local M = {}
 local function spanishUI()
   local ok, l = pcall(function() return Lua:getSelectedLanguage() end)
@@ -916,6 +917,7 @@ function M.start(ev, st, info)
   S.startLater = startLater
   -- el trazado (con sus accesos) cuenta como calzada donde el juego no tiene carretera: caminos de tierra, pistas
   dressing.surface = dressing.normSurface(S.surface)
+  winter.forStage(dressing.surface == 'snow')   -- nevada + agarre de nieve + suelo blanco (solo tramos de nieve)
   S.setVirtual = function()
     local a = extensions.beamngEarth_api
     local hw = dressing.defaultHalfWidth()
@@ -1019,6 +1021,7 @@ function M.stop(keepTraffic, recycle)
   if not recycle then guide.release() end
   if S then
     S = nil
+    if not recycle then winter.disable() end
     clearScreen()
     guihooks.trigger('EarthRaidHud', { phase = 'idle' })
     cleanupProps(keepTraffic, recycle)
