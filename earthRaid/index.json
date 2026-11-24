@@ -1,5 +1,14 @@
 {
  "format": 1,
  "name": "base",
- "events": []
+ "events": [],
+ "packs": [
+  "imp-rally-de-asturias-historico-2026",
+  "imp-rally-islas-canarias",
+  "imp-rally-ourense",
+  "imp-rally-sweden-2027",
+  "imp-rallye-cristian-lopez-2026",
+  "imp-trans-sierra-nevada",
+  "sierra-morena-2026"
+ ]
 }

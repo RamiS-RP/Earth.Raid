@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.8.4'
+M.VERSION = '0.8.5'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -269,6 +269,12 @@ function M.loadIndex()
   local byId, order = {}, {}
   S.loaded = {}
   addPack(byId, order, '/earthRaid/', 'base')
+  -- (24-nov) La lista de paquetes del mod va escrita en el índice base (`packs`): con el mod instalado como .zip (Add-ons de
+  -- BeamNG.Earth) el catálogo salía vacío porque FS:findFiles no devolvía las carpetas. Los del jugador, abajo, pisan a estos.
+  local base0 = jsonReadFile(M.INDEX)
+  for _, name in ipairs(type(base0) == 'table' and type(base0.packs) == 'table' and base0.packs or {}) do
+    if type(name) == 'string' then addPack(byId, order, '/earthRaid/packs/' .. name .. '/', name) end
+  end
   for _, dir in ipairs(M.PACK_DIRS) do
     local ok, files = pcall(function() return FS:findFiles(dir, 'index.json', 1, false, false) end)
     table.sort(ok and files or {})
