@@ -57,8 +57,8 @@ local function nativeVoicepack()
 end
 local function nativeSig()
   local t = {}
-  for _, nk in pairs(M.NATIVE) do t[#t + 1] = tostring(nget(nk)) end
-  t[#t + 1] = tostring(nativeVoicepack())
+  for _, nk in pairs(M.NATIVE) do t[#t + 1] = tostring((nget(nk))) end   -- (24-nov) entre paréntesis: sin valor, tostring() sin argumentos daba error fatal y el catálogo salía vacío
+  t[#t + 1] = tostring((nativeVoicepack()))
   table.sort(t)
   return table.concat(t, '|')
 end
