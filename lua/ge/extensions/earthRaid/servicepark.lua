@@ -1217,7 +1217,9 @@ local function fenceClearance(cx, cy, h)
           local o = m.nodes[nb]
           local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
           -- los pasillos del propio aparcamiento (dentro del recinto) no cuentan: el vallado va por fuera de ellos
-          local inner = dr <= M.LOT_DRIV and h and (inHull(h, nd.pos.x, nd.pos.y, 3) or inHull(h, o and o.pos.x or 0, o and o.pos.y or 0, 3))
+          -- (26-nov, el usuario: «una valla en el centro del camino de tierra de la salida de boxes»): un pasillo que SALE
+          -- del recinto (un extremo dentro y otro fuera) es el acceso, no un pasillo interior: cuenta y se deja libre
+          local inner = dr <= M.LOT_DRIV and h and (inHull(h, nd.pos.x, nd.pos.y, 3) and inHull(h, o and o.pos.x or 0, o and o.pos.y or 0, 3))
           if o and not inner then segs[#segs + 1] = { nd.pos.x, nd.pos.y, o.pos.x, o.pos.y, math.max(nd.radius or 2.5, o.radius or 2.5) + 1.0 } end
         end
       end
@@ -1226,6 +1228,16 @@ local function fenceClearance(cx, cy, h)
   local r = M.dbg and M.dbg.route
   if r then
     for i = 1, #r - 1 do corridor[#corridor + 1] = { r[i][1], r[i][2], r[i + 1][1], r[i + 1][2], 4.5 } end
+  end
+  -- y del TC0 a la carretera más cercana (por donde sale el coche, el GPS empieza ahí)
+  local ts = M.tcSpot
+  if ts and ts.x and okM and m and m.nodes then
+    local bx, by, bd
+    for _, nd in pairs(m.nodes) do
+      local d = (nd.pos.x - ts.x) ^ 2 + (nd.pos.y - ts.y) ^ 2
+      if d > 4 and d < 60 * 60 and (not bd or d < bd) and not (h and inHull(h, nd.pos.x, nd.pos.y, 0)) then bx, by, bd = nd.pos.x, nd.pos.y, d end
+    end
+    if bx then corridor[#corridor + 1] = { ts.x, ts.y, bx, by, 4.5 } end
   end
   local function near(list, x, y)
     for _, sg in ipairs(list) do

@@ -137,7 +137,7 @@ function cycleVoice(dir) {
 function toggle(k) { call("uiSetSetting", k, !set.value[k]) }
 const SettingsBlock = defineComponent({
   props: { rally: Boolean },
-  setup() {
+  setup(props) {
     // en hardcore las ayudas no se pueden activar (se apagan solas)
     const AIDS = ["visualNotes", "racingLine"]
     const row = k => {
@@ -169,6 +169,11 @@ const SettingsBlock = defineComponent({
         ]),
         // la pantalla y las líneas
         ...(s.value && s.value.racingLineMod ? [group(t("screenLines"), [row("racingLine")])] : []),
+        // (26-nov) la hora del rally: la del juego o una fija, para no obligar a correr de noche
+        ...(props.rally ? [group(t("startHour"), [
+          chips("startHour", [[-1, "hourGame"], [8, "8:00"], [10, "10:00"], [12, "12:00"], [14, "14:00"], [16, "16:00"]], o => (o[0] < 0 ? t(o[1]) : o[1])),
+          h("p", { class: "dim small" }, t("startHourNote")),
+        ])] : []),
         // las sanciones
         group(t("penalties"), [row("falseStart"), row("recoveryPenalty")]),
         // el modo de juego: hardcore

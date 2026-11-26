@@ -25,10 +25,11 @@ M.DEFAULTS = {
   hardcore = false,              -- modo hardcore: sin reparar/restablecer, sin líneas, notas en pantalla ni minimapa: solo la voz
   notesLeadS = 4.5,              -- segundos de antelación con que se canta cada nota
   notesSafe = false,             -- notas prudentes: cada curva un grado más cerrada
+  startHour = -1,                -- (26-nov) hora del rally al empezar: -1 la del juego; 0..23 esa hora (no obligar a correr de noche)
   performance = 'auto',          -- objetos con física (phys.lua): auto (según la calidad de BeamNG.Earth), low, medium, high
 }
 M.ENUMS = { performance = { auto = true, low = true, medium = true, high = true } }
-M.NUMBERS = { radiusKm = { 5, 20000 }, notesLeadS = { 2, 9 } }
+M.NUMBERS = { radiusKm = { 5, 20000 }, notesLeadS = { 2, 9 }, startHour = { -1, 23 } }
 
 local raw = nil
 local eff = nil

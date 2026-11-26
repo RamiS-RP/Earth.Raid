@@ -216,10 +216,18 @@ M.hhmm = hhmm
 
 local function lang() local ok, l = pcall(function() return Lua:getSelectedLanguage() end) return ok and tostring(l):sub(1, 2) == 'es' and 'es' or 'en' end
 
+-- (26-nov, el usuario: «la hora, permite cambiarla para que no obligues al jugador a jugar de noche»): la hora elegida en
+-- Ajustes (startHour) se pone en el mapa al empezar; -1, la del juego
+local function applyStartHour(opt)
+  local h = tonumber(opt and opt.startHour)
+  if h and h >= 0 then geo.setDayClock(math.floor(h) * 3600) end
+end
+
 -- ev: el evento completo; fromRun: pasada desde la que empezar (nil: la primera)
 function M.start(ev, fromRun, hooks)
   M.stop()
   local opt = settings.get()
+  applyStartHour(opt)
   local it, err = M.itinerary(ev, fromRun, M.LIAISON_AVG_KMH)
   if not it then return false, err end
   local now = geo.dayClock()
@@ -563,6 +571,8 @@ function M.hold(on)
   if on then R.hold = true return end
   if not R.hold then return end
   R.hold = nil
+  R.opt = settings.get()
+  applyStartHour(R.opt)
   local now = geo.dayClock()
   R.clock = now
   R.startMin = math.floor(now / 60) + 2
@@ -576,6 +586,24 @@ function M.hold(on)
 end
 function M.held() return R ~= nil and R.hold == true end
 
+-- corre todo el horario `secs` segundos (en minutos enteros): el reloj, el TC0, las horas de cada control y la salida
+function M.shiftClock(secs)
+  if not R then return end
+  local dm = math.floor(secs / 60 + 0.5)
+  if dm == 0 then return end
+  local d = dm * 60
+  R.clock = R.clock + d
+  R.startMin = R.startMin + dm
+  for _, it in ipairs(R.it.items) do if it.dueMin then it.dueMin = it.dueMin + dm end end
+  for _, r in ipairs(R.rows) do
+    if r.due then r.due = r.due + d end
+    if r.actual then r.actual = r.actual + d end
+    if r.startAt then r.startAt = r.startAt + d end
+  end
+  if R.startAt then R.startAt = R.startAt + d end
+  log('I', 'earthRaid', ('rally: the player changed the time, schedule moved %+d min'):format(dm))
+end
+
 -- como en el rally del juego: límite 120 km/h en los enlaces y 30 en la asistencia, fijos (no se configuran); los tiempos
 -- de los enlaces se asignan a una media de 100 km/h
 M.LIAISON_KMH, M.SERVICE_KMH, M.LIAISON_AVG_KMH = 120, 30, 100
@@ -584,8 +612,16 @@ function M.update(dtSim, dtReal)
   if R.hold then return end
   R.clock = R.clock + (dtSim or 0)
   if (R.phase == 'liaison' or R.phase == 'service') and not stage.active() then speedingUpdate(dtSim or 0) end
+  -- (26-nov) si el jugador cambia la hora del juego (menú de entorno) en la asistencia o en un enlace, el rally la sigue:
+  -- todo el horario se corre lo mismo (minutos enteros), así el sol, el reloj y la hoja de tiempos siguen a la par
+  local tod = geo.dayClock()
+  if R.lastTod and (R.phase == 'liaison' or R.phase == 'service') and not stage.active() then
+    local jump = ((tod - R.lastTod + 43200) % 86400) - 43200
+    if math.abs(jump - (dtSim or 0)) > 120 then M.shiftClock(jump) end
+  end
   -- el sol y el reloj van a la par: si el reloj salta (saltar enlace, esperar al minuto), la hora del mapa lo sigue
-  if math.abs(((R.clock - geo.dayClock() + 43200) % 86400) - 43200) > 2 then geo.setDayClock(R.clock) end
+  if math.abs(((R.clock - tod + 43200) % 86400) - 43200) > 2 then geo.setDayClock(R.clock) end
+  R.lastTod = geo.dayClock()
   local a = api()
   local p = a and a.ready and a.ready() and a.pose() or nil
   local cur = item()

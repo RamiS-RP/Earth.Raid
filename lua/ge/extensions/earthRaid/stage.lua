@@ -1117,6 +1117,9 @@ end
 function M.release(seconds)
   if not (S and S.phase == 'hold') then return false end
   S.phase, S.stagingInit = 'approach', seconds
+  -- (26-nov, el usuario: «la línea azul del GPS cuando vas del TC1 hacia la línea de salida»): en un rally también, como
+  -- en el tramo suelto, la línea azul del TC a la salida
+  if S.track then pcall(guide.toStart, S.track, (S.title or '') .. ' - ' .. (spanishUI() and 'Salida' or 'Start')) end
   return true
 end
 

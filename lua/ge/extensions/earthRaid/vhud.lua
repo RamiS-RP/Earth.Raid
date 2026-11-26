@@ -99,7 +99,7 @@ local function fromStage(S, R, api)
     local cur = R and R.it and R.it.items and R.it.items[R.idx]
     if cur and cur.label then
       sc.label = cur.label
-      if cur.dueMin and not S.tcDue then S.tcDue = cur.dueMin * 60 end
+      if cur.dueMin then S.tcDue = cur.dueMin * 60 end   -- (26-nov) siempre la de la hoja: puede correrse si el jugador cambia la hora
     end
     local due = S.tcDue or (math.ceil((now + 30) / 60) * 60)
     S.tcDue = due
