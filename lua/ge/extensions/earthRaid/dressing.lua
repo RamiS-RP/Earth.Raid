@@ -419,7 +419,7 @@ M.EDGE_MARGIN_M = 0.45
 M.EDGE_SIGN = { start = true, finish = true, endArea = true, finishEntry = true }
 M.EDGE_SIGN_MARGIN_M, M.EDGE_SIGN_TARGET_M = 0.25, 0.4
 -- el puesto de un control o de un médico se coloca con su propia lógica (carpa libre, calle cortada): no se toca
-M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true, cushion = true,
+M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true,
   laptop = true, extinguisher = true, ambulance = true, rallyCar = true, tcEntry = true, tc = true }
 M.ROW_KINDS = { plasticBarrier = true, plasticBarrierW = true, hayBale = true, hayBale2 = true,
   fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true }
@@ -904,8 +904,10 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
     place('table', t, endAlong, side - sgn * 0.9, ty, f - 0.6, o())
     place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, f + 0.6, o({ dz = 0.75 }))
     place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, f + 0.6, o())
-    place('extinguisher', t, endAlong, side - sgn * 1.2, 40, f + 1.5, o())
-    place('extinguisher', t, endAlong, side - sgn * 1.5, 250, f + 1.6, o())
+    -- (26-nov, auditoría: extintores en la calzada cuando la carpa va pegada al borde) los extintores, por detrás de la
+    -- carpa, del lado contrario a la carretera
+    place('extinguisher', t, endAlong, side + sgn * 1.3, 40, f + 1.2, o())
+    place('extinguisher', t, endAlong, side + sgn * 1.3, 250, f - 1.2, o())
     -- de noche, una luz bajo la carpa (de día no se nota)
     place('lamp', t, endAlong, side, 0, f, o({ dz = 2.4 }))
     -- vallas como las de NGRC Rally Utah (mainPrefab, medidas respecto al cartel): una detrás de la carpa junto a la
