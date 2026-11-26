@@ -140,6 +140,9 @@ end
 
 -- El punto de fichaje de un tramo: dressing.TC_BEFORE_M antes de la salida, en la prolongación hacia atrás
 local function tcPoint(st)
+  -- (26-nov, MARK:user-tc-v1) el sitio que marcó el usuario en el paquete manda (Trans Sierra Nevada SS1: el ensanche)
+  local up = st and (st.reverse and st.tcPointR or st.tcPoint)
+  if type(up) == 'table' and up[1] then return up[1], up[2] end
   local t = geo.track(clean.stage(st))
   local x, y = geo.at(t, 0)
   local dx, dy = geo.dirAt(t, 0)

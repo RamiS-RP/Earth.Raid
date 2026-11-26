@@ -83,12 +83,14 @@ local function fromStage(S, R, api)
   local now = (R and R.clock) or S.wall or nowSecs()
   local canSkip = false
   local ph = S.phase
-  if ph == 'approach' and S.startAt then
+  -- en un rally la hora de salida la pone el rally (R.startAt); el tramo suelto, la suya (S.startAt)
+  local startAt = S.startAt or (R and R.startAt)
+  if ph == 'approach' and startAt then
     -- (26-nov) fichado ya el TC: como el juego, lo siguiente es la salida del tramo (SSn, hora de salida y distancia a la
     -- línea), no otra vez «TC n» con la distancia a la salida
     d.activeState = 'vehicleProximity'
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', tostring(n)
-    sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(S.startAt), hhmm(S.startAt)
+    sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(startAt), hhmm(startAt)
     d.vehicleProximity = prox(S.distM, true)
   elseif ph == 'approach' or ph == 'hold' or ph == 'tc' then
     d.activeState = 'vehicleProximity'
