@@ -727,7 +727,42 @@ function M.uiFilter(key, value)
   if U.filters[key] ~= nil then U.filters[key] = type(value) == 'string' and value or '' end
   M.publishState()
 end
-function M.uiSelect(id) U.sel = type(id) == 'string' and id or nil M.publishState() end
+-- (26-nov, MARK:preload-event-v1) al abrir la ficha de un evento, BeamNG.Earth descarga por adelantado (de uno en uno, en
+-- segundo plano) la asistencia y, de cada tramo, el TC y la salida: al darle a Iniciar ya está en el disco
+local preQ, preT = {}, 0
+function M.preloadEvent(id)
+  preQ = {}
+  local okE, full = pcall(M.event, id)
+  if not (okE and full) then return end
+  local svc = rally.servicePoint and rally.servicePoint(full)
+  if svc then preQ[#preQ + 1] = { svc[1], svc[2] } end
+  local okO, order = pcall(rally.order, full)
+  if okO and order then
+    for i, o in ipairs(order) do
+      if i > 6 then break end
+      local okT, la, lo = pcall(rally.tcPoint, o.stage)
+      if okT and la then preQ[#preQ + 1] = { la, lo } end
+      local p1 = o.stage.path and o.stage.path[1]
+      if p1 then preQ[#preQ + 1] = { p1[1], p1[2] } end
+    end
+  end
+end
+local function preloadPump(dt)
+  if #preQ == 0 or loader.active() then return end
+  preT = preT + (dt or 0)
+  if preT < 1.0 then return end
+  preT = 0
+  local core = rawget(_G, 'beamngEarth_core')
+  if not (core and type(core.preloadPlace) == 'function') then preQ = {} return end
+  local p = preQ[1]
+  local ok, sent = pcall(core.preloadPlace, p[1], p[2])
+  if not ok or sent then table.remove(preQ, 1) end
+end
+function M.uiSelect(id)
+  U.sel = type(id) == 'string' and id or nil
+  if U.sel then pcall(M.preloadEvent, U.sel) end
+  M.publishState()
+end
 function M.uiBack() U.sel = nil M.publishState() end
 function M.uiSetSetting(key, value)
   settings.set(key, value)
@@ -1914,6 +1949,7 @@ function M.onUpdate(dtReal, dtSim)
   end
   -- (26-nov, MARK:park-fence-recheck-v1) las vallas del parque se vuelven a mirar con el grafo ya cargado: el camino de
   -- salida de boxes podía no estar aún cuando se vallaba y quedaba una valla en medio
+  pcall(preloadPump, dtReal)
   S.pfT = (S.pfT or 0) + (dtReal or 0)
   if S.pfT > 4 and S.box then S.pfT = 0 pcall(servicepark.recheckFences) end
   -- (el módulo de tráfico del juego se carga cuando hace falta: se mira de vez en cuando)

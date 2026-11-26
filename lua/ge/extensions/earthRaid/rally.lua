@@ -139,6 +139,8 @@ function M.chain(ev, aLat, aLon, bLat, bLon)
 end
 
 -- El punto de fichaje de un tramo: dressing.TC_BEFORE_M antes de la salida, en la prolongación hacia atrás
+M.servicePoint = function(ev) return servicePoint(ev) end
+
 local function tcPoint(st)
   -- (26-nov, MARK:user-tc-v1) el sitio que marcó el usuario en el paquete manda (Trans Sierra Nevada SS1: el ensanche)
   local up = st and (st.reverse and st.tcPointR or st.tcPoint)
