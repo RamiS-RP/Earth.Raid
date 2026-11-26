@@ -1912,6 +1912,10 @@ function M.onUpdate(dtReal, dtSim)
     local okL, errL = pcall(raceLayout, dtReal)
     if not okL then log('W', TAG, 'layout: ' .. tostring(errL)) S.layoutFailed = true end
   end
+  -- (26-nov, MARK:park-fence-recheck-v1) las vallas del parque se vuelven a mirar con el grafo ya cargado: el camino de
+  -- salida de boxes podía no estar aún cuando se vallaba y quedaba una valla en medio
+  S.pfT = (S.pfT or 0) + (dtReal or 0)
+  if S.pfT > 4 and S.box then S.pfT = 0 pcall(servicepark.recheckFences) end
   -- (el módulo de tráfico del juego se carga cuando hace falta: se mira de vez en cuando)
   S.rtT = (S.rtT or 0) + (dtReal or 0)
   if S.rtT > 3 then S.rtT = 0 pcall(regiontraffic.install, regionTrafficOn) end

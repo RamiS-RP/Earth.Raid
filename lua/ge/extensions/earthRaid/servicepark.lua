@@ -1220,6 +1220,9 @@ local function fenceClearance(cx, cy, h)
           -- (26-nov, el usuario: «una valla en el centro del camino de tierra de la salida de boxes»): un pasillo que SALE
           -- del recinto (un extremo dentro y otro fuera) es el acceso, no un pasillo interior: cuenta y se deja libre
           local inner = dr <= M.LOT_DRIV and h and (inHull(h, nd.pos.x, nd.pos.y, 3) and inHull(h, o and o.pos.x or 0, o and o.pos.y or 0, 3))
+          -- junto al TC0 (la boca por la que sale el coche) ningún pasillo es interior: se deja libre
+          local ts = M.tcSpot
+          if inner and ts and ts.x and o and ((nd.pos.x - ts.x) ^ 2 + (nd.pos.y - ts.y) ^ 2 < 25 * 25 or (o.pos.x - ts.x) ^ 2 + (o.pos.y - ts.y) ^ 2 < 25 * 25) then inner = false end
           if o and not inner then segs[#segs + 1] = { nd.pos.x, nd.pos.y, o.pos.x, o.pos.y, math.max(nd.radius or 2.5, o.radius or 2.5) + 1.0 } end
         end
       end
@@ -1404,6 +1407,24 @@ local function lotFence(site)
   return n
 end
 M.lotFence = lotFence
+
+-- (26-nov) quita las vallas del parque que, con el grafo de carreteras ya completo, quedan sobre un camino o en la salida
+function M.recheckFences()
+  local d = M.dbg
+  if not (d and d.hull and d.cx) then return 0 end
+  local a = api()
+  if not a then return 0 end
+  local clear = fenceClearance(d.cx, d.cy, d.hull)
+  local n = 0
+  for _, it in ipairs(props.all()) do
+    if it.park and not it.hidden and it.lat and tostring(it.kind):find('^fence') then
+      local x, y = a.toGame(it.lat, it.lon)
+      if x and not clear(x, y) then props.hide(it) n = n + 1 end
+    end
+  end
+  if n > 0 then log('I', TAG, ('lot fence: %d pieces removed from a path now loaded'):format(n)) end
+  return n
+end
 
 local function buildOnStalls(site)
   local a = api()
