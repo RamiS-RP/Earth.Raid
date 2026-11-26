@@ -795,9 +795,22 @@ local function mouthRoute(m, h, cx, cy)
     if not sd or d < sd then start, sd = k, d end
     if (cls[k] or 0) > M.LOT_DRIV and not inHull(h, q.x, q.y, M.RUN_OFF_M + 2) and (not gd or d < gd) then goal, gd = k, d end
   end
-  -- el aparcamiento no tiene calles en el grafo (los nodos más cercanos ya están fuera del vallado): la ruta es la recta del
-  -- box al punto más cercano de una carretera de verdad, como la línea que pinta el GPS por el aparcamiento
-  if start then
+  -- (26-nov) ¿tiene el aparcamiento calles propias en el grafo? Antes la recta de abajo se usaba SIEMPRE (el `if start`
+  -- era cierto en todos los casos) y la ruta por el grafo nunca se calculaba.
+  local lotStreets = false
+  for k in pairs(adj) do
+    local q = m.nodes[k].pos
+    if (cls[k] or 0) <= M.LOT_DRIV and inHull(h, q.x, q.y, 2) then lotStreets = true break end
+  end
+  -- NORMA (26-nov, el usuario: "el TC0 ha de estar en la salida asfaltada siempre que sea posible"; Canarias lo ponía en
+  -- la esquina de tierra): sin calles del aparcamiento en el grafo, la boca es la unión ASFALTADA del recinto con una
+  -- carretera de verdad, leída del material del terreno de BeamNG.Earth (bngEarthGroundAsphalt)
+  if not lotStreets then
+    local okP, paved = pcall(M.pavedMouthRoute, m, h, cx, cy)
+    if okP and paved then return paved end
+  end
+  -- sin unión asfaltada: la recta del box al punto más cercano de una carretera de verdad, como la línea que pinta el GPS
+  if start and not lotStreets then
     local bx, by, bd, brad
     for _, nd in pairs(m.nodes) do
       for nb, ed in pairs(nd.links or {}) do
@@ -839,6 +852,95 @@ local function mouthRoute(m, h, cx, cy)
   local out = {}
   for i = #rev, 1, -1 do out[#out + 1] = rev[i] end
   return out
+end
+
+-- ---- la salida asfaltada del recinto (26-nov) ---------------------------------------------------------------------------
+-- El terreno de BeamNG.Earth pinta el asfalto de los aparcamientos y sus accesos (material bngEarthGroundAsphalt), aunque el
+-- grafo no tenga esas calles. Se buscan pasillos asfaltados de al menos PAVED_W_M de ancho que unan el borde del recinto con
+-- una carretera de verdad (drivability > LOT_DRIV) a menos de PAVED_MAX_M; gana el más corto (a igualdad, el que queda hacia
+-- el primer control). Devuelve la ruta { centro, borde, carretera } o nil.
+M.PAVED_MAX_M, M.PAVED_W_M, M.PAVED_STEP_M = 45, 5, 1
+local terrainBlock
+local pavedCache = {}
+function M.isPaved(x, y)
+  terrainBlock = terrainBlock or scenetree.findObject('bngEarthTerrain')
+  if not terrainBlock then return nil end
+  local okI, idx = pcall(function() return terrainBlock:getMaterialIdxWs(vec3(x, y, 0)) end)
+  if not okI or idx == nil or idx < 0 then return nil end
+  local nm = pavedCache[idx]
+  if nm == nil then
+    local okN, name = pcall(function() return terrainBlock:getMaterialName(idx) end)
+    name = tostring(okN and name or ''):lower()
+    nm = (name:find('asphalt') or name:find('concrete') or name:find('paved')) and true or false
+    pavedCache[idx] = nm
+  end
+  return nm
+end
+local function hullEdgePoint(h, x, y)
+  local bd, bx, by
+  for i = 1, #h do
+    local A, B = h[i], h[i % #h + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L2 = ex * ex + ey * ey
+    local t = L2 > 0 and math.max(0, math.min(1, ((x - A[1]) * ex + (y - A[2]) * ey) / L2)) or 0
+    local px, py = A[1] + ex * t, A[2] + ey * t
+    local d = (px - x) ^ 2 + (py - y) ^ 2
+    if not bd or d < bd then bd, bx, by = d, px, py end
+  end
+  return bx, by, bd and math.sqrt(bd) or 1e9
+end
+function M.pavedMouthRoute(m, h, cx, cy, tx, ty)
+  if M.isPaved(cx, cy) == nil then return nil end
+  local R2 = (M.GATE_SEARCH_M + 40) ^ 2
+  local best
+  for _, nd in pairs(m.nodes) do
+    if (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 then
+      for nb, ed in pairs(nd.links or {}) do
+        local o = m.nodes[nb]
+        local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+        if o and dr > M.LOT_DRIV then
+          local ax, ay = nd.pos.x, nd.pos.y
+          local vx, vy = o.pos.x - ax, o.pos.y - ay
+          local L = math.sqrt(vx * vx + vy * vy)
+          for d = 0, L, 3 do
+            local qx, qy = ax + vx * d / math.max(L, 0.01), ay + vy * d / math.max(L, 0.01)
+            if not inHull(h, qx, qy, 2) then
+              local ex, ey, de = hullEdgePoint(h, qx, qy)
+              local rad = math.max(nd.radius or 2.5, o.radius or 2.5)
+              local gap = de - rad
+              if gap <= M.PAVED_MAX_M and (not best or de < best.score + 6) then
+                -- el pasillo: del borde del recinto al borde de la calzada, asfalto en el eje y a ± media anchura
+                local ux, uy = (qx - ex) / math.max(de, 0.01), (qy - ey) / math.max(de, 0.01)
+                local nx, ny = -uy, ux
+                -- el eje, asfalto entero; los lados, al menos el 80 % (bordillos, farolas). El último 1,5 m antes de la calzada
+                -- no cuenta: bajo la malla de la carretera el terreno puede ser de otro material
+                local ok, sides, n = true, 0, 0
+                local hw = M.PAVED_W_M / 2
+                for t = 0, math.max(0, gap - 1.5), M.PAVED_STEP_M do
+                  local px, py = ex + ux * t, ey + uy * t
+                  if not M.isPaved(px, py) then ok = false break end
+                  n = n + 2
+                  if M.isPaved(px + nx * hw, py + ny * hw) then sides = sides + 1 end
+                  if M.isPaved(px - nx * hw, py - ny * hw) then sides = sides + 1 end
+                end
+                if ok and n > 0 and sides < n * 0.8 then ok = false end
+                if ok then
+                  local toward = (tx and ((qx - tx) ^ 2 + (qy - ty) ^ 2) ^ 0.5 or 0) * 0.02
+                  local score = de + toward
+                  if not best or score < best.score then best = { score = score, ex = ex, ey = ey, qx = qx, qy = qy, rad = rad } end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  if not best then return nil end
+  log('I', TAG, string.format('paved lot exit at (%.1f, %.1f) -> road (%.1f, %.1f)', best.ex, best.ey, best.qx, best.qy))
+  -- un paso hacia dentro del recinto en la misma dirección, para que la ruta cruce el borde por el pasillo asfaltado
+  local ix, iy = best.ex - (best.qx - best.ex) * 0.2, best.ey - (best.qy - best.ey) * 0.2
+  return { { cx, cy, best.rad }, { ix, iy, best.rad }, { best.qx, best.qy, best.rad } }
 end
 
 local function exitMouth(h, cx, cy, z)
@@ -883,6 +985,7 @@ local function exitMouth(h, cx, cy, z)
   end
   return gate or exitGate(cx, cy, z)
 end
+M.exitMouth = exitMouth   -- (26-nov) para la auditoría de boxes
 
 -- ¿cabe la carpa 3x6 de una plaza (girada como la plaza) sin tocar un edificio, un muro o un árbol?
 local function boxFree(p)

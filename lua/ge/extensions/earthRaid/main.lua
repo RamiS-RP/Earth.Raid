@@ -1053,7 +1053,15 @@ end
 function M.uiCancelStage()
   if S.pre then S.pre = nil freezeCar(false) end
   if loader.active() then pcall(loader.cancel) stage.holdJobs(false) end
-  if rally.active() then rally.stop() else stage.stop() end
+  local wasRally = rally.active()
+  if wasRally then rally.stop() else stage.stop() end
+  -- (26-nov) al abandonar un rally en el parque o en un enlace, el box, el TC0 y las vallas del recinto se quedaban
+  -- montados (178 objetos en Canarias): fuera, como al empezar otro rally
+  if wasRally then
+    pcall(props.clear)
+    S.box, S.park, S.tc0Done, S.forceRoad = nil, nil, nil, nil
+    servicepark.tcSpot = nil
+  end
   M.publishState()
 end
 
@@ -1776,6 +1784,10 @@ local function raceLayout(dt)
   elseif S.prevLayout then
     if ours(curName) then pcall(L.setCurrentLayout, S.prevLayout) end
     S.prevLayout = nil
+  elseif ours(curName) then
+    -- (26-nov) sin la disposición anterior guardada (p. ej. tras recargar el mod a mitad de un rally) se quedaba la del
+    -- rally con el reloj parado: la que toca por el estado del juego
+    if L.resetUsedLayout then pcall(L.resetUsedLayout) end
   end
 end
 

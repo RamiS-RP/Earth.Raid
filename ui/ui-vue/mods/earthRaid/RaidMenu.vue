@@ -82,6 +82,7 @@
         <!-- panel derecho de detalle -->
         <aside class="side panel" v-if="focus">
           <h3 class="side-title">{{ focus.name }}</h3>
+          <div class="side-scroll">
           <div class="side-img">
             <img v-if="focus.logo" :src="focus.logo" alt="" />
             <div v-else class="nologo big">{{ focus.short || focus.name }}</div>
@@ -102,7 +103,9 @@
             <li><span class="ico">🏁</span><div><small>{{ t("stagesInfo") }}:</small><b>{{ focus.stageCount }} · {{ km(focus.stageKm) }}</b></div></li>
             <li v-if="focus.boxM != null"><span class="ico">📍</span><div><b>{{ focus.boxM > 0 ? t("away", { d: dist(focus.boxM) }) : t("here") }}</b></div></li>
           </ul>
-          <button class="go-btn" @click="open(focus.id)">▶ {{ t("openRally") }}</button>
+          </div>
+          <!-- (26-nov) fijo abajo: el texto se desplaza por encima, no hace falta bajar para abrir el rally -->
+          <button class="go-btn side-go" @click="open(focus.id)">▶ {{ t("openRally") }}</button>
         </aside>
       </div>
     </template>
@@ -561,7 +564,9 @@ h1 { margin: 0; font-size: 34px; font-style: italic; font-weight: 800; }
 .cname { flex: 1; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cyear { color: var(--dim); font-size: 13px; }
 .empty, .notice { padding: 24px 6px; }
-.side { display: flex; flex-direction: column; padding: 14px 16px; overflow-y: auto; }
+.side { display: flex; flex-direction: column; padding: 14px 16px; overflow: hidden; min-height: 0; }
+.side-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.side-go { flex: none; margin-top: 12px; }
 .side-title { margin: 0 0 10px; font-size: 26px; font-style: italic; font-weight: 800; }
 .side-img { background: radial-gradient(circle at 50% 40%, #3a3d45, #121316); border-radius: 3px; padding: 14px; display: flex; justify-content: center; }
 .side-img img { max-width: 100%; max-height: 220px; object-fit: contain; }

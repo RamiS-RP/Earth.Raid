@@ -1343,7 +1343,7 @@ end
 -- ---- cada fotograma -----------------------------------------------------------------------------------------------------
 
 local regroundT = 0
-local function reground(dt)
+local function reground(dt, heightOnly)
   regroundT = regroundT + dt
   if regroundT < M.REGROUND_S then return end
   regroundT = 0
@@ -1353,6 +1353,7 @@ local function reground(dt)
   if lat then
     local ok, n, trees = pcall(props.reground, lat, lon, M.REGROUND_M, dressing.loading())
     if ok and trees and trees > 0 then startclock.ensure() end
+    if heightOnly then return end
     -- y nada en la calzada: lo que se colocó sin la carretera cargada se repasa al acercarse
     local okR, err = pcall(dressing.recheck, lat, lon)
     if not okR then log('W', TAG, 'recheck: ' .. tostring(err)) end
@@ -1414,7 +1415,10 @@ function M.update(dtSim, dtReal)
     props.collisionDirty, collT = false, 0
     M.collision()
   end
-  if (S or post) and props.count() > 0 then reground(dtReal or dtSim or 0) end
+  if (S or post) and props.count() > 0 then reground(dtReal or dtSim or 0)
+  -- (26-nov) el parque de asistencia y el TC0 del rally (sin tramo en marcha) también: en Sierra Morena el box se montaba
+  -- con el terreno aún sin afinar (z = 72 m con el suelo a 101 m) y quedaba enterrado. Solo la altura, sin mover nada de sitio
+  elseif props.count() > 0 then reground(dtReal or dtSim or 0, true) end
   if S and not M.jobsHeld and dressing.pendingJobs() > 0 then
     S.dressT = (S.dressT or 0) + (dtReal or dtSim or 0)
     if S.dressT >= M.DRESS_S then

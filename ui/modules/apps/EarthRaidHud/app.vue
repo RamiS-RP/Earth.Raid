@@ -115,10 +115,10 @@
        las penalizaciones del tramo (bajo los tiempos del juego), las del rally (bajo la hoja de tiempos) y el marco de
        la cámara del reloj (la imagen la pone el juego debajo) -->
   <div class="erh" v-if="slim">
-    <!-- (22-nov, el usuario) una sola línea, en el hueco bajo la barra de progreso, a la derecha del crono -->
-    <div v-if="slimPens.length" class="spen">
-      <b class="spent">{{ t.penalties }}</b>
-      <span class="spenr">{{ slimPens.map(p => penWhy(p.why) + (p.n > 1 ? ' ×' + p.n : '')).join(' · ') }}</span>
+    <!-- (26-nov, el usuario) en el hueco bajo el crono del tramo (en el enlace, entre la barra del rally y la hoja de
+         tiempos), anclado a las apps del juego para que cuadre en cualquier resolución; con iconos para no llenar de texto -->
+    <div v-if="slimPens.length" class="spen" :class="{ tight: penPos.tight }" :style="penPos.style">
+      <span v-for="(p, i) in slimPens" :key="i" class="spic" :title="penWhy(p.why)">{{ penIcon(p.why) }}<small v-if="p.n > 1">×{{ p.n }}</small></span>
       <b class="spens">+{{ slimTotal }}s</b>
     </div>
     <!-- el resultado al parar en el STOP (19-nov: con las apps del juego se había perdido): tiempo, parcial,
@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref } from "vue"
 import { useBridge } from "@/bridge"
 import { useEvents } from "@/services/events"
 
@@ -323,6 +323,61 @@ const slimPens = computed(() => {
   return out
 })
 const slimTotal = computed(() => slimPens.value.reduce((a, p) => a + (p.s || 0), 0))
+// iconos de las sanciones (el nombre completo sale al pasar el ratón)
+const PEN_ICON = { falseStart: "🚦", staging: "⏱", recovery: "🔧", speeding: "⚡", late: "⏰", early: "⏩" }
+const penIcon = w => PEN_ICON[w] || "⚠"
+// Dónde va la caja (26-nov): se mide en la pantalla dónde dibuja el juego sus apps (en píxeles de la interfaz, ya escalados),
+// así cuadra en cualquier resolución. Tramo: justo debajo del crono (y de sus parciales, si los hay). Enlace/TC: en el hueco
+// entre la barra del rally (rallyDashboard) y la hoja de tiempos (rallyTimecard), con el ancho de la hoja.
+const penPos = ref({ style: {}, tight: false })
+function visibleRect(el) {
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  if (r.width < 2 || r.height < 2) return null
+  const cs = window.getComputedStyle(el)
+  if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return null
+  return r
+}
+function contentBottom(host) {
+  // lo que se ve de una app: el borde inferior del más bajo de sus hijos visibles (la caja de la app puede ser más alta)
+  let b = null
+  const walk = (e, depth) => {
+    for (const c of e.children) {
+      const r = visibleRect(c)
+      if (!r) continue
+      if (depth < 3 && c.children.length) walk(c, depth + 1)
+      else b = b === null ? r.bottom : Math.max(b, r.bottom)
+    }
+  }
+  walk(host, 0)
+  return b
+}
+function placePen() {
+  if (!slimPens.value.length || !root.value) return
+  const me = root.value.getBoundingClientRect()
+  const q = s => document.querySelector(s)
+  const stage = visibleRect(q('[data-app-name="rallyStageTiming"] .section-active-stage'))
+  if (stage) {
+    penPos.value = { tight: false, style: { left: stage.left - me.left + "px", top: stage.bottom - me.top + 4 + "px", width: stage.width + "px", height: "26px" } }
+    return
+  }
+  const dashHost = q('[data-app-name="rallyDashboard"]')
+  const cardLabel = visibleRect(q('[data-app-name="rallyTimecard"] .interact-label-on-timecard')) || visibleRect(q('[data-app-name="rallyTimecard"]'))
+  const dashBottom = dashHost && visibleRect(dashHost) ? contentBottom(dashHost) : null
+  if (dashBottom !== null || cardLabel) {
+    const top = (dashBottom !== null ? dashBottom : cardLabel.top - 26) + 2
+    const bottom = cardLabel ? cardLabel.top - 2 : top + 24
+    const h = Math.max(18, Math.min(30, bottom - top))
+    const left = cardLabel ? cardLabel.left : (visibleRect(dashHost) || { left: 0 }).left
+    const width = cardLabel ? cardLabel.width : 290
+    penPos.value = { tight: h < 24, style: { left: left - me.left + "px", top: top - me.top + "px", width: width + "px", height: h + "px" } }
+    return
+  }
+  penPos.value = { tight: false, style: {} }
+}
+let penTimer = null
+onMounted(() => { penTimer = setInterval(placePen, 250) })
+onUnmounted(() => { if (penTimer) clearInterval(penTimer) })
 const penWhy = w => (w === "early" ? t.value.earlyWord : t.value[w] || w)
 function statusText(row) {
   if (!row.status) return ""
@@ -462,10 +517,12 @@ const frameStyle = computed(() => {
 .erh-load .lbar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
 .erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
-.spen { position: absolute; left: 288px; top: 65px; width: 290px; height: 35px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; gap: 8px; background: rgba(26, 29, 34, 0.86); color: #fff; font-size: 13px; border-left: 3px solid #ff6a5c; white-space: nowrap; }
-.spen .spent { color: #ff6a5c; letter-spacing: 0.04em; font-weight: 700; font-size: 12px; }
-.spen .spenr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.spen .spens { color: #ff6a5c; }
+.spen { position: absolute; left: 0; top: 140px; width: 288px; height: 26px; box-sizing: border-box; padding: 0 8px; display: flex; align-items: center; gap: 8px; background: rgba(26, 29, 34, 0.86); color: #fff; font-size: 15px; border-left: 3px solid #ff6a5c; white-space: nowrap; overflow: hidden; }
+.spen .spic { display: inline-flex; align-items: baseline; gap: 1px; line-height: 1; }
+.spen .spic small { font-size: 11px; color: #d7d9de; font-weight: 700; }
+.spen .spens { margin-left: auto; color: #ff6a5c; font-size: 14px; }
+.spen.tight { font-size: 13px; gap: 6px; padding: 0 6px; }
+.spen.tight .spens { font-size: 12px; }
 .erh .tcpen.slimpen { position: absolute; left: 288px; top: 160px; width: 290px; background: rgba(26, 29, 34, 0.86); color: #fff;
   padding: 6px 10px 7px; border-left: 3px solid #ff9100; font-size: 14px; }
 .erh .tcpen.slimpen .tcpent { color: #ffb347; letter-spacing: 0.04em; }
