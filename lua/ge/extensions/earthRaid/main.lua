@@ -1335,6 +1335,24 @@ function M.uiStartRally(eventId, fromRun, force)
         -- (26-nov) antes de soltar el coche, el parque a la altura del suelo ya cargado (Córdoba: parches de BeamNG.Earth
         -- 29 m por encima del terreno; montado antes de que llegaran, quedaba enterrado y el coche caía al vacío)
         if S.box and S.box.lat then pcall(props.reground, S.box.lat, S.box.lon, 350, true) end
+        -- (26-nov) sin aparcamiento (Trans Sierra Nevada) el box y el TC0 quedaban juntos: el coche aparecía en el TC0 y se
+        -- fichaba solo. Entonces se sale 40 m antes del TC0, por la carretera, mirando a él (como en el juego: se llega al TC0)
+        do
+          local R0 = rally.state()
+          local t0 = R0 and R0.tc0
+          if S.box and t0 and S.box.lat and not (S.park and S.park.site and S.park.site.stalls) then
+            local k = math.cos(math.rad(t0[1])) * 111195
+            local dd = math.sqrt(((S.box.lat - t0[1]) * 111195) ^ 2 + ((S.box.lon - t0[2]) * k) ^ 2)
+            if dd < 25 and tw then
+              local vx, vy = (tw[2] - t0[2]) * k, (tw[1] - t0[1]) * 111195
+              local vl = math.sqrt(vx * vx + vy * vy)
+              if vl > 1 then
+                local bl, bo = t0[1] - vy / vl * 40 / 111195, t0[2] - vx / vl * 40 / k
+                if M.placeOnRoad(t0[1], t0[2], bl, bo) then return true end
+              end
+            end
+          end
+        end
         if S.box and not S.forceRoad then return M.placeAt(S.box.lat, S.box.lon, S.box.faceLat or (tw and tw[1]), S.box.faceLon or (tw and tw[2])) end
         return M.placeOnRoad(start[1], start[2])
       end,

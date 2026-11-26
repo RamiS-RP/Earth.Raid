@@ -198,6 +198,8 @@ local function fromRally(R, cur, a)
       sc.eventWallClockStart = hhmm(R.startMin * 60)
       sc.eventWallClockEnd = hhmm(R.startMin * 60 + 60)
     end
+    -- (26-nov) recién fichado el TC0 la ruta del GPS aún no está y da 0 m: salía «STOP 0.0m» camino del TC1
+    if dM and dM < 1 then dM = nil end
     -- sin ruta del GPS (planeando, perdida): la distancia en línea recta, no un "10.00km" fijo
     if not dM and tgt and a and a.pose then
       local okP, p = pcall(a.pose)
