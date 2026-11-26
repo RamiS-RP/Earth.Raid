@@ -39,7 +39,7 @@ M.FALSE_START_S = (okP and GP.falseStartPenaltySeconds) or 10
 M.RECOVERY_S = (okC and GC.getSeconds('recovery', true)) or 5
 M.NEAR_M = 40
 M.STAGED_MAX_M = 1.2       -- colocado: el morro como mucho a esto antes de la línea (el juego: < 1 m)...
-M.STAGED_OVER_M = 0.3      -- ... y como mucho esto por encima de ella; más: "te has pasado", no vale
+M.STAGED_OVER_M = 0.05     -- ... y como mucho esto por encima (26-nov: el juego pone BACK ya a -0,27 m; antes 0,3)
 M.FALSE_START_M = 1.0      -- en la cuenta atrás, avanzar esto: salida en falso
 M.CAR_HALF_M = 2.2         -- si no se puede medir el coche
 M.STOP_MS = 0.6
@@ -474,9 +474,14 @@ local function onRoadFrac(tr, from, upTo)
     local gx, gy, gz = props.ground(la, lo)
     if gx then
       local n1, _, dd = props.nearestRoad(gx, gy, gz, 60)
-      n = n + 1
-      if n1 then any = true end
-      if dd and dd <= M.AFTER_ROAD_M then ok = ok + 1 end
+      -- (26-nov) sin ninguna carretera a 150 m: esa zona del grafo aún no ha llegado (BeamNG.Earth carga alrededor del
+      -- coche). No cuenta como "fuera de carretera": en Canarias SS2 la salida se adelantaba 330 m con el grafo a medias
+      local known = n1 ~= nil or props.nearestRoad(gx, gy, gz, 150) ~= nil
+      if known then
+        n = n + 1
+        if n1 then any = true end
+        if dd and dd <= M.AFTER_ROAD_M then ok = ok + 1 end
+      end
     end
   end
   if n == 0 or not any then return nil end
@@ -500,6 +505,15 @@ local function validateStart(t, hasBefore, graphReady)
     fr = 0
   end
   local cut = 0
+  -- (26-nov) si la propia salida está en una carretera del juego (a menos de AFTER_ROAD_M), no se adelanta: lo que falla más
+  -- adelante suele ser grafo aún a medias (Canarias SS2 se adelantaba 330 m con la salida a 1 m de la carretera)
+  if fr < 0.8 then
+    local f0 = onRoadFrac(t, 0, 16)
+    if f0 and f0 >= 1 then
+      log('I', TAG, ('start: on a road at the line (%.0f%% of the first %d m): kept'):format(fr * 100, M.START_CHECK_M))
+      fr = 1
+    end
+  end
   if fr < 0.8 then
     for a0 = 10, t.total - 600, 10 do
       local f2 = onRoadFrac(t, a0, a0 + M.START_CHECK_M)

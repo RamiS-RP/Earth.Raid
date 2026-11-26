@@ -1332,6 +1332,9 @@ function M.uiStartRally(eventId, fromRun, force)
         local first = rs.it and rs.it.items and rs.it.items[1]
         local tw = first and first.stage and first.stage.start
         -- (si el parque no dio suelo firme, la segunda vez se coloca en la carretera de la asistencia)
+        -- (26-nov) antes de soltar el coche, el parque a la altura del suelo ya cargado (Córdoba: parches de BeamNG.Earth
+        -- 29 m por encima del terreno; montado antes de que llegaran, quedaba enterrado y el coche caía al vacío)
+        if S.box and S.box.lat then pcall(props.reground, S.box.lat, S.box.lon, 350, true) end
         if S.box and not S.forceRoad then return M.placeAt(S.box.lat, S.box.lon, S.box.faceLat or (tw and tw[1]), S.box.faceLon or (tw and tw[2])) end
         return M.placeOnRoad(start[1], start[2])
       end,
@@ -1489,6 +1492,11 @@ end
 function M.groundZ(x, y, ref, tol)
   if ref ~= nil and not (plausible(ref) and ref > M.VOID_Z) then ref = nil end
   local tz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
+  -- (26-nov) con un parche de BeamNG.Earth por encima del terreno, el suelo es el parche (Córdoba: 101 m sobre 72 m)
+  do
+    local okG, g = pcall(props.trueGround, x, y)
+    if okG and g and type(tz) == 'number' and g > tz + 1.0 then tz = g end
+  end
   if not plausible(tz, ref, tol) then tz = nil end
   local base = tz or ref
   if not base then return nil end

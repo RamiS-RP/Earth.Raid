@@ -38,7 +38,12 @@ M.BUDGET_MS = 6
 local function terrainZ(x, y)
   if core_terrain and core_terrain.getTerrainHeight then
     local z = core_terrain.getTerrainHeight(vec3(x, y, 0))
-    if z and z > -1000 then return z end
+    if z and z > -1000 then
+      -- (26-nov) con un parche de BeamNG.Earth encima (Córdoba), su altura: el TerrainBlock queda debajo
+      local okG, g = pcall(props.trueGround, x, y)
+      if okG and g and g > z + 1.0 then return g end
+      return z
+    end
   end
   return nil
 end
@@ -756,6 +761,19 @@ end
 -- aparcamiento (una calle a menos de 45 m del centro; como mucho 20 s de espera)
 local graphWait
 function M.graphReady(site)
+  -- (26-nov) y el suelo afinado: en Sierra Morena el parque se montaba con el terreno grueso (z = 72 m, el suelo de verdad a
+  -- 101 m): carpas enterradas y las comprobaciones de árboles y edificios (rayos desde z + 25) no veían nada
+  local a = api()
+  local grounded = true
+  if a and a.ready then
+    local okR, r = pcall(a.ready)
+    if okR and r == false then grounded = false end
+  end
+  if not grounded then
+    graphWait = graphWait or os.clock()
+    if os.clock() - graphWait > 20 then graphWait = nil return true end
+    return false
+  end
   local okM, m = pcall(map.getMap)
   if okM and m and m.nodes then
     for _, nd in pairs(m.nodes) do
@@ -1074,6 +1092,46 @@ local function wallPicks(site, h)
   return A, B
 end
 
+-- NORMA (26-nov, el usuario: "ningún objeto en la calzada, y menos en un acceso o salida de boxes; nunca, aunque no tengan
+-- colisión"): una valla del recinto no va sobre una carretera del grafo (su radio + 1 m) ni sobre el pasillo de salida (la
+-- ruta de la boca a la carretera, 4,5 m a cada lado del eje). MARK:fence-clear-v1
+local function fenceClearance(cx, cy, h)
+  local segs, corridor = {}, {}
+  local okM, m = pcall(map.getMap)
+  if okM and m and m.nodes then
+    local R2 = 420 ^ 2
+    for _, nd in pairs(m.nodes) do
+      if (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 < R2 then
+        for nb, ed in pairs(nd.links or {}) do
+          local o = m.nodes[nb]
+          local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+          -- los pasillos del propio aparcamiento (dentro del recinto) no cuentan: el vallado va por fuera de ellos
+          local inner = dr <= M.LOT_DRIV and h and (inHull(h, nd.pos.x, nd.pos.y, 3) or inHull(h, o and o.pos.x or 0, o and o.pos.y or 0, 3))
+          if o and not inner then segs[#segs + 1] = { nd.pos.x, nd.pos.y, o.pos.x, o.pos.y, math.max(nd.radius or 2.5, o.radius or 2.5) + 1.0 } end
+        end
+      end
+    end
+  end
+  local r = M.dbg and M.dbg.route
+  if r then
+    for i = 1, #r - 1 do corridor[#corridor + 1] = { r[i][1], r[i][2], r[i + 1][1], r[i + 1][2], 4.5 } end
+  end
+  local function near(list, x, y)
+    for _, sg in ipairs(list) do
+      local vx, vy = sg[3] - sg[1], sg[4] - sg[2]
+      local L2 = vx * vx + vy * vy
+      local t = L2 > 0 and math.max(0, math.min(1, ((x - sg[1]) * vx + (y - sg[2]) * vy) / L2)) or 0
+      local px, py = sg[1] + vx * t, sg[2] + vy * t
+      if (x - px) ^ 2 + (y - py) ^ 2 < sg[5] * sg[5] then return true end
+    end
+    return false
+  end
+  return function(x, y)
+    -- la valla mide ~2,5 m: se miran su centro y sus extremos
+    return not near(segs, x, y) and not near(corridor, x, y)
+  end, segs
+end
+
 local function lotFence(site)
   local a = api()
   if not (a and site and site.stalls and #site.stalls >= 6) then return 0 end
@@ -1086,6 +1144,8 @@ local function lotFence(site)
   elseif site.exitX then gates[#gates + 1] = { site.exitX, site.exitY } end
   local z0 = site.z or terrainZ(site.x, site.y) or 0
   local n, skipped = 0, 0
+  local clear, roadSegs = fenceClearance(site.x, site.y, h)
+  local cands = {}
   -- el tramo recto del recinto por el que sale la ruta (la calle va pegada): su valla va junto al borde y la del otro lado de
   -- la calle, paralela a STREET_W_M
   local runSet, runA, runB = {}, nil, nil
@@ -1137,24 +1197,57 @@ local function lotFence(site)
             if z2 and math.abs(z2 - z0) < 2.5 then x, y, z = x2, y2, z2 break end
           end
         end
-        local ok = z ~= nil and math.abs(z - z0) < 2.5 and n < M.LOT_FENCE_MAX
+        local ok = z ~= nil and math.abs(z - z0) < 2.5
         if ok then
           for _, g in ipairs(gates) do
             if (x - g[1]) ^ 2 + (y - g[2]) ^ 2 < gap ^ 2 then ok = false break end
           end
         end
+        if ok and not clear(x, y) then ok = false end
         if ok then
           local hitOk, hd = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
           if hitOk and hd and hd < 24.3 then ok = false end
         end
         if ok then
-          local la, lo = a.toGeo(x, y, z)
-          if props.add(M.LOT_FENCE_KINDS[n % #M.LOT_FENCE_KINDS + 1], la, lo, gx, gy, 0, { row = true, noPush = true }) then n = n + 1 end
+          cands[#cands + 1] = { x = x, y = y, z = z, gx = gx, gy = gy }
         else skipped = skipped + 1 end
       end
     end
   end
+  -- (26-nov) con el tope de piezas, primero las más cercanas a la salida (TC0) y a los boxes: antes se cortaba según por qué
+  -- esquina empezaba la vuelta y el lado de la salida podía quedar sin vallar
+  local fx, fy = M.tcSpot and M.tcSpot.x or site.x, M.tcSpot and M.tcSpot.y or site.y
+  table.sort(cands, function(p1, p2)
+    return math.min((p1.x - fx) ^ 2 + (p1.y - fy) ^ 2, (p1.x - site.x) ^ 2 + (p1.y - site.y) ^ 2)
+      < math.min((p2.x - fx) ^ 2 + (p2.y - fy) ^ 2, (p2.x - site.x) ^ 2 + (p2.y - site.y) ^ 2)
+  end)
+  for _, c in ipairs(cands) do
+    if n >= M.LOT_FENCE_MAX then skipped = skipped + 1
+    else
+      local la, lo = a.toGeo(c.x, c.y, c.z)
+      if props.add(M.LOT_FENCE_KINDS[n % #M.LOT_FENCE_KINDS + 1], la, lo, c.gx, c.gy, 0, { row = true, noPush = true }) then n = n + 1 end
+    end
+  end
+  -- la valla del otro lado de la calle, solo si de verdad hay una calle pegada y paralela al recinto (en Canarias la salida
+  -- es un acceso perpendicular y esta fila cortaba el acceso asfaltado)
+  local streetAlong = false
   if runA and runB then
+    local ex, ey = runB[1] - runA[1], runB[2] - runA[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L > 3 then
+      ex, ey = ex / L, ey / L
+      local mx, my = (runA[1] + runB[1]) / 2 + ey * (M.RUN_OFF_M + M.STREET_W_M / 2), (runA[2] + runB[2]) / 2 - ex * (M.RUN_OFF_M + M.STREET_W_M / 2)
+      for _, sg in ipairs(roadSegs) do
+        local vx, vy = sg[3] - sg[1], sg[4] - sg[2]
+        local l = math.sqrt(vx * vx + vy * vy)
+        if l > 1 and math.abs((vx * ex + vy * ey) / l) > 0.9 then
+          local t = math.max(0, math.min(1, ((mx - sg[1]) * vx + (my - sg[2]) * vy) / (l * l)))
+          if (mx - sg[1] - vx * t) ^ 2 + (my - sg[2] - vy * t) ^ 2 < (M.STREET_W_M / 2 + 2) ^ 2 then streetAlong = true break end
+        end
+      end
+    end
+  end
+  if runA and runB and streetAlong then
     local ex, ey = runB[1] - runA[1], runB[2] - runA[2]
     local L = math.sqrt(ex * ex + ey * ey)
     if L > 3 then
@@ -1170,7 +1263,7 @@ local function lotFence(site)
       for d = -8, L + 8, M.LOT_FENCE_PITCH_M do
         local x, y = runA[1] + ex * d + ey * off, runA[2] + ey * d - ex * off
         local z = terrainZ(x, y)
-        local ok = z ~= nil and math.abs(z - z0) < 2.5
+        local ok = z ~= nil and math.abs(z - z0) < 2.5 and clear(x, y)
         if ok then
           local hitOk, hd = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
           if hitOk and hd and hd < 24.3 then ok = false end
@@ -1395,6 +1488,15 @@ function M.build(site)
   local a = api()
   M.tcSpot = nil
   if not (a and site) then return nil end
+  -- (26-nov) la altura del sitio, otra vez ahora (la de la búsqueda podía ser del terreno aún sin afinar)
+  do
+    local z = terrainZ(site.x, site.y)
+    if z then site.z = z end
+    for _, st in ipairs(site.stalls or {}) do
+      local sz = terrainZ(st[1], st[2])
+      if sz then st[3] = sz end
+    end
+  end
   if site.manual then
     local ok, box = pcall(buildManual, site)
     if ok then return box end

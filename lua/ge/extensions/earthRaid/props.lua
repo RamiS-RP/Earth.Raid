@@ -94,10 +94,47 @@ local function api() return rawget(_G, 'beamngEarth_api') end
 
 -- x, y, z del suelo en lat, lon y si el suelo estaba cargado (BeamNG.Earth carga el terreno alrededor del jugador: más
 -- lejos el rayo no encuentra nada, o da 0, y el objeto se recoloca cuando llega su terreno: M.reground)
+-- El suelo de verdad bajo (x, y) (26-nov): BeamNG.Earth pone parches de terreno (TSStatic /temp/beamngEarth/…/patch_*) por
+-- encima del TerrainBlock, que en esos sitios se queda más bajo (Córdoba: terreno a 72 m, suelo a 101 m; el parque de
+-- Sierra Morena salía enterrado). Rayo hacia abajo saltando edificios, calles y objetos (slot_*, nuestros TSStatic) hasta
+-- el primer TerrainBlock o parche. nil: nada cargado ahí.
+local function isGroundObj(ob)
+  if not ob then return false end
+  local okC, cls = pcall(function() return ob:getClassName() end)
+  if not okC then return false end
+  if cls == 'TerrainBlock' then return true end
+  if cls == 'TSStatic' then
+    local okS, sn = pcall(function() return ob:getField('shapeName', 0) end)
+    return okS and type(sn) == 'string' and sn:find('/patch_', 1, true) ~= nil
+  end
+  return false
+end
+function M.trueGround(x, y, fromZ)
+  if not (Engine and Engine.castRay) then return nil end
+  local top = fromZ or 3000
+  for _ = 1, 10 do
+    local okR, r = pcall(Engine.castRay, vec3(x, y, top), vec3(x, y, -1000), true, false)
+    if not (okR and r and r.pt) then return nil end
+    if isGroundObj(r.obj) then return r.pt.z end
+    top = r.pt.z - 0.05
+  end
+  return nil
+end
+
 function M.ground(lat, lon)
   local a = api()
   local x, y, z = a.toGame(lat, lon, 0)
   if not x then return nil end
+  do
+    local g = M.trueGround(x, y)
+    local th0 = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
+    -- solo cuando hay un parche por encima del terreno (si no, la lógica de siempre)
+    if g and type(th0) == 'number' and g > th0 + 1.0 then
+      local h = be:getSurfaceHeightBelow(vec3(x, y, g + 0.45))
+      if type(h) == 'number' and h > g - 1 and h < g + 0.45 then g = h end
+      return x, y, g, true
+    end
+  end
   -- desde el terreno y como mucho 2,5 m por encima (la calzada de BeamNG.Earth va sobre él): un rayo desde muy alto
   -- choca con copas de árboles, toldos o tejados y deja el objeto flotando
   local th = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))

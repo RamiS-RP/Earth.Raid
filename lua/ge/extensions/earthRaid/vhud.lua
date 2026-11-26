@@ -83,9 +83,16 @@ local function fromStage(S, R, api)
   local now = (R and R.clock) or S.wall or nowSecs()
   local canSkip = false
   local ph = S.phase
-  if ph == 'approach' or ph == 'hold' or ph == 'tc' then
+  if ph == 'approach' and S.startAt then
+    -- (26-nov) fichado ya el TC: como el juego, lo siguiente es la salida del tramo (SSn, hora de salida y distancia a la
+    -- línea), no otra vez «TC n» con la distancia a la salida
     d.activeState = 'vehicleProximity'
-    sc.label, sc.eventType, sc.ssLabel = 'TC' .. n, 'tc', 'SS' .. n
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', tostring(n)
+    sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(S.startAt), hhmm(S.startAt)
+    d.vehicleProximity = prox(S.distM, true)
+  elseif ph == 'approach' or ph == 'hold' or ph == 'tc' then
+    d.activeState = 'vehicleProximity'
+    sc.label, sc.eventType, sc.ssLabel = 'TC' .. n, 'tc', tostring(n)
     local due = S.tcDue or (math.ceil((now + 30) / 60) * 60)
     S.tcDue = due
     sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(due), hhmm(due + 60)
@@ -100,11 +107,11 @@ local function fromStage(S, R, api)
   elseif ph == 'grid' then
     -- circuito: en la parrilla, esperando el semáforo
     d.activeState = 'vehicleProximity'
-    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', tostring(n)
     d.vehicleProximity = prox(0, true)
   elseif ph == 'staging' then
     d.activeState = 'vehicleProximity'
-    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', tostring(n)
     if S.startAt then sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(S.startAt), hhmm(S.startAt) end
     sc.timeDiff = math.max(0, math.ceil(S.stagingLeft or 0))   -- el mismo valor que pinta el reloj de la salida
     d.vehicleProximity = prox(S.distM, true)
@@ -124,7 +131,7 @@ local function fromStage(S, R, api)
       -- ventana de cámara del reloj. Con 'vehicleProximity' la tarjeta seguía debajo de la ventana.
       d.activeState = 'inactive'
     end
-    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
+    sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', tostring(n)
     d.vehicleProximity = prox(0, true)
   elseif ph == 'running' then
     d.activeState = 'stageActive'
@@ -175,7 +182,7 @@ local function fromRally(R, cur, a)
   if cur then
     sc.label = cur.label
     sc.eventType = (cur.final and 'service_in') or 'tc'
-    sc.ssLabel = cur.stage and ('SS' .. cur.run) or nil
+    sc.ssLabel = cur.stage and tostring(cur.run) or nil   -- (26-nov) el juego ya antepone «SS» (salía SSSS1)
     sc.eventWallClockStart = hhmm(cur.dueMin * 60)
     sc.eventWallClockEnd = hhmm(cur.dueMin * 60 + 60)
     sc.canIncurLatePenalty = true
