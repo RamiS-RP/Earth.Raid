@@ -534,6 +534,50 @@ local function afterPath(ev, path) return endRoad(ev, path, true) end
 local function beforePath(ev, path) return endRoad(ev, path, false) end
 
 -- Empieza un tramo: ev (el evento completo), st (su tramo con path), info (stageNumber, stageCount, surface)
+-- (26-nov, MARK:user-tc-v1) el TC donde lo marcó el usuario en el paquete del tramo:
+--   tcApproach = { {lat,lon}, ... } la calle por la que llega el coche, del cruce hacia fuera: el camino de antes de la
+--     salida deja de seguir por la calle sin salida y sigue por esa (cartel de entrada y flechas en la calle buena)
+--   tcPoint = {lat,lon} el sitio del TC (Trans Sierra Nevada SS1: el ensanche, la ambulancia en el callejón)
+-- tcApproachR / tcPointR para el tramo al revés
+function M.userTc(t, st)
+  if not (t and t.before and st) then return end
+  local ap = st.reverse and st.tcApproachR or st.tcApproach
+  if type(ap) == 'table' and type(ap[1]) == 'table' then
+    local b = t.beforeRaw or t.before
+    t.beforeRaw = b
+    local jx, jy = geo.toLocal(b, ap[1][1], ap[1][2])
+    local aj, dj = geo.project(b, jx, jy, 1, 0, #b.pts)
+    if aj and dj and dj < 25 then
+      local np = {}
+      for i, q in ipairs(b.pts) do
+        if b.cum[i] >= aj then break end
+        local la, lo = geo.toGeo(b, q[1], q[2])
+        np[#np + 1] = { la, lo }
+      end
+      local cx, cy = geo.at(b, aj)
+      np[#np + 1] = { geo.toGeo(b, cx, cy) }
+      for _, q in ipairs(ap) do np[#np + 1] = { q[1], q[2] } end
+      t.before = geo.track(np)
+      log('I', TAG, ('before the start: by the road set by the user, %.0f m'):format(t.before.total))
+    else
+      log('W', TAG, 'road set by the user does not meet the road before the start (' .. tostring(dj) .. ' m)')
+    end
+  end
+  t.tcAlong = nil
+  t.medicPoint = st.reverse and st.medicPointR or st.medicPoint
+  local tp = st.reverse and st.tcPointR or st.tcPoint
+  if type(tp) == 'table' and tp[1] then
+    local px, py = geo.toLocal(t.before, tp[1], tp[2])
+    local al, d = geo.project(t.before, px, py, 1, 0, #t.before.pts)
+    if al and d and d < 20 then
+      t.tcAlong = al
+      log('I', TAG, ('TC at the point set by the user: %.0f m before the start'):format(al))
+    else
+      log('W', TAG, 'TC point set by the user is not on the road before the start (' .. tostring(d) .. ' m)')
+    end
+  end
+end
+
 -- ¿circuito cerrado? Lo dice el paquete o se ve en el trazado: la meta junto a la salida y el tramo mucho más largo
 function M.isCircuit(st)
   if type(st) ~= 'table' then return false end
@@ -690,6 +734,7 @@ function M.start(ev, st, info)
   if bp then
     t.before = geo.track(bp)
     log('I', TAG, ('before the start: %s, %.0f m'):format(bhow, t.before.total))
+    M.userTc(t, st)
   end
   -- el repuesto lejos de este tramo (y de sus accesos) no se va a aprovechar
   local function nearTrack(it)
@@ -992,13 +1037,15 @@ function M.start(ev, st, info)
     local moved = false
     if nb and t.before then
       local ex, ey = geo.at(nb, math.min(nb.total, dressing.TC_BEFORE_M + 40))
-      local ox, oy = geo.at(t.before, math.min(t.before.total, dressing.TC_BEFORE_M + 40))
+      local ob = t.beforeRaw or t.before
+      local ox, oy = geo.at(ob, math.min(ob.total, dressing.TC_BEFORE_M + 40))
       local nla, nlo = geo.toGeo(nb, ex, ey)
-      local ola, olo = geo.toGeo(t.before, ox, oy)
+      local ola, olo = geo.toGeo(ob, ox, oy)
       moved = distLL({ nla, nlo }, { ola, olo }) > 12
     end
-    if nb and (not t.before or moved or nb.total > t.before.total + 5) then
-      t.before, t._snap0 = nb, nil
+    if nb and (not t.before or moved or nb.total > (t.beforeRaw or t.before).total + 5) then
+      t.before, t._snap0, t.beforeRaw = nb, nil, nil
+      M.userTc(t, st)
       log('I', TAG, ('before the start (near): %s, %.0f m'):format(how2, nb.total))
       M.refreshLine()
     end

@@ -252,6 +252,7 @@ function M.stopAt(t) return t.stopAt or M.STOP_AFTER_M end
 -- metros de la salida al control horario: como el STOP, más cerca si la carretera de antes es más corta (así el TC de un
 -- sentido y el STOP del otro caen en el mismo sitio)
 function M.tcAt(t)
+  if t.tcAlong then return t.tcAlong end
   if t.before and t.before.total > 1 then return math.max(60, math.min(M.TC_BEFORE_M, t.before.total)) end
   return M.TC_BEFORE_M
 end
@@ -1974,6 +1975,26 @@ function M.medicPost(t, along, side, fwd)
   local a = api()
   local la, lo, dx, dy = at(t, along, 0, fwd)
   if not la then return false end
+  -- (26-nov, MARK:user-medic-v1) la ambulancia donde la puso el usuario en el paquete (medicPoint = {lat, lon, latHacia,
+  -- lonHacia}: el sitio y hacia dónde mira), si este punto médico está cerca (Trans Sierra Nevada SS1: en el callejón)
+  local mp = t.medicPoint
+  if type(mp) == 'table' and mp[1] and not t._medicUsed then
+    local kk0 = math.cos(math.rad(mp[1])) * 111195
+    local dd = math.sqrt(((mp[1] - la) * 111195) ^ 2 + ((mp[2] - lo) * kk0) ^ 2)
+    if dd < 300 then
+      t._medicUsed = true
+      local hx, hy = 0, 1
+      if mp[3] then
+        hx, hy = (mp[4] - mp[2]) * kk0, (mp[3] - mp[1]) * 111195
+        local hl = math.sqrt(hx * hx + hy * hy)
+        if hl > 0.01 then hx, hy = hx / hl, hy / hl else hx, hy = 0, 1 end
+      end
+      local it = props.add('ambulance', mp[1], mp[2], hx, hy, 0)
+      if it then it.roadOk = true end
+      log('I', TAG, 'medical post: the ambulance where the user set it')
+      return it ~= nil
+    end
+  end
   local x, y, z = props.ground(la, lo)
   if not x then return false end
   -- (22-nov, el usuario: "la ambulancia no está donde estaba, me corta el paso"): si las carreteras de alrededor aún no están
