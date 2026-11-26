@@ -143,9 +143,65 @@ local function cellXY(h, i)
   return h.x0 + (gx - (n - 1) / 2) * M.STEP, h.y0 + (gy - (n - 1) / 2) * M.STEP, gx, gy
 end
 
+-- (26-nov, Asturias: el parque salió dentro del río Nalón, en San Esteban: «el motor se está inundando») el agua de
+-- BeamNG.Earth (mar y ríos) no la ve el rayo ni el material del suelo: una celda cuyo suelo queda por debajo de la
+-- superficie de un agua que la cubre no vale. MARK:park-water-v1
+local function waterBodies()
+  local out = {}
+  for _, c in ipairs({ 'River', 'WaterBlock' }) do
+    for _, n in ipairs(scenetree.findClassObjects(c) or {}) do
+      local ob = scenetree.findObject(n)
+      if ob then
+        local ok, b = pcall(function() return ob:getWorldBox() end)
+        if ok and b then
+          local w = { b.minExtents.x, b.minExtents.y, b.maxExtents.x, b.maxExtents.y, ob:getPosition().z }
+          if c == 'River' then
+            -- un río: por sus nodos (posición, ancho), no por su caja, que en un valle abarca mucha tierra más baja
+            local nodes = {}
+            pcall(function()
+              for i = 0, ob:getNodeCount() - 1 do
+                local p = ob:getNodePosition(i)
+                nodes[#nodes + 1] = { p.x, p.y, p.z, ob:getNodeWidth(i) / 2 }
+              end
+            end)
+            w.nodes = nodes
+          end
+          out[#out + 1] = w
+        end
+      end
+    end
+  end
+  return out
+end
+M.waterBodies = waterBodies
+local function underWater(list, x, y, z)
+  for _, w in ipairs(list or {}) do
+    if x >= w[1] - 10 and x <= w[3] + 10 and y >= w[2] - 10 and y <= w[4] + 10 then
+      if w.nodes then
+        for i = 1, #w.nodes - 1 do
+          local a, b = w.nodes[i], w.nodes[i + 1]
+          local vx, vy = b[1] - a[1], b[2] - a[2]
+          local L2 = vx * vx + vy * vy
+          local t = L2 > 0 and math.max(0, math.min(1, ((x - a[1]) * vx + (y - a[2]) * vy) / L2)) or 0
+          local d2 = (x - a[1] - vx * t) ^ 2 + (y - a[2] - vy * t) ^ 2
+          local hw = a[4] + (b[4] - a[4]) * t
+          local sz = a[3] + (b[3] - a[3]) * t
+          if d2 < (hw + 2) ^ 2 and z < sz - 0.2 then return true end
+        end
+      elseif z < w[5] - 0.2 then
+        return true
+      end
+    end
+  end
+  return false
+end
+M.underWater = underWater
+
 local function blocked(h, x, y)
   local z = terrainZ(x, y)
   if not z then return true, nil end
+  h.water = h.water or waterBodies()
+  if underWater(h.water, x, y, z) then return true, z end
   for _, poly in ipairs(h.polys) do
     local b = poly.box
     if x >= b[1] and x <= b[3] and y >= b[2] and y <= b[4] then
@@ -401,6 +457,29 @@ end
 local function tryLots(h)
   -- primero los aparcamientos de BeamNG.Earth (plazas del servidor): el más grande y cercano con carretera para salir
   for _, L in ipairs(preferredFirst(lots(h))) do
+    -- (26-nov, Suecia: «aparcamiento» de 78 plazas en medio de un bosque, todo hierba) un aparcamiento de verdad no es
+    -- hierba: si casi todo el recinto es hierba, se descarta (salvo el elegido por el usuario)
+    local grassy, n = 0, 0
+    local tb = scenetree.findObject('bngEarthTerrain')
+    if tb and not L.preferred then
+      for _, fa in ipairs({ -0.35, 0, 0.35 }) do
+        for _, fs in ipairs({ -0.35, 0, 0.35 }) do
+          local x = L.cx + L.ux * fa * L.len - L.uy * fs * L.wid
+          local y = L.cy + L.uy * fa * L.len + L.ux * fs * L.wid
+          local z = terrainZ(x, y)
+          if z then
+            local okM, mn = pcall(function() return tb:getMaterialName(tb:getMaterialIdxWs(vec3(x, y, z))) end)
+            n = n + 1
+            if okM and tostring(mn):find('Grass') then grassy = grassy + 1 end
+          end
+        end
+      end
+    end
+    if n >= 5 and grassy / n > 0.7 then
+      log('I', TAG, ('parking lot of %d stalls skipped: grass, not a car park'):format(L.n or 0))
+      goto nextLot
+    end
+    do
     -- la carretera de salida: la más cercana FUERA del aparcamiento (dentro suele haber pasillos en el grafo), buscada
     -- desde fuera de cada lado del rectángulo
     local function inside(x, y, pad)
@@ -422,6 +501,16 @@ local function tryLots(h)
         end
       end
     end
+    -- (26-nov) el aparcamiento elegido por el usuario con su acceso marcado: la salida es ese acceso, aunque la calle
+    -- quede dentro del rectángulo de las plazas (Sierra Morena: con 213 plazas el rectángulo tapaba la calle)
+    if not n1 and L.preferred and type(L.gate) == 'table' and L.gate[1] then
+      local a = api()
+      local gx, gy = a.toGame(L.gate[1], L.gate[2], 0)
+      if gx then
+        local a1, a2, d, ax, ay = nearestStreet(gx, gy, 80)
+        if a1 then n1, n2, rd, px, py = a1, a2, d, ax, ay end
+      end
+    end
     if n1 and rd and L.wid >= 14 and L.len >= 20 then
       h.site = { x = L.cx, y = L.cy, z = terrainZ(L.cx, L.cy) or L.z, hx = L.ux, hy = L.uy, len = L.len, wid = L.wid,
         exitX = px, exitY = py, n1 = n1, n2 = n2, roadD = rd, far = L.far, clear = 0, lot = L.n, stalls = L.pts, tx = h.tx, ty = h.ty,
@@ -431,6 +520,8 @@ local function tryLots(h)
         L.n, L.len, L.wid, L.far, rd, os.clock() - h.t0))
       return true
     end
+    end
+    ::nextLot::
   end
   return false
 end
@@ -541,6 +632,15 @@ local function finish(h)
   h.site = bestSite
   if h.site then h.site.tx, h.site.ty = h.tx, h.ty end
   h.phase = 'done'
+  -- (26-nov, Canarias: «no site found» con el aparcamiento de 600 plazas allí) las plazas de BeamNG.Earth pueden llegar
+  -- después de la espera: sin sitio, al terminar se prueba otra vez con los aparcamientos que haya ya
+  -- (solo sin sitio: en Suecia, con sitio en tierra, el «aparcamiento» que llegaba después estaba en un bosque)
+  if not h.site and not h.lotsRetried then
+    h.lotsRetried = true
+    local okL, found = pcall(tryLots, h)
+    if okL and found then log('I', TAG, 'no free ground, but a parking lot is now loaded: using it') return end
+    h.site, h.phase = nil, 'done'
+  end
   log('I', TAG, h.site and ('site: %.0f x %.0f m, %.0f m from the service point, road at %.0f m (%d cands, %d tries, %d rects, %.1f s)'):format(
     h.site.len, h.site.wid, h.site.far, h.site.roadD, #cands, tries, st.rects, os.clock() - h.t0) or ('no site found (%d cands, %d tries, %d rects, %d no road, %d steep, %.1f s)'):format(#cands, tries, st.rects, st.noRoad, st.steep, os.clock() - h.t0))
 end
