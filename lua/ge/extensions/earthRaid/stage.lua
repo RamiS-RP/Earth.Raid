@@ -686,10 +686,18 @@ function M.start(ev, st, info)
     elseif not okO then log('W', TAG, 'offset fix: ' .. tostring(moved)) end
   end
   -- la carretera tras la meta: ya si es un enlace del organizador; si no, al montar la meta (grafo cargado allí)
+  -- (26-nov, auditoría Suecia SS1: el STOP a 313 m de la meta) si la meta se adelantó, la carretera de después sale de la
+  -- meta NUEVA, no del final del trazado original
+  local function endPath()
+    if not t.finishMoved then return cpath end
+    local out = {}
+    for i, p in ipairs(t.pts) do out[i] = { geo.toGeo(t, p[1], p[2]) } end
+    return out
+  end
   local function findAfter()
     -- (otra vez al acercarse si el de antes era corto: el grafo de carreteras no estaba cargado allí)
     if t.afterFixed or (t.after and t.after.total >= dressing.STOP_AFTER_M + 40) then return end
-    local ap, how = afterPath(ev, cpath)
+    local ap, how = afterPath(ev, endPath())
     local nt = ap and geo.track(ap)
     if nt and (not t.after or nt.total > t.after.total + 5) then
       t.after, t._snapT, t.afterOff = nt, nil, nil
@@ -879,7 +887,8 @@ function M.start(ev, st, info)
     if fr == nil then return 'unknown' end
     if fr >= 0.8 then return end
     log('W', TAG, ('after the finish: only %.0f%% on a road, looking for the real road'):format(fr * 100))
-    local f, f0 = cpath[#cpath], refPoint(cpath, true, 15)
+    local ep = endPath()
+    local f, f0 = ep[#ep], refPoint(ep, true, 15)
     local wr = walkRoads(f, f0)
     local nt = wr and geo.track(wr)
     if nt and nt.total >= 60 and (onRoadFrac(nt, 10, need) or 0) >= 0.8 then
