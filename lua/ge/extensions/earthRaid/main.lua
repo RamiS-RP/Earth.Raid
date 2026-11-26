@@ -3,7 +3,7 @@
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
 local TAG = 'earthRaid'
-M.VERSION = '0.8.7'
+M.VERSION = '0.8.8'
 M.NEEDS = { 'pose', 'gps', 'teleport', 'notify', 'events', 'options' }
 M.INDEX = '/earthRaid/index.json'
 -- Más paquetes de eventos: carpetas con su index.json (mismo formato) dentro del mod o en la carpeta del jugador, y
@@ -75,11 +75,18 @@ local guide = require('earthRaid/guide')
 local function radiusM() return (tonumber(settings.get().radiusKm) or tonumber(S.opts.searchKm) or 50) * 1000 end
 
 -- Un paquete: su index.json; cada evento recuerda su carpeta (para su archivo y su logo) y de qué paquete viene
-local function addPack(byId, order, base, pack)
+-- (26-nov) Un paquete del jugador (/settings/...) con el mismo id que uno que trae el mod NO lo pisa: el 23-nov una
+-- reimportación (importAll(true)) regeneró en el PC Trans Sierra Nevada desde su KML antiguo y el catálogo perdió el
+-- logo nuevo y el resumen a 6 sectores. El del mod es el revisado; el del jugador se ignora (queda en el registro).
+local function addPack(byId, order, base, pack, shipped)
   local data = jsonReadFile(base .. 'index.json')
   if type(data) ~= 'table' or type(data.events) ~= 'table' then return 0 end
+  local fromMod = base:sub(1, 11) == '/earthRaid/'
   for _, e in ipairs(data.events) do
-    if type(e) == 'table' and e.id and e.file then
+    if type(e) == 'table' and e.id and e.file and shipped and not fromMod and shipped[e.id] then
+      log('I', TAG, ('pack %s: %s ya viene en el mod, se usa el del mod'):format(base, tostring(e.id)))
+    elseif type(e) == 'table' and e.id and e.file then
+      if shipped and fromMod then shipped[e.id] = true end
       e._base, e._pack = base, data.name or pack or base
       if not byId[e.id] then order[#order + 1] = e.id end
       byId[e.id] = e
@@ -266,21 +273,21 @@ end
 
 function M.loadIndex()
   S.disabledMap = nil
-  local byId, order = {}, {}
+  local byId, order, shipped = {}, {}, {}
   S.loaded = {}
-  addPack(byId, order, '/earthRaid/', 'base')
+  addPack(byId, order, '/earthRaid/', 'base', shipped)
   -- (24-nov) La lista de paquetes del mod va escrita en el índice base (`packs`): con el mod instalado como .zip (Add-ons de
   -- BeamNG.Earth) el catálogo salía vacío porque FS:findFiles no devolvía las carpetas. Los del jugador, abajo, pisan a estos.
   local base0 = jsonReadFile(M.INDEX)
   for _, name in ipairs(type(base0) == 'table' and type(base0.packs) == 'table' and base0.packs or {}) do
-    if type(name) == 'string' then addPack(byId, order, '/earthRaid/packs/' .. name .. '/', name) end
+    if type(name) == 'string' then addPack(byId, order, '/earthRaid/packs/' .. name .. '/', name, shipped) end
   end
   for _, dir in ipairs(M.PACK_DIRS) do
     local ok, files = pcall(function() return FS:findFiles(dir, 'index.json', 1, false, false) end)
     table.sort(ok and files or {})
     for _, f in ipairs(ok and files or {}) do
       local base = f:gsub('index%.json$', '')
-      addPack(byId, order, base, base:match('([^/]+)/$'))
+      addPack(byId, order, base, base:match('([^/]+)/$'), shipped)
     end
   end
   pcall(M.importAll, false)
