@@ -363,10 +363,12 @@ M.RECHECK_M = 600
 M.NEAR_FREEZE_M = 130
 -- durante la pantalla de carga sí se recoloca todo (no se ve)
 function M.loading()
+  -- la auditoría mide con el coche ya junto a la meta: el repaso que al conducir se hace al acercarse se hace ahí
+  if M.forceGuard then return true end
   local ok, r = pcall(function() return require('earthRaid/loader').active() end)
   return ok and r == true
 end
-M.SKIP_RECHECK = { line = true, cone = true, coneS = true, coneY = true, tapeY = true, markY = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
+M.SKIP_RECHECK = { line = true, cone = true, coneS = true, tapeY = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)
   if M.dry or not plat then return 0 end
@@ -374,7 +376,8 @@ function M.recheck(plat, plon)
   local ix = props.roadIndex()
   if ix and ix.version ~= M._roadVersion then
     M._roadVersion = ix.version
-    for _, it in ipairs(props.all()) do it.roadOk = nil it.checks = nil end
+    -- (26-nov, auditoría) también el visto bueno del guardián del borde: con calles nuevas, se vuelve a mirar
+    for _, it in ipairs(props.all()) do it.roadOk = nil it.checks = nil it.edgeOk = nil end
   end
   local k = math.cos(math.rad(plat))
   local moved, hidden = 0, 0
@@ -418,7 +421,8 @@ M.EDGE_SIGN_MARGIN_M, M.EDGE_SIGN_TARGET_M = 0.25, 0.4
 -- el puesto de un control o de un médico se coloca con su propia lógica (carpa libre, calle cortada): no se toca
 M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true, cushion = true,
   laptop = true, extinguisher = true, ambulance = true, rallyCar = true, tcEntry = true, tc = true }
-M.ROW_KINDS = { plasticBarrier = true, plasticBarrierW = true, hayBale = true, hayBale2 = true }
+M.ROW_KINDS = { plasticBarrier = true, plasticBarrierW = true, hayBale = true, hayBale2 = true,
+  fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true }
 function M.edgeGuard(plat, plon)
   local a = api()
   if not (a and map and map.findClosestRoad) then return 0, 0 end
@@ -1990,7 +1994,8 @@ function M.medicPost(t, along, side, fwd)
         if hl > 0.01 then hx, hy = hx / hl, hy / hl else hx, hy = 0, 1 end
       end
       local it = props.add('ambulance', mp[1], mp[2], hx, hy, 0)
-      if it then it.roadOk = true end
+      -- en una calle que el usuario eligió para ella (cortada a propósito, como las del puesto médico)
+      if it then it.roadOk = true it.closure = true end
       log('I', TAG, 'medical post: the ambulance where the user set it')
       return it ~= nil
     end

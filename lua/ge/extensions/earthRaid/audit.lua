@@ -81,6 +81,17 @@ local function roadRel(obj)
 end
 
 -- lo que hay montado cerca de (x, y): las líneas y lo que está en la calzada
+-- (26-nov) al conducir, el repaso (dressing.recheck/edgeGuard) aparta lo que pisa la calzada mientras el coche se acerca;
+-- la auditoría llega de golpe y lo mediría sin repasar: se repasa como en la carga antes de medir
+local function guardNow()
+  local a = api()
+  local pl, po = a and a.position and a.position()
+  if not pl then return end
+  dressing.forceGuard = true
+  for _ = 1, 4 do pcall(dressing.recheck, pl, po) end
+  dressing.forceGuard = nil
+end
+
 local function measure(cx, cy, radius)
   local lines, onRoad, hidden = {}, {}, 0
   local a = api()
@@ -253,6 +264,7 @@ function M.update(dt)
     local t = S.track
     local a = api()
     local tx, ty = a.toGame(S.tcLat, S.tcLon, 0)
+    guardNow()
     local lines, onRoad = measure(tx, ty, 300)
     A.res.cut = (t.cutStart or 0)
     A.res.startInfo = t.startInfo
@@ -268,8 +280,10 @@ function M.update(dt)
         if not l.board and l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(name, l.align) end
       end
     end
-    for _, k in ipairs({ 'tc', 'start' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
-    if not gazeboNear(tx, ty) then A.res.problems[#A.res.problems + 1] = 'no gazebo at the time control' end
+    -- (26-nov) un circuito (meta junto a la salida) sale en parrilla, sin TC ni STOP: no es un fallo
+    A.circuit = S.circuit == true
+    for _, k in ipairs({ 'tc', 'start' }) do if not seen[k] and not (A.circuit and k == 'tc') then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
+    if not A.circuit and not gazeboNear(tx, ty) then A.res.problems[#A.res.problems + 1] = 'no gazebo at the time control' end
     if #onRoad > 0 then
       local k = {}
       for i = 1, math.min(6, #onRoad) do k[#k + 1] = ('%s@%d,%d'):format(onRoad[i].kind, onRoad[i].x, onRoad[i].y) end
@@ -346,6 +360,7 @@ function M.update(dt)
     local fx, fy = geo.at(t, t.total)
     local fla, flo = geo.toGeo(t, fx, fy)
     local gx, gy = a.toGame(fla, flo, 0)
+    guardNow()
     local lines, onRoad = measure(gx, gy, 300)
     local seen = {}
     for _, l in ipairs(lines) do
@@ -358,7 +373,7 @@ function M.update(dt)
         if not l.board and l.align and l.align < M.ALIGN_OK then A.res.problems[#A.res.problems + 1] = ('%s line misaligned (%.2f)'):format(name, l.align) end
       end
     end
-    for _, k in ipairs({ 'finish', 'stop' }) do if not seen[k] then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
+    for _, k in ipairs({ 'finish', 'stop' }) do if not seen[k] and not (A.circuit and k == 'stop') then A.res.problems[#A.res.problems + 1] = 'no ' .. k end end
     if #onRoad > 0 then
       local k = {}
       for i = 1, math.min(6, #onRoad) do k[#k + 1] = ('%s@%d,%d'):format(onRoad[i].kind, onRoad[i].x, onRoad[i].y) end
