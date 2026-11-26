@@ -31,9 +31,12 @@ M.START_SIGN_YAW = 0
 -- Carteles de las líneas con dos sentidos (salida = meta del tramo al revés): como en el rally del juego y como los
 -- colocó el usuario (16-nov), uno a cada lado de los sensores: el de nuestro sentido antes de la línea, en el borde; el
 -- del otro sentido pasada la línea y un poco más afuera (los dos se ven y ninguno tapa los sensores)
-M.PAIR_FWD_M = 0.9          -- cada cartel, a esto de la línea (uno antes y otro después)
-M.PAIR_OUT_M = 0.45         -- el del otro sentido, esto más hacia fuera
-M.SENSOR_SIDE_M = 0.5       -- sensores en la línea, su centro a radio + esto
+-- NORMA (22-nov, el usuario): los carteles de los dos sentidos van CUADRADOS, espalda con espalda en la misma línea
+-- lateral, cada uno mirando hacia el origen de su sentido, con el hueco justo para el sensor entre los dos: el sensor
+-- queda tapado desde el tramo en ambos sentidos. Vale para salidas, metas y parciales (siempre con sensor).
+M.PAIR_FWD_M = 0.55         -- cada cartel, a esto de la línea (uno antes y otro después): 1,1 m de hueco para el sensor
+M.PAIR_OUT_M = 0            -- el del otro sentido, en la misma línea lateral (antes 0,45 m más afuera: descuadrado)
+M.SENSOR_SIDE_M = 1.0       -- (22-nov) el sensor, centrado ENTRE los dos carteles (medido: con 0,5 asomaba 0,4 m hacia la calzada)
 M.SIGN_YAW = 0             -- todos los carteles de rally del juego: la cara está en -Y (vista en Córdoba SS1: a 180 se
                            -- veían por detrás desde el coche)
 M.TREE_FWD_M = 5.5         -- semáforo: por delante de la línea...
@@ -264,7 +267,7 @@ M.AVOID = { hayBale = true, hayBale2 = true, fenceNgrc = true, fenceBlastr = tru
   gazebo3x6b = true, table = true, chair = true, cushion = true, ambulance = true, extinguisher = true }
 M.PULL_IN = { start = true, finish = true, tc = true, tcEntry = true, finishEntry = true, stop = true, endArea = true,
   medical = true, medicalWarn = true, radio = true, radioWarn = true, board1 = true, board2 = true, board3 = true,
-  danger = true, sensor = true, tree = true }
+  danger = true, bendL = true, bendR = true, sensor = true, tree = true }
 M.RAY_H = 1.5
 M.dry = false                -- simulación: se cuenta lo que se pondría, sin crear nada (M.simulate)
 M.skipped = 0
@@ -356,6 +359,12 @@ M.offRoad = offRoad
 -- ese sitio se comprueba otra vez cuando el jugador se acerca, y si cae en una calzada se saca fuera. Lo que ya se
 -- comprobó con la carretera cargada no se vuelve a mirar.
 M.RECHECK_M = 600
+M.NEAR_FREEZE_M = 130
+-- durante la pantalla de carga sí se recoloca todo (no se ve)
+function M.loading()
+  local ok, r = pcall(function() return require('earthRaid/loader').active() end)
+  return ok and r == true
+end
 M.SKIP_RECHECK = { line = true, cone = true, coneS = true, coneY = true, tapeY = true, markY = true, lamp = true, tape = true, tape6 = true, tape10 = true, sndCrowd = true, sndCheer = true,
   sndGenerator = true }
 function M.recheck(plat, plon)
@@ -373,7 +382,10 @@ function M.recheck(plat, plon)
     -- acababan apartadas a los lados, dejando el paso abierto)
     if not it.roadOk and not it.closure and not M.SKIP_RECHECK[it.kind] and it.lat and not it.hidden then
       local ex, ny = (it.lon - plon) * 111195 * k, (it.lat - plat) * 111195
-      if ex * ex + ny * ny < M.RECHECK_M * M.RECHECK_M then
+      -- NORMA (22-nov, el usuario: "hay objetos que se mueven mientras me acerco"): nada se recoloca a la vista; lo que
+      -- está a menos de NEAR_FREEZE_M del jugador se queda como está
+      local d2 = ex * ex + ny * ny
+      if d2 < M.RECHECK_M * M.RECHECK_M and (d2 > M.NEAR_FREEZE_M * M.NEAR_FREEZE_M or M.loading()) then
         M._seen = false
         local la, lo = offRoad(it.kind, it.lat, it.lon)
         it.checks = (it.checks or 0) + 1
@@ -397,6 +409,11 @@ function M.recheck(plat, plon)
 end
 M.EDGE_GUARD_M = 350
 M.EDGE_MARGIN_M = 0.45
+-- (22-nov, el usuario: «las señales de salida están pegadas a las vallas, deberían estar al borde de la calzada»: el guardián
+-- las empujaba de r+0,4 a r+1,05 m.) Los carteles de línea (salida, meta, fin de zona, aviso de meta) se colocan a r+0,4 y
+-- ahí se quedan: solo se mueven si de verdad pisan la calzada (r+0,25).
+M.EDGE_SIGN = { start = true, finish = true, endArea = true, finishEntry = true }
+M.EDGE_SIGN_MARGIN_M, M.EDGE_SIGN_TARGET_M = 0.25, 0.4
 -- el puesto de un control o de un médico se coloca con su propia lógica (carpa libre, calle cortada): no se toca
 M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true, cushion = true,
   laptop = true, extinguisher = true, ambulance = true, rallyCar = true, tcEntry = true, tc = true }
@@ -412,13 +429,14 @@ function M.edgeGuard(plat, plon)
       and not (it.opts and it.opts.force) and not M.POST_KINDS[it.kind]
       and not M.SKIP_RECHECK[it.kind] and not M.SOUND_KINDS[it.kind] then
       local ex, ny = (it.lon - plon) * 111195 * k, (it.lat - plat) * 111195
-      if ex * ex + ny * ny < M.EDGE_GUARD_M * M.EDGE_GUARD_M then
+      local d2 = ex * ex + ny * ny
+      if d2 < M.EDGE_GUARD_M * M.EDGE_GUARD_M and (d2 > M.NEAR_FREEZE_M * M.NEAR_FREEZE_M or M.loading()) then
         local okP, q = pcall(function() return it.obj:getPosition() end)
         if okP and q then
           local n1, n2, dd = map.findClosestRoad(q)
           if n1 and n2 and m.nodes[n1] and m.nodes[n2] then
             -- (se da por bueno solo de cerca, con el grafo de allí ya entero; de lejos se vuelve a mirar)
-            if ex * ex + ny * ny < 180 * 180 then it.edgeOk = true end
+            if d2 < 300 * 300 then it.edgeOk = true end
             local p1, p2 = m.nodes[n1].pos, m.nodes[n2].pos
             local sx, sy = p2.x - p1.x, p2.y - p1.y
             local L2 = sx * sx + sy * sy
@@ -428,12 +446,13 @@ function M.edgeGuard(plat, plon)
             -- (junto a un cruce el radio no baja en línea recta: el del nodo más cercano manda si es mayor)
             local r = math.max(r1 + (r2 - r1) * u, u < 0.5 and r1 or r2)
             local d = math.sqrt((q.x - cx) ^ 2 + (q.y - cy) ^ 2)
-            if d < r + M.EDGE_MARGIN_M then
+            local margin = M.EDGE_SIGN[it.kind] and M.EDGE_SIGN_MARGIN_M or M.EDGE_MARGIN_M
+            if d < r + margin then
               local row = M.ROW_KINDS[it.kind] or tostring(it.kind):find('^fence')
               if row or d < 0.3 then
                 props.hide(it) hidden = hidden + 1
               else
-                local f = (r + M.EDGE_MARGIN_M + 0.6) / d
+                local f = (r + (M.EDGE_SIGN[it.kind] and M.EDGE_SIGN_TARGET_M or (M.EDGE_MARGIN_M + 0.6))) / d
                 local nx, ny2 = cx + (q.x - cx) * f, cy + (q.y - cy) * f
                 local la, lo = a.toGeo(nx, ny2, q.z)
                 -- (el punto guardado es el del objeto: se desplaza lo mismo que su posición real)
@@ -493,7 +512,8 @@ end
 
 local function place(kind, t, along, right, yaw, fwd, opts)
   -- sonido de ambiente: solo si el jugador lo activa (por defecto no; el audio se entrecortaba en los tirones)
-  if M.SOUND_KINDS[kind] and not M.sounds and not M.dry then return nil end
+  -- (22-nov, el usuario: «me he cansado del ruido blanco en la salida») sin sonidos de ambiente propios, nunca
+  if M.SOUND_KINDS[kind] then return nil end
   if kind == 'lamp' and not M.dry and not M.night() then return nil end
   local force = opts and opts.force
   if right and math.abs(right) > 0.5 and (M.AVOID[kind] or M.PULL_IN[kind]) and not force then
@@ -949,7 +969,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   if twin then centreCones(t, endAlong, out * D, -3.5, 3.5, 3.5) else centreCones(t, endAlong, out * D, -10, 10, 5) end
 end
 
-M.END_FENCE_IN_M, M.END_FENCE_OUT_M, M.END_FENCE_SIDE_M = 30, 25, 1.6
+M.END_FENCE_IN_M, M.END_FENCE_OUT_M, M.END_FENCE_SIDE_M = 30, 25, 2.2   -- (22-nov) 2,2: los carteles de la línea ya no se meten en las vallas
 
 -- Vallas repetidas (21-nov: "algunas duplicadas"): de cada pareja a menos de minD m, se quita la segunda
 function M.dedupeFences(minD)
@@ -989,7 +1009,8 @@ function M.endKit(t, endAlong, out, hw, D, role)
     put('endArea', sg * P, -M.END_ZONE_M, 'in')
     put('finishEntry', sg * P, -M.FINISH_WARN_M, 'out')
   end
-  paintLine(t, endAlong, hw, 0, role == 'start' and 'start' or 'finish')
+  -- la línea llega hasta el final del asfalto (radio + 0,4 m): ahí, al final de la línea, van los carteles
+  paintLine(t, endAlong, hw + 0.6, 0, role == 'start' and 'start' or 'finish')
   -- vallas publicitarias a los dos lados, de 30 m dentro a 25 m fuera, público detrás (y su murmullo)
   -- (21-nov, el usuario: "más pegadas a la calzada, protegiendo la acera de peatones": el borde de la calzada + 1,6 m, no
   -- 3,5 m, que las dejaba contra las fachadas)
@@ -1054,9 +1075,12 @@ function M.safety(t, hw, splitAt)
   if t.total > 3000 then
     local d = canon(t.total * 0.5 + 400)
     M.later(d - 100, function()
-      place('medicalWarn', t, d - 100, -(hwAt(t, d - 100) + M.SIDE_PAD_M), M.SIGN_YAW)
-      place('medical', t, d, -(hwAt(t, d) + M.SIDE_PAD_M), M.SIGN_YAW)
-      place('medical', t, d, hwAt(t, d) + M.SIDE_PAD_M, M.SIGN_YAW + 180)
+      -- (22-nov: como los de radio, con lógica en los dos sentidos) cada sentido tiene su preaviso 100 m antes y su
+      -- cartel en el punto, a SU derecha y mirándole
+      place('medicalWarn', t, math.max(0, d - 100), hwAt(t, d - 100) + M.SIDE_PAD_M, M.SIGN_YAW)
+      place('medical', t, d, hwAt(t, d) + M.SIDE_PAD_M, M.SIGN_YAW)
+      place('medical', t, d, -(hwAt(t, d) + M.SIDE_PAD_M), M.SIGN_YAW + 180)
+      place('medicalWarn', t, math.min(t.total, d + 100), -(hwAt(t, d + 100) + M.SIDE_PAD_M), M.SIGN_YAW + 180)
       -- norma: ambulancia en cada punto médico, aparcada fuera de la calzada pasado el cartel
       M.medicPost(t, d + 15, -1, 0)
     end)
@@ -1109,9 +1133,10 @@ end
 -- horquillas y de las que dan a un barranco, una cadena de barreras de plástico rojas (hr_plasticbarrier_red) cada
 -- 1,45 m siguiendo el borde; nunca en la calzada (place/offRoad). Las vallas publicitarias quedan solo en salida y meta
 -- (pesaban demasiado por el tramo).
+M.TAPE_EDGE_M = 0.2           -- la cinta de un corte, a esto por fuera del borde de la carretera del tramo
+M.TAPE_TRACK_M = 2.0          -- y nunca a menos de esto del eje del trazado (el KML va desplazado 1-2 m de la calzada)
 M.BARRIER_MIN_STRAIGHT_M = 120
 M.BARRIER_STEP_M = 1.45
-M.BARRIER_MAX = 24
 M.CLIFF_DROP_M = 3.5          -- el terreno a 6 m por fuera, esto por debajo de la carretera: barranco
 local function dropOutside(t, along, side)
   local ok, d = pcall(function()
@@ -1124,25 +1149,210 @@ local function dropOutside(t, along, side)
   return ok and d or 0
 end
 M.BARRIER_LEN_M = 1.5          -- hr_plasticbarrier: 1,5 m de largo (eje X) y 0,6 de ancho
-local function barrierChain(t, from, to, sideSign)
-  -- el largo de la barrera (eje X) a lo largo del borde: giro 90; rojas y blancas alternas; cada pieza a
-  -- BARRIER_LEN + 0,08 m de la anterior medido sobre la curva del borde (en el interior de una curva los puntos se
-  -- juntan y se solapaban, 18-nov)
-  local n, lx, ly = 0, nil, nil
-  local a2, aEnd = math.max(0, from), math.min(t.total, to)
-  while a2 <= aEnd and n < M.BARRIER_MAX do
-    local r = sideSign * (hwAt(t, a2) + 1.0)
-    local x, y = geo.at(t, a2)
-    local dx, dy = geo.dirAt(t, a2)
-    local px, py = x + dy * r, y - dx * r
-    if not lx or (px - lx) ^ 2 + (py - ly) ^ 2 >= (M.BARRIER_LEN_M + 0.08) ^ 2 then
-      if place(n % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', t, a2, r, 90, 0, { noPush = true }) then
-        lx, ly, n = px, py, n + 1
+M.BARRIER_MAX = 40
+M.EDGE_MARCH_M = 20          -- hasta aquí se busca el borde real de la calzada desde el eje del tramo
+M.BARRIER_PAD_M = 1.0        -- las barreras, a esto del borde real
+M.MESH_PAD_M = 3.0           -- la malla naranja, detrás, a esto del borde real
+M.MESH_LEN_M = 10
+M.FENCE_NEAR_M = 280        -- las vallas de curva se montan con el jugador a menos de esto (grafo de la zona completo)
+-- NORMA (22-nov, el usuario: "las vallas no están rectas ni alineadas, la naranja se cruza con la roja y blanca y no empieza
+-- donde termina la anterior; hay vallas bajo la señal del interior de la curva"). El eje del tramo (KML suavizado) corta
+-- los cruces en arco y no coincide con la calzada del juego, así que las vallas NO se colocan a partir del eje sino del
+-- BORDE REAL de la calzada (grafo de carreteras):
+--  1. desde cada punto del eje se avanza hacia el exterior de la curva hasta salir de la calzada: ese es el borde;
+--  2. donde no se sale (la boca de una calle que sigue recto: zona de escape o corte) no hay valla: hueco;
+--  3. las piezas se encadenan extremo con extremo sobre ese borde desplazado (cuerdas de la longitud de la pieza);
+--  4. una pieza que no cabe se omite, nunca se desplaza; y ya colocada no se vuelve a mover (roadOk).
+local function onRoadG(x, y, c)
+  local segs = props.roadsAt(x, y)
+  if not segs then return nil end
+  for _, sg in ipairs(segs) do
+    local sx, sy = sg.bx - sg.ax, sg.by - sg.ay
+    local L2 = sx * sx + sy * sy
+    local u = L2 > 0.01 and math.max(0, math.min(1, ((x - sg.ax) * sx + (y - sg.ay) * sy) / L2)) or 0
+    local cx, cy = sg.ax + sx * u, sg.ay + sy * u
+    local r = math.max(sg.ra + (sg.rb - sg.ra) * u, u < 0.5 and sg.ra or sg.rb)
+    if (x - cx) ^ 2 + (y - cy) ^ 2 < (r + c) ^ 2 then return true end
+  end
+  return false
+end
+-- tramos continuos del borde real exterior (coordenadas del juego): { {x, y}, ... } por tramo; nil si el grafo de carreteras
+-- de la zona aún no está cargado
+local function realEdge(t, from, to, sideSign)
+  local a = api()
+  if not a then return nil end
+  local function gp(al)
+    local x, y = geo.at(t, al)
+    local la, lo = geo.toGeo(t, x, y)
+    return a.toGame(la, lo, 0)
+  end
+  local runs, run, n, seenN = {}, nil, 0, 0
+  local a0, a1 = math.max(0, from), math.min(t.total, to)
+  local al = a0
+  while al <= a1 do
+    local x, y = gp(al)
+    local x2, y2 = gp(math.min(t.total, al + 1))
+    local x1, y1 = gp(math.max(0, al - 1))
+    if not (x and x2 and x1) then return nil end
+    local dx, dy = x2 - x1, y2 - y1
+    local l = math.sqrt(dx * dx + dy * dy)
+    n = n + 1
+    local e
+    if l > 0.1 then
+      local nx, ny = sideSign * dy / l, -sideSign * dx / l
+      local inside = onRoadG(x, y, 0)
+      if inside == nil then return nil end
+      local seen = inside
+      local s = 0.5
+      while s <= M.EDGE_MARCH_M do
+        local r = onRoadG(x + nx * s, y + ny * s, 0)
+        if r then
+          -- con el eje fuera de la calzada (interior de un cruce), la calzada debe empezar cerca
+          if not seen and s > 10 then break end
+          seen = true
+        elseif seen then
+          local lo2, hi = s - 0.5, s
+          for _ = 1, 6 do
+            local mid = (lo2 + hi) / 2
+            if onRoadG(x + nx * mid, y + ny * mid, 0) then lo2 = mid else hi = mid end
+          end
+          e = hi
+          break
+        end
+        s = s + 0.5
+      end
+      if seen then seenN = seenN + 1 end
+      if e then
+        local px, py = x + nx * e, y + ny * e
+        -- salto entre dos puntos seguidos del borde: el mismo borde si lo que hay entre ellos no es calzada (los rayos se
+        -- abren en el ápice); si es calzada (la boca de una calle), el tramo de borde se corta ahí
+        if run then
+          local lx, ly = run[#run][1], run[#run][2]
+          local d2 = (px - lx) ^ 2 + (py - ly) ^ 2
+          if d2 > 64 then run = nil
+          elseif d2 > 2.25 then
+            local mx, my = (px + lx) / 2 + (nx + run[#run][3]) * 0.25, (py + ly) / 2 + (ny + run[#run][4]) * 0.25
+            if onRoadG(mx, my, 0) or onRoadG((px + lx) / 2, (py + ly) / 2, -0.3) then run = nil end
+          end
+        end
+        if not run then run = {} runs[#runs + 1] = run end
+        -- (puntos casi repetidos fuera: los rayos de un arco convergen)
+        if #run == 0 or (px - run[#run][1]) ^ 2 + (py - run[#run][2]) ^ 2 > 0.04 then run[#run + 1] = { px, py, nx, ny } end
+      else
+        run = nil
       end
     end
-    a2 = a2 + 0.25
+    al = al + 1
+  end
+  if n == 0 or seenN < n * 0.5 then return nil end
+  -- los extremos de cada tramo que hacen un quiebro (el rayo rozó una esquina) se recortan
+  for _, r in ipairs(runs) do
+    for _ = 1, 3 do
+      if #r >= 4 then
+        local function turn(p, q, s2) local ux, uy, vx, vy = q[1] - p[1], q[2] - p[2], s2[1] - q[1], s2[2] - q[2]
+          return (ux * vx + uy * vy) / math.max(0.001, math.sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy))) end
+        if turn(r[1], r[2], r[3]) < 0.87 then table.remove(r, 1) end
+        if #r >= 4 and turn(r[#r - 2], r[#r - 1], r[#r]) < 0.87 then table.remove(r) end
+      end
+    end
+  end
+  return runs
+end
+-- el tramo de borde desplazado `pad` m hacia fuera, perpendicular a él (no en la dirección del rayo)
+local function offsetRun(run, pad)
+  local P = {}
+  for i, p in ipairs(run) do
+    local p0, p1 = run[i - 1] or p, run[i + 1] or p
+    local tx, ty = p1[1] - p0[1], p1[2] - p0[2]
+    local l = math.sqrt(tx * tx + ty * ty)
+    if l > 0.01 then
+      local nx, ny = ty / l, -tx / l
+      if nx * p[3] + ny * p[4] < 0 then nx, ny = -nx, -ny end
+      P[#P + 1] = { p[1] + nx * pad, p[2] + ny * pad }
+    end
+  end
+  return P
+end
+-- piezas de longitud L encadenadas extremo con extremo a lo largo de la polilínea P: cb(cx, cy, dx, dy) por pieza; si cb
+-- devuelve false se acaba
+local function chordChain(P, L, cb)
+  if #P < 2 then return end
+  local ax, ay = P[1][1], P[1][2]
+  local px, py = ax, ay
+  local i = 2
+  -- el punto de la polilínea a `len` m (en línea recta) de (ax, ay), avanzando desde el estado (i, px, py)
+  local function reach(len, i0, px0, py0)
+    local j, ux, uy = i0, px0, py0
+    while j <= #P do
+      local qx, qy = P[j][1], P[j][2]
+      if (qx - ax) ^ 2 + (qy - ay) ^ 2 < len * len then
+        ux, uy = qx, qy
+        j = j + 1
+      else
+        local lo2, hi = 0, 1
+        for _ = 1, 14 do
+          local mid = (lo2 + hi) / 2
+          local mx, my = ux + (qx - ux) * mid, uy + (qy - uy) * mid
+          if (mx - ax) ^ 2 + (my - ay) ^ 2 < len * len then lo2 = mid else hi = mid end
+        end
+        return ux + (qx - ux) * hi, uy + (qy - uy) * hi, j
+      end
+    end
+    return nil
+  end
+  while true do
+    local bx, by, j = reach(L, i, px, py)
+    if not bx then return end
+    local r = cb((ax + bx) / 2, (ay + by) / 2, (bx - ax) / L, (by - ay) / L)
+    if r == false then return end
+    if r == 'skip' then
+      -- no cabe: la cadena vuelve a empezar 1 m más allá (no un largo entero: el hueco, lo justo)
+      bx, by, j = reach(1.0, i, px, py)
+      if not bx then return end
+    end
+    ax, ay, px, py, i = bx, by, bx, by, j
   end
 end
+-- barreras rojas y blancas + malla naranja por el borde real exterior. Devuelve false si el grafo aún no está (reintentar).
+local function edgeFences(t, from, to, sideSign)
+  if M.dry then
+    M.counts.plasticBarrier = (M.counts.plasticBarrier or 0) + math.min(M.BARRIER_MAX, math.floor((to - from) / 1.52))
+    M.counts.meshBarricade = (M.counts.meshBarricade or 0) + math.floor((to - from) / M.MESH_LEN_M)
+    return true
+  end
+  local runs = realEdge(t, from, to, sideSign)
+  if not runs then return false end
+  local a = api()
+  local nB = 0
+  local function put(kind, cx, cy, dx, dy, yaw, opts, clear)
+    -- la pieza entera fuera de toda calzada: el centro y los dos extremos
+    local h = (kind == 'meshBarricade' and M.MESH_LEN_M or M.BARRIER_LEN_M) / 2
+    if onRoadG(cx, cy, clear) or onRoadG(cx + dx * h, cy + dy * h, clear * 0.5) or onRoadG(cx - dx * h, cy - dy * h, clear * 0.5) then
+      M.skipped = M.skipped + 1
+      return 'skip'
+    end
+    local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(cx, cy, 0)) or 0
+    local la, lo = a.toGeo(cx, cy, z)
+    if not la then return nil end
+    local it = props.add(kind, la, lo, dx, dy, yaw, opts)
+    if it then it.roadOk = true end
+    return it
+  end
+  for _, run in ipairs(runs) do
+    if #run >= 2 then
+      chordChain(offsetRun(run, M.BARRIER_PAD_M), M.BARRIER_LEN_M + 0.02, function(cx, cy, dx, dy)
+        if nB >= M.BARRIER_MAX then return false end
+        if put((nB + 1) % 2 == 1 and 'plasticBarrier' or 'plasticBarrierW', cx, cy, dx, dy, 90, nil, 0.35) == 'skip' then return 'skip' end
+        nB = nB + 1
+      end)
+      chordChain(offsetRun(run, M.MESH_PAD_M), M.MESH_LEN_M, function(cx, cy, dx, dy)
+        if put('meshBarricade', cx, cy, dx, dy, 0, { noCollision = true }, 0.3) == 'skip' then return 'skip' end
+      end)
+    end
+  end
+  return true
+end
+M.edgeFences = edgeFences
 function M.barriers(t, notes)
   local prevEnd = 0
   for _, nt in ipairs(notes) do
@@ -1158,13 +1368,43 @@ function M.barriers(t, notes)
           local hw = hwAt(t, mid)
           local cliff = dropOutside(t, mid, sideSign * (hw + 6)) > M.CLIFF_DROP_M
           if byStraight or (cliff and (slow or fast)) then
-            barrierChain(t, nt.at - 4, (nt.endAt or nt.at) + 8, sideSign)
+            -- por el borde REAL de la calzada; si el grafo de la zona aún no está cargado, se reintenta (hasta 90 s)
+            -- NORMA (22-nov): el grafo llega por partes; a 400 m aún está incompleto y el borde salía mal (vallas en el
+            -- interior del cruce). Las vallas se montan con el jugador a menos de FENCE_NEAR_M y con el grafo estable
+            -- (misma versión que 2 s antes); mientras tanto se reintenta.
+            local tries, lastV = 0, nil
+            local function fences()
+              local ready = M.dry
+              if not ready then
+                local a = api()
+                local pl, po = a.position()
+                local la, lo = at(t, nt.at, 0, 0)
+                local ix = props.roadIndex()
+                local near = pl and la and ((po - lo) * 111195 * math.cos(math.rad(la))) ^ 2 + ((pl - la) * 111195) ^ 2 < M.FENCE_NEAR_M ^ 2
+                local v = ix and ix.version
+                ready = near and v ~= nil and v == lastV
+                lastV = near and v or nil
+              end
+              if not ready then M.later(nt.at, fences, t, 2.0) return end
+              if not edgeFences(t, nt.at - 4, (nt.endAt or nt.at) + 8, sideSign) then
+                tries = tries + 1
+                if tries < 45 then M.later(nt.at, fences, t, 2.0) end
+              end
+            end
+            fences()
+            -- y por el lado interior (la idea del usuario, 22-nov: vallas a ambos lados de la curva de cruce)
+            -- señal de curva peligrosa antes de la curva, en el exterior del lado de llegada
+            if slow then
+              -- (22-nov, el usuario: la señal debe estar ANTES de la curva y de las vallas, con antelación para frenar desde
+              -- una recta larga): 60-110 m antes del inicio de la curva según la recta, en su propio trabajo
+              local lead = math.min(110, math.max(60, straight - 15))
+              local sa = math.max(0, nt.at - 4 - lead)
+              M.later(sa, function()
+                place(nt.side == 'right' and 'bendR' or 'bendL', t, sa, sideSign * (hwAt(t, sa) + M.SIDE_PAD_M), 180)
+              end)
+            end
             -- y detrás, el perímetro blando: la malla naranja de 10 m del juego siguiendo el borde (una pieza cada
             -- 10 m, centrada; si no cabe sin moverla, no se pone)
-            local from, to = nt.at - 4, (nt.endAt or nt.at) + 8
-            for a3 = from + 5, to - 5, 10 do
-              place('meshBarricade', t, a3, sideSign * (hwAt(t, a3) + 3.0), 0, 0, { noCollision = true, noPush = true })
-            end
           end
         end)
       end
@@ -1189,6 +1429,24 @@ function M.arrows(t, notes, hw)
       local along = math.max(0, nt.at + 6)
       M.later(along, function()
         local side = sideSign * (hwAt(t, along) + 1.5)
+        -- (22-nov, el usuario: un poste/señal en el ápice de la curva de cruce): ni flecha ni colchones donde hay un cruce
+        if not M.dry then
+          local la0, lo0 = at(t, along, side, 0)
+          local a0 = api()
+          local okJ, junc = pcall(function()
+            local gx, gy = a0.toGame(la0, lo0, 0)
+            local m = map.getMap()
+            for name, node in pairs(m.nodes) do
+              if (node.pos.x - gx) ^ 2 + (node.pos.y - gy) ^ 2 < 22 * 22 then
+                local d = 0
+                for _ in pairs(props.neighbors(name)) do d = d + 1 end
+                if d >= 3 then return true end
+              end
+            end
+            return false
+          end)
+          if okJ and junc then return end
+        end
         -- cara del modelo en -X: hacia el coche que llega y un poco hacia la carretera
         local yaw = side > 0 and -60 or -120
         place(kind, t, along, side, yaw, 0)
@@ -1253,6 +1511,7 @@ function M.cheer(t, along)
   end
 end
 
+M.SPECTATOR_FENCES = false
 function M.spectators(t, notes)
   local slow = {}
   for _, nt in ipairs(notes) do
@@ -1268,6 +1527,11 @@ function M.spectators(t, notes)
     local sideSign = nt.side == 'right' and -1 or 1
     M.crowdZones[#M.crowdZones + 1] = { at = mid - 30, side = sideSign, mid = mid }
     M.later(nt.at, function()
+      -- NORMA (22-nov, el usuario: "vallas mal colocadas en la calzada y confundiendo; todos los objetos alineados y con un
+      -- mismo patrón, no formatos diferentes"): el perímetro de público (cinta, mallas, lonas y esquinas, otro formato y
+      -- medido desde el eje) queda fuera; en las curvas solo va el patrón único de M.barriers (barreras + malla naranja
+      -- sobre el borde real). Se conserva el sonido de público.
+      if not M.SPECTATOR_FENCES then place('sndCrowd', t, mid, sideSign * (hwAt(t, mid) + 11), 0, 0) return end
       local hw = hwAt(t, mid)
       -- pegadas al borde para que se vean (18-nov): la cinta a 2,5 m, el perímetro de mallas a 3,5 m y las lonas detrás
       for k = -1, 1 do
@@ -1288,7 +1552,32 @@ end
 -- (BeamNG.Earth carga el grafo de carreteras por zonas: stage.lua lo vuelve a llamar en marcha con la ventana por
 -- delante del coche; lo ya cortado se recuerda en `doneKeys` hasta el siguiente tramo)
 local doneKeys, tapeCount = {}, 0
-function M.resetClosures() doneKeys, tapeCount = {}, 0 end
+function M.resetClosures() doneKeys, tapeCount = {}, 0 M.medicQueue = nil end
+-- Calles que salen de un nodo contando como uno solo los nodos a menos de 3 m (cruces partidos): { nombre = true }, y el
+-- nombre canónico del grupo (el menor)
+local function farNb(name)
+  local ok, mp = pcall(map.getMap)
+  local nodes = ok and mp and mp.nodes or {}
+  local group, queue, canon = { [name] = true }, { name }, name
+  local out = {}
+  local qi = 1
+  while qi <= #queue and qi < 12 do
+    local cur = queue[qi]
+    qi = qi + 1
+    local cn = nodes[cur]
+    for o in pairs(props.neighbors(cur)) do
+      local on = nodes[o]
+      if on and cn then
+        local d = math.sqrt((on.pos.x - cn.pos.x) ^ 2 + (on.pos.y - cn.pos.y) ^ 2)
+        if d < 3 then
+          if not group[o] then group[o] = true queue[#queue + 1] = o if o < canon then canon = o end end
+        else out[o] = true end
+      end
+    end
+  end
+  for g in pairs(group) do out[g] = nil end
+  return out, canon
+end
 function M.closures(t, from, to)
   local a = api()
   if not (a and map and map.getMap) then return 0 end
@@ -1310,12 +1599,15 @@ function M.closures(t, from, to)
         local bdx, bdy = geo.dirAt(t, math.max(0, along - 12))
         -- 18-nov (Pravia: cortes en mitad del tramo): solo los cruces de verdad (3 o más calles) llevan corte, y la
         -- carretera del tramo es siempre la mejor alineada hacia delante y hacia atrás, por cerrada que sea la curva
+        -- un cruce suele venir partido en varios nodos a ~1 m (Umeå, 22-nov): se agrupan y se miran solo las calles que
+        -- salen del grupo (a más de 3 m), con un único nombre para todo el grupo (canon)
+        local NB, canon = farNb(name)
         local degree = 0
-        for _ in pairs(props.neighbors(name)) do degree = degree + 1 end
+        for _ in pairs(NB) do degree = degree + 1 end
         if degree < 3 then goto nextNode end
         local fwdBest, fwdDot, backBest, backDot = nil, -2, nil, -2
         local fwdXY, backXY = nil, nil
-        for other in pairs(props.neighbors(name)) do
+        for other in pairs(NB) do
           local on = m.nodes[other]
           if on then
             local olat, olon = a.toGeo(on.pos.x, on.pos.y, on.pos.z)
@@ -1332,7 +1624,7 @@ function M.closures(t, from, to)
         end
         -- cruce donde el tramo gira y otra calle sigue recto (zona que confunde, 18-nov): flecha de dirección en la boca
         -- de la que sigue recto, mirando a quien llega
-        if fwdXY and backXY and not doneKeys['arrow|' .. name] then
+        if fwdXY and backXY and not doneKeys['arrow|' .. canon] then
           local ix, iy = nx - backXY[1], ny - backXY[2]
           local il = math.sqrt(ix * ix + iy * iy)
           local fx, fy = fwdXY[1] - nx, fwdXY[2] - ny
@@ -1341,7 +1633,7 @@ function M.closures(t, from, to)
             ix, iy, fx, fy = ix / il, iy / il, fx / fl, fy / fl
             local turn = ix * fx + iy * fy                 -- < 0.8: el tramo gira más de ~37 grados en el cruce
             if turn < 0.8 then
-              for other in pairs(props.neighbors(name)) do
+              for other in pairs(NB) do
                 local on = m.nodes[other]
                 if on and other ~= fwdBest and other ~= backBest then
                   local olat, olon = a.toGeo(on.pos.x, on.pos.y, on.pos.z)
@@ -1349,7 +1641,7 @@ function M.closures(t, from, to)
                   local sx, sy = ox - nx, oy - ny
                   local sl = math.sqrt(sx * sx + sy * sy)
                   if sl > 0.5 and (sx * ix + sy * iy) / sl > 0.85 then
-                    doneKeys['arrow|' .. name] = true
+                    doneKeys['arrow|' .. canon] = true
                     local right = (ix * fy - iy * fx) < 0
                     -- en la esquina entre la calle que sigue recto y la salida del tramo (fuera de las dos calzadas)
                     local bx2, by2 = sx / sl + fx, sy / sl + fy
@@ -1362,9 +1654,9 @@ function M.closures(t, from, to)
                     -- zona de escape (18-nov, Salas: curva muy cerrada tras un salto y el coche acababa por la calle
                     -- que sigue recto): pacas redondas y cuadradas cruzando la boca de esa calle y detrás una fila
                     -- de barreras de plástico rojas y blancas
-                    if turn < 0.55 then
+                    if turn < 0.8 then
                       -- esta calle ya queda cerrada por la zona de escape: sin cinta de corte encima
-                      doneKeys[name < other and (name .. '|' .. other) or (other .. '|' .. name)] = true
+                      doneKeys[canon < other and (canon .. '|' .. other) or (other .. '|' .. canon)] = true
                       local ux, uy = sx / sl, sy / sl
                       local qx, qy = -uy, ux
                       local w = (on.radius or 3)
@@ -1379,7 +1671,7 @@ function M.closures(t, from, to)
                       for i = 0, nb - 1 do
                         local off = -wb + 1.3 + i * stepB
                         kinds[#kinds + 1] = { 'hayBale2', off, 0, 0 }
-                        if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + stepB / 2, 0, 1.3 } end
+                        if i < nb - 1 then kinds[#kinds + 1] = { 'hayBale', off + stepB / 2, 0, 1.15 } end
                       end
                       for _, k in ipairs(kinds) do
                         local bx, by = nx + ux * (d0 + k[3]) + qx * k[2], ny + uy * (d0 + k[3]) + qy * k[2]
@@ -1392,7 +1684,7 @@ function M.closures(t, from, to)
                       for off = -w + 0.8, w - 0.8, 1.58 do
                         local bx, by = nx + ux * (d0 + 2.7) + qx * off, ny + uy * (d0 + 2.7) + qy * off
                         local bl, bo = geo.toGeo(t, bx, by)
-                        local it3 = props.add(nB % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', bl, bo, ux, uy, 90)
+                        local it3 = props.add(nB % 2 == 0 and 'plasticBarrier' or 'plasticBarrierW', bl, bo, qx, qy, 90)
                         if it3 then it3.roadOk = true it3.closure = true end
                         nB = nB + 1
                       end
@@ -1406,16 +1698,24 @@ function M.closures(t, from, to)
         end
         -- (los cortes con cinta tienen un tope por tramo; las flechas y zonas de escape de arriba, no)
         if tapeCount >= M.TAPE_MAX then goto nextNode end
-        for other in pairs(props.neighbors(name)) do
+        for other in pairs(NB) do
           if other == fwdBest or other == backBest then goto nextLink end
           local on = m.nodes[other]
-          local key = name < other and (name .. '|' .. other) or (other .. '|' .. name)
+          local key = canon < other and (canon .. '|' .. other) or (other .. '|' .. canon)
           if on and not done[key] then
             done[key] = true
             local olat, olon = a.toGeo(on.pos.x, on.pos.y, on.pos.z)
             local ox, oy = geo.toLocal(t, olat, olon)
             local _, oLat = geo.project(t, ox, oy, i, 20, 20)
-            if oLat > 12 then
+            -- (22-nov, el usuario: "el acceso a la línea de salida está cortado con una cinta"): la calle de llegada al
+            -- tramo (el enlace t.before hasta el TC1) nunca se corta
+            local onApproach = false
+            if t.before and t.before.pts and #t.before.pts > 1 then
+              local bx, by = geo.toLocal(t.before, olat, olon)
+              local _, dB = geo.project(t.before, bx, by, 1, 0, #t.before.pts)
+              onApproach = dB < 10
+            end
+            if oLat > 12 and not onApproach then
               -- la calle que sale: dirección (ex, ey) desde el cruce
               local ex, ey = ox - nx, oy - ny
               local l = math.sqrt(ex * ex + ey * ey)
@@ -1423,12 +1723,18 @@ function M.closures(t, from, to)
                 ex, ey = ex / l, ey / l
                 -- la cinta a lo ancho de la lateral (6, 8 o 10 m según su anchura)
                 local rw = on.radius or node.radius or 3
-                local kind, half = 'tape', 4
-                if rw <= 2.6 then kind, half = 'tape6', 3 elseif rw > 3.6 then kind, half = 'tape10', 5 end
+                -- NORMA (22-nov, el usuario: "la cinta no corta la calle; ponla en la boca, horizontal, y justo detrás las vallas
+                -- rojas y blancas"): la calzada que se ve es más ancha que el radio del grafo y su eje va algo desplazado, así
+                -- que la cinta sobra ~1 m por cada lado (6 m solo para sendas), va en la BOCA de la calle (pegada al borde de
+                -- la carretera del tramo) y detrás lleva una fila de barreras de lado a lado con el bidón.
+                local kind, half = 'tape10', 5
+                if rw <= 1.9 then kind, half = 'tape6', 3 elseif rw <= 2.6 then kind, half = 'tape', 4 end
                 local px, py = ey, -ex
                 -- ninguna de sus dos estacas puede quedar en la carretera del tramo (los dos tramos de ella que salen
                 -- del cruce): se aleja por la lateral hasta que las dos quedan fuera, o no se pone
-                local stageR = (node.radius or 3) + 1.2
+                -- ESTÁNDAR de corte (22-nov, colocado a mano por el usuario): la cinta pegada al borde de la carretera del tramo
+                -- (M.TAPE_EDGE_M por fuera del radio del cruce), no calle adentro
+                local stageR = (node.radius or 3) + M.TAPE_EDGE_M
                 local function clearOfStage(qx, qy)
                   for _, e2 in ipairs({ fwdXY, backXY }) do
                     if e2 then
@@ -1441,15 +1747,31 @@ function M.closures(t, from, to)
                   return (qx - nx) ^ 2 + (qy - ny) ^ 2 >= stageR * stageR
                 end
                 -- en la boca de la calle (18-nov, Pravia: aparecía decenas de metros calle arriba): como mucho 12 m más
-                local d, placed = math.max(rw + 3, lateral + 4), false
-                local dMax = math.min(l * 0.85, d + 12)
+                local d, placed = stageR, false
+                local dMax = math.min(l * 0.85, d + 14)
                 while d <= dMax and not placed do
                   local cx, cy = nx + ex * d, ny + ey * d
                   -- y lejos del trazado del tramo (estacas y centro): nunca una cinta cruzando el tramo
                   local function farFromTrack(qx, qy)
-                    local _, lat2 = geo.project(t, qx, qy, i, 30, 30)
-                    return lat2 > stageR + 2
+                    -- (22-nov: el tramo pasa dos veces por la misma calle: se mira contra TODO el trazado, no solo cerca de este punto)
+                    local _, lat2 = geo.project(t, qx, qy, 1, 0, #t.pts)
+                    return lat2 > M.TAPE_TRACK_M
                   end
+                  -- centrada en el eje real de la calle (el cruce son varios nodos juntos y la dirección desde su centro
+                  -- deja la cinta 1-2 m a un lado)
+                  pcall(function()
+                    local la, lo = geo.toGeo(t, cx, cy)
+                    local gx, gy, gz = a.toGame(la, lo, 0)
+                    local n1, n2 = map.findClosestRoad(vec3(gx, gy, on.pos.z))
+                    local A, B = n1 and m.nodes[n1], n2 and m.nodes[n2]
+                    if not (A and B) then return end
+                    local sx, sy = B.pos.x - A.pos.x, B.pos.y - A.pos.y
+                    local L2 = sx * sx + sy * sy
+                    if L2 < 1 or math.abs(sx * ex + sy * ey) / math.sqrt(L2) < 0.85 then return end
+                    local u = ((gx - A.pos.x) * sx + (gy - A.pos.y) * sy) / L2
+                    local la2, lo2 = a.toGeo(A.pos.x + sx * u, A.pos.y + sy * u, on.pos.z)
+                    if la2 then cx, cy = geo.toLocal(t, la2, lo2) end
+                  end)
                   if clearOfStage(cx + px * half, cy + py * half) and clearOfStage(cx - px * half, cy - py * half)
                     and farFromTrack(cx + px * half, cy + py * half) and farFromTrack(cx - px * half, cy - py * half)
                     and farFromTrack(cx, cy) then
@@ -1461,8 +1783,12 @@ function M.closures(t, from, to)
                     -- y detrás, el corte como en los rallies del juego: dos barreras de plástico rojas y un bidón
                     if M.protection ~= false then
                       -- a lo ancho de la calle (el largo de la barrera, eje X, en la dirección de la cinta)
-                      for _, b in ipairs({ { -1.9, 'plasticBarrier' }, { 1.9, 'plasticBarrierW' }, { 0, 'barrel' } }) do
-                        local bx, by = cx + ex * 2.2 + px * b[1], cy + ey * 2.2 + py * b[1]
+                      local row = {}
+                      local nb = math.max(2, math.floor((2 * rw + 3) / 1.52 + 0.5))
+                      for i = 1, nb do row[#row + 1] = { (i - (nb + 1) / 2) * 1.52, i % 2 == 1 and 'plasticBarrier' or 'plasticBarrierW', 1.3 } end
+                      row[#row + 1] = { 0, 'barrel', 2.4 }
+                      for _, b in ipairs(row) do
+                        local bx, by = cx + ex * b[3] + px * b[1], cy + ey * b[3] + py * b[1]
                         local bl, bo = geo.toGeo(t, bx, by)
                         -- en la calle cortada a propósito: no se vuelve a comprobar contra la calzada
                         local it2 = props.add(b[2], bl, bo, px, py, b[2] == 'barrel' and 0 or 90)
@@ -1471,7 +1797,7 @@ function M.closures(t, from, to)
                     end
                     n, tapeCount, placed = n + 1, tapeCount + 1, true
                   end
-                  d = d + 1.5
+                  d = d + 0.5
                 end
               end
             end
@@ -1597,6 +1923,21 @@ function M.medicPost(t, along, side, fwd)
   if not la then return false end
   local x, y, z = props.ground(la, lo)
   if not x then return false end
+  -- (22-nov, el usuario: "la ambulancia no está donde estaba, me corta el paso"): si las carreteras de alrededor aún no están
+  -- cargadas, no se busca calle ni hueco (acababa en medio de la calzada): se aplaza hasta que haya grafo (M.pumpMedic)
+  if not M._medicRetry then
+    local near = false
+    pcall(function()
+      for _, n in pairs(map.getMap().nodes) do
+        if (n.pos.x - x) ^ 2 + (n.pos.y - y) ^ 2 < 120 * 120 then near = true break end
+      end
+    end)
+    if not near then
+      M.medicQueue = M.medicQueue or {}
+      M.medicQueue[#M.medicQueue + 1] = { t = t, along = along, side = side, fwd = fwd, at = os.clock() }
+      return true
+    end
+  end
   -- la dirección del tramo en coordenadas del juego
   local kk = math.cos(math.rad(la)) * 111195
   local x2, y2 = a.toGame(la + dy * 10 / 111195, lo + dx * 10 / kk, 0)
@@ -1624,7 +1965,20 @@ function M.medicPost(t, along, side, fwd)
               local fx, fy, fz = streetAt(pts, 24)
               if qx and fx and math.abs(ux * gx + uy * gy) < 0.5 then
                 local fla, flo = a.toGeo(fx, fy, fz)
-                if farFromStage(t, fla, flo, 28) then
+                -- (22-nov, el usuario: el acceso a la línea de salida cortado con cinta): nunca la calle del enlace de llegada
+                local onAppr = false
+                if t.before and t.before.pts and #t.before.pts > 1 then
+                  for _, d in ipairs({ 20, 30 }) do
+                    local ax, ay, az = streetAt(pts, d)
+                    if ax then
+                      local al, ao = a.toGeo(ax, ay, az)
+                      local lx, ly = geo.toLocal(t.before, al, ao)
+                      local _, dB = geo.project(t.before, lx, ly, 1, 0, #t.before.pts)
+                      if dB < 6 then onAppr = true end   -- la calle va POR el enlace (no solo nace junto a él)
+                    end
+                  end
+                end
+                if farFromStage(t, fla, flo, 28) and not onAppr then
                   best, bs = { name = name, other = other, pts = pts, node = node }, math.abs(al)
                 end
               end
@@ -1715,6 +2069,33 @@ function M.medicPost(t, along, side, fwd)
   return false
 end
 
+-- los puestos médicos aplazados por falta de grafo: se montan en cuanto hay carreteras cargadas cerca (o a los 90 s, como estén)
+function M.pumpMedic()
+  local q = M.medicQueue
+  if not q or #q == 0 then return end
+  local keep = {}
+  for _, e in ipairs(q) do
+    local la, lo = at(e.t, e.along, 0, 0)
+    local x, y = props.ground(la, lo)
+    local near = false
+    if x then
+      pcall(function()
+        for _, n in pairs(map.getMap().nodes) do
+          if (n.pos.x - x) ^ 2 + (n.pos.y - y) ^ 2 < 120 * 120 then near = true break end
+        end
+      end)
+    end
+    if near or os.clock() - e.at > 90 then
+      M._medicRetry = true
+      pcall(M.medicPost, e.t, e.along, e.side, e.fwd)
+      M._medicRetry = nil
+    else
+      keep[#keep + 1] = e
+    end
+  end
+  M.medicQueue = keep
+end
+
 -- El aparcamiento más cercano a (lat, lon) entre 40 m y 1,5 km (Overture, por BeamNG.Earth): el box. cb(lat, lon) o cb()
 function M.findBox(lat, lon, cb)
   local a = api()
@@ -1767,7 +2148,7 @@ function M.build(t, notes, hazards, splitAt, opts)
   opts = opts or {}
   M.surface = M.normSurface(opts.surface)
   M.reversed = opts.reversed == true
-  M.sounds = opts.sounds == true
+  M.sounds = false
   M.circuit = opts.circuit == true   -- circuito cerrado: parrilla y bandera, sin control horario ni STOP
   local hw0 = halfWidth(t.lat0, t.lon0)
   local flat, flon = geo.toGeo(t, t.pts[#t.pts][1], t.pts[#t.pts][2])

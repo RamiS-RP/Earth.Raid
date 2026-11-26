@@ -1,3 +1,4 @@
+-- ███ BLOQUEADO (23-nov, orden del usuario): funciona y está aprobado. NO modificar sin su permiso expreso. Ver LOCKED.md ███
 -- Raid.Earth: el reloj LED de salida del juego (gameplay_rallyStartClock pinta la pantalla sobre cada semáforo
 -- s_rally_start_tree de la escena) alimentado con nuestros datos, y la ventana de cámara con zoom al reloj durante la
 -- cuenta atrás, hecha igual que la del juego (RenderViewManagerInstance:updateViewCamera, 20 % del ancho, FOV 25,
@@ -15,7 +16,17 @@ M.SHIFT = 1 / 3
 M.LINGER_S = 1.5
 M.MASK = 29
 
-local view, linger, clockObj, linePos = nil, 0, nil, nil
+local view, linger, clockObj, linePos, roadFwd = nil, 0, nil, nil, nil
+-- NORMA (22-nov, el usuario: "la cámara de vanilla está más a la derecha del camino, apuntando hacia la carretera; el coche
+-- se ve pasar antes de que desaparezca; y lleva un pequeño movimiento como la steadycam"). Es lo que hace el juego
+-- (gameplay/rallyStartClock + startClocks/rallyStartTree.getView): la cámara va a 1 m del reloj en la diagonal
+-- (tangente de la pantalla hacia delante de la carretera + normal hacia la calzada), el reloj descentrado 1/3 de ancho, y
+-- el balanceo de core/cameraModes/bobbing con standingBobScale = 1.
+local bob, camData = nil, { res = {} }
+local function newBob()
+  local ok, b = pcall(function() return require('core/cameraModes/bobbing')() end)
+  if ok and b then b.walkBobScale = 0 b.standingBobScale = 1 return b end
+end
 local display, displayT = nil, 0
 local stageLabel = nil
 local shimmed = false
@@ -85,7 +96,24 @@ end
 
 -- el semáforo que se enfoca y el punto de la línea de salida (coordenadas del juego, se recalcula tras un rebase)
 function M.setClock(obj) clockObj, display = obj, nil end
-function M.setLine(pos) linePos = pos end
+function M.setLine(pos, fwd) linePos = pos if fwd then roadFwd = fwd end end
+
+-- como startClocks/rallyStartTree.getView: dirección (horizontal) desde el reloj hasta la cámara
+local function viewDir(target)
+  if not (roadFwd and clockObj and simObjectExists(clockObj)) then return nil end
+  local f = vec3(roadFwd.x, roadFwd.y, 0)
+  if f:squaredLength() <= 0.01 then return nil end
+  f = f:normalized()
+  local right = f:cross(vec3(0, 0, 1))
+  local clockIsRight = (target - linePos):dot(right) >= 0
+  -- geometría de la carretera, no la orientación del modelo: la cámara detrás del reloj (la cara mira al coche) y del lado de fuera (derecho si
+  -- el reloj está a la derecha), mirando al reloj y a la carretera
+  local outward = right * (clockIsRight and 1 or -1)
+  -- (23-nov) la cara del reloj mira hacia atrás (hacia el coche parado en la línea): la cámara va DETRÁS del reloj y fuera
+  local d = outward - f
+  if d:squaredLength() < 0.01 then return nil end
+  return d:normalized()
+end
 
 local function rect()
   local canvas = scenetree.findObject('Canvas')
@@ -167,15 +195,24 @@ function M.update(dtReal, active, code)
       local box = clockObj:getWorldBox()
       target, shift = box:getCenter() + vec3(0, 0, (box.maxExtents.z - box.minExtents.z) * 0.25), M.SHIFT
     end
-    local dir = vec3(linePos.x - target.x, linePos.y - target.y, 0)
-    if dir:squaredLength() < 0.01 then return end
-    dir = dir:normalized()
+    local dir = viewDir(target)
+    if not dir then
+      dir = vec3(linePos.x - target.x, linePos.y - target.y, 0)
+      if dir:squaredLength() < 0.01 then return end
+      dir = dir:normalized()
+    end
     local cam = target + dir * M.DIST_M
+    M.dbg = { cam = cam, target = target, dir = dir }
     local look = target - cam
     local right = look:cross(vec3(0, 0, 1)):normalized()
     local half = math.tan(math.rad(M.FOV * 0.5)) * M.DIST_M * w / h
     local lookTarget = target - right * half * shift
     local q = quatFromDir(lookTarget - cam, vec3(0, 0, 1))
+    bob = bob or newBob()
+    if bob then
+      camData.res.pos, camData.res.rot = cam, q
+      if pcall(bob.update, bob, camData, 0, dtReal) then cam, q = camData.res.pos, camData.res.rot end
+    end
     local updated = RenderViewManagerInstance:updateViewCamera(M.VIEW_NAME, cam.x, cam.y, cam.z, q.x, q.y, q.z, q.w,
       M.FOV, 0.1, 200, false, 0)
     v.active = updated and true or false

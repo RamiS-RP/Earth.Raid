@@ -115,9 +115,11 @@
        las penalizaciones del tramo (bajo los tiempos del juego), las del rally (bajo la hoja de tiempos) y el marco de
        la cámara del reloj (la imagen la pone el juego debajo) -->
   <div class="erh" v-if="slim">
+    <!-- (22-nov, el usuario) una sola línea, en el hueco bajo la barra de progreso, a la derecha del crono -->
     <div v-if="slimPens.length" class="spen">
-      <div class="spent"><b>{{ t.penalties }}</b><span>+{{ slimTotal }}s</span></div>
-      <div v-for="(p, i) in slimPens" :key="i" class="spenr"><span>{{ p.label }} · {{ penWhy(p.why) }}<template v-if="p.n > 1"> ×{{ p.n }}</template></span><b>+{{ p.s }}s</b></div>
+      <b class="spent">{{ t.penalties }}</b>
+      <span class="spenr">{{ slimPens.map(p => penWhy(p.why) + (p.n > 1 ? ' ×' + p.n : '')).join(' · ') }}</span>
+      <b class="spens">+{{ slimTotal }}s</b>
     </div>
     <!-- el resultado al parar en el STOP (19-nov: con las apps del juego se había perdido): tiempo, parcial,
          penalización y mejor tiempo; en un tramo suelto se queda hasta aceptarlo con Mayús+E (se retira el montaje) -->
@@ -460,9 +462,10 @@ const frameStyle = computed(() => {
 .erh-load .lbar { height: 8px; background: rgba(255, 255, 255, 0.12); border-radius: 2px; overflow: hidden; }
 .erh-load .lfill { height: 100%; background: var(--bng-orange, #ff6600); transition: width 0.4s ease; }
 .erh-load .lstep { margin-top: 10px; color: #c9ccd2; font-size: 16px; }
-.spen { position: absolute; left: 288px; top: 118px; width: 290px; padding: 6px 10px 7px; background: rgba(26, 29, 34, 0.86); color: #fff; font-size: 14px; border-left: 3px solid #ff6a5c; }
-.spen .spent { display: flex; justify-content: space-between; color: #ff6a5c; letter-spacing: 0.04em; font-weight: 700; }
-.spen .spenr { display: flex; justify-content: space-between; gap: 8px; }
+.spen { position: absolute; left: 288px; top: 65px; width: 290px; height: 35px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; gap: 8px; background: rgba(26, 29, 34, 0.86); color: #fff; font-size: 13px; border-left: 3px solid #ff6a5c; white-space: nowrap; }
+.spen .spent { color: #ff6a5c; letter-spacing: 0.04em; font-weight: 700; font-size: 12px; }
+.spen .spenr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.spen .spens { color: #ff6a5c; }
 .erh .tcpen.slimpen { position: absolute; left: 288px; top: 160px; width: 290px; background: rgba(26, 29, 34, 0.86); color: #fff;
   padding: 6px 10px 7px; border-left: 3px solid #ff9100; font-size: 14px; }
 .erh .tcpen.slimpen .tcpent { color: #ffb347; letter-spacing: 0.04em; }

@@ -10,6 +10,10 @@ local TAG = 'earthRaid'
 
 M.ON_M = 70                   -- (20-nov, el usuario: física solo a una distancia prudente; eran 180 / 280)
 M.OFF_M = 120
+-- (22-nov, el usuario: «la ambulancia aparece de la nada») la ambulancia es solo vehículo (no tiene modelo estático): se crea
+-- desde lejos, de la reserva, y se retira cuando el coche se aleja (libera carga)
+M.ON_KIND = { ambulance = 280 }
+M.OFF_KIND = { ambulance = 360 }
 M.MAX = 24                    -- como mucho a la vez
 M.SPAWN_EVERY_S = 0.45        -- uno cada tanto: crear un vehículo cuesta de 100 a 800 ms (18-nov, medido: era la causa
                               -- de los tirones; en la pantalla de carga se crean los de la salida de golpe)
@@ -37,11 +41,11 @@ M.LEVELS = {
 -- 1,5 s.) Durante el tramo cronometrado NO se crea nada: solo se reutilizan los de la reserva, que se llena antes (en
 -- el control horario, en la línea de salida y en la carga), incluidas la ambulancia y las cintas de los cortes.
 M.quiet = false               -- lo pone stage.lua en la cuenta atrás y en el tramo: ni crear ni hacer repuestos
-M.ALWAYS_WARM = { 'tape6', 'tape' }   -- cintas de corte: se montan por el camino, no están en la lista al empezar
+M.ALWAYS_WARM = { 'tape6', 'tape', 'tape10' }   -- cintas de corte: se montan por el camino, no están en la lista al empezar
 -- «auto»: según la calidad elegida en BeamNG.Earth (él ya mira el equipo la primera vez)
 M.AUTO = { low = 'low', medium = 'low', high = 'medium', ultra = 'high', extreme = 'high' }
 M.POOL_MAX = 24               -- desactivados en reserva, como mucho
-M.PREWARM_PER = { cones = 6, rallysigns = 2, rallytape = 2, simple_traffic = 1 }   -- repuestos por configuración (solo estos modelos)
+M.PREWARM_PER = { cones = 6, rallysigns = 2, rallytape = 2, simple_traffic = 3 }   -- repuestos por configuración (solo estos modelos)
 local levelT, levelName = -1, 'medium'
 function M.levelName()
   local now = os.clock()
@@ -76,6 +80,7 @@ M.MAP = {
   tape = { 'rallytape', 'roadclosed_8m' }, tape6 = { 'rallytape', 'roadclosed_6m' }, tape10 = { 'rallytape', 'roadclosed_10m' },
 }
 -- giro extra (grados) entre la orientación del modelo estático y la del vehículo
+M.TAPE_LEN = { tape = 8, tape6 = 6, tape10 = 10 }
 M.YAW_FIX = { rallysigns = 0, cones = 0, rallytape = 0, simple_traffic = 0 }
 -- sin modelo estático visible: solo existen como vehículo
 M.PHYS_ONLY = { ambulance = true, tapeY = true, markY = true, rallyCar = true }
@@ -204,6 +209,15 @@ local function spawn(it, pooledOnly)
     local rot = quat(it.obj:getRotation())
     local fix = M.YAW_FIX[m[1]] or 0
     if fix ~= 0 then rot = quatFromEuler(0, 0, math.rad(fix)) * rot end
+    -- (22-nov, el usuario: "una cinta mal colocada", medido en el juego): la cinta de corte estática tiene el origen en un
+    -- extremo y el largo en -Y; la versión con física (rallytape) está centrada y con el largo en su eje X. Sin esto, al
+    -- acercarse el coche la cinta giraba 90° y dejaba de cruzar la calle.
+    local tl = M.TAPE_LEN[it.kind]
+    if tl then
+      local Y = it.obj:getTransform():getColumn(1)
+      pos = vec3(pos.x - Y.x * tl / 2, pos.y - Y.y * tl / 2, pos.z)
+      rot = quatFromEuler(0, 0, math.rad(90)) * rot
+    end
     local p = takePooled(keyOf(m))
     if p then
       local okP, done = pcall(place, p, pos, rot)
@@ -290,7 +304,8 @@ function M.update(dt, px, py, items, burst)
     local gone = not it.obj or it.hidden or it.dead or L.max == 0
     if not gone then
       local p = it.obj:getPosition()
-      gone = (p.x - px) ^ 2 + (p.y - py) ^ 2 > M.OFF_M * M.OFF_M
+      local off = M.OFF_KIND[it.kind] or M.OFF_M
+      gone = (p.x - px) ^ 2 + (p.y - py) ^ 2 > off * off
     end
     if gone then despawn(it, L.max > 0) end
   end
@@ -300,17 +315,22 @@ function M.update(dt, px, py, items, burst)
   end
   if count >= L.max then return end
   -- el más cercano sin física, y el más cercano que tiene repuesto hecho
-  local best, bd = nil, M.ON_M * M.ON_M
-  local bestP, bdP = nil, M.ON_M * M.ON_M
+  local best, bd = nil, math.huge
+  local bestP, bdP = nil, math.huge
   for _, it in ipairs(items) do
     if it.obj and not live[it] and not it.noPhys and not it.hidden and M.MAP[it.kind] and M.PHYS_KINDS[it.kind] then
       local p = it.obj:getPosition()
       local d = (p.x - px) ^ 2 + (p.y - py) ^ 2
-      if d < bd then best, bd = it, d end
-      if d < bdP then
+      local on = M.ON_KIND[it.kind] or M.ON_M
+      if d < on * on then
         local m = mapOf(it)
         local list = m and pool[keyOf(m)]
-        if list and #list > 0 then bestP, bdP = it, d end
+        local spare = list and #list > 0
+        -- la ambulancia, a más distancia, solo si hay repuesto o se puede crear sin tirón
+        if on == M.ON_M or d < M.ON_M * M.ON_M or spare or (not M.quiet and kmh <= L.createKmh) then
+          if d < bd then best, bd = it, d end
+          if spare and d < bdP then bestP, bdP = it, d end
+        end
       end
     end
   end

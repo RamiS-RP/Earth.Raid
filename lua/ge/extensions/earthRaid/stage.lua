@@ -12,6 +12,7 @@ local geo = require('earthRaid/geo')
 local props = require('earthRaid/props')
 local dressing = require('earthRaid/dressing')
 local startclock = require('earthRaid/startclock')
+local pathgen = require('earthRaid/pathgen')
 local audio = require('earthRaid/audio')
 local pacenotes = require('earthRaid/pacenotes')
 local relief = require('earthRaid/relief')
@@ -28,6 +29,7 @@ end
 local TAG = 'earthRaid'
 
 M.STAGING_S = 60
+M.RESCHEDULE_S = 60       -- el juego (slotSizeMinutes = 1): no colocado a -10 s, la salida pasa a +60 s sobre la hora prevista
 M.COUNTDOWN_S = 10
 M.PRECOUNT_MAX_S = 1.5    -- el aviso de antes de la cuenta atrás, como mucho esto de largo
 -- las del rally del juego (loop/penalties.lua y recoveryClockAdvance.lua)
@@ -80,7 +82,7 @@ function M.state() return S end
 -- del tráfico (map.setTrafficExclusionZones, círculos cada 1,5 radios) y el sistema de tráfico del juego sigue con su
 -- propia lógica (aparece lejos, fuera de la vista). En tramos largos las zonas cubren solo una ventana alrededor del
 -- coche y se rehacen al avanzar. Sin esa función en el juego, se vuelve a lo de antes (borrar y recrear).
-M.TRAFFIC_EXCL_M = 12          -- radio de cada zona (el juego usa 10)
+M.TRAFFIC_EXCL_M = 22          -- radio de cada zona (el juego usa 10)
 M.TRAFFIC_WINDOW_M = 2500      -- a cada lado del coche
 M.TRAFFIC_REBUILD_M = 900      -- se rehacen al alejarse tanto del centro de la ventana
 local wantExcl, exclT, exclAt, exclOn = false, nil, nil, false
@@ -102,6 +104,20 @@ local function applyExclusion(t, center)
     if gx then
       local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(gx, gy, 0)) or 0
       zones[#zones + 1] = { pos = vec3(gx, gy, z or 0), radius = M.TRAFFIC_EXCL_M }
+    end
+  end
+  -- (22-nov, el usuario: "hay tráfico por el TC1 cuando no debería haber jamás, ni cerca del tramo"): también el enlace
+  -- de llegada (t.before) entero, con radio mayor, y la zona del TC1
+  local tb = t.before
+  if tb and tb.total and tb.total > 1 then
+    for d = 0, tb.total, step do
+      local x, y = geo.at(tb, d)
+      local la, lo = geo.toGeo(tb, x, y)
+      local gx, gy = a.toGame(la, lo, 0)
+      if gx then
+        local z = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(gx, gy, 0)) or 0
+        zones[#zones + 1] = { pos = vec3(gx, gy, z or 0), radius = 30 }
+      end
     end
   end
   local ok = pcall(function() map.setTrafficExclusionZones(zones) map.reset() end)
@@ -179,13 +195,17 @@ function M.trafficShow()
 end
 local hideTick = 0
 local function hideUpdate(dt)
-  if not (hid and S and S.circuit) then return end
+  if not S then return end
+  -- (22-nov, el usuario: "hay tráfico durante un tramo, y por el TC1, cuando no debería haber jamás"): desde que se monta el
+  -- tramo (TC) hasta que acaba, ni tráfico ni coches aparcados activos; en el enlace, sí
+  local want = S.circuit or (S.phase ~= nil and S.phase ~= 'done')
+  if not want then M.trafficShow() return end
   hideTick = hideTick + dt
   if hideTick < 2 then return end
   hideTick = 0
   local n = 0
   pcall(function() n = gameplay_traffic.getNumOfTraffic(true) or 0 end)
-  if n > 0 then M.trafficHide() end
+  if n > 0 or not hid then M.trafficHide() end
 end
 
 -- withLoad: al salir del TC0, como el juego, con una pequeña carga (setupTrafficWaitForUi) y el tráfico aparece lejos
@@ -281,6 +301,7 @@ local function vehicleName()
 end
 
 local function cleanupProps(keepTraffic, recycle)
+  pcall(pathgen.clear)
   if recycle then props.retire() else props.clear() props.setVirtualRoad(nil) end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
@@ -528,7 +549,7 @@ function M.gridGo()
   local t = S.track
   S.phase, S.countdown, S.noseAtArm, S.saidCount = 'countdown', M.GRID_COUNTDOWN_S, nil, {}
   guide.clear()
-  guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+  guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''), S.notes)
   guide.racingLine(S.opt.hardcore ~= true)   -- en circuito, la línea de carrera hace de copiloto
   S.lineArmed = true
   audio.clear()
@@ -542,6 +563,15 @@ local function flash(msg, secs, big)
 end
 
 function M.start(ev, st, info)
+  -- (22-nov: una prueba dejó el guiado por script activo y el volante se quedó sin force feedback) al empezar un tramo, la
+  -- IA del coche del jugador siempre apagada
+  pcall(function() require('earthRaid/dbg').aiOff() end)
+  -- (23-nov: la cámara libre de una prueba se quedaba activa y el tramo empezaba mirando desde otro sitio) al empezar, la
+  -- cámara siempre en el coche del jugador
+  pcall(function()
+    local cn = core_camera and core_camera.getActiveCamName and core_camera.getActiveCamName()
+    if cn == 'free' or cn == 'path' then commands.setGameCamera() end
+  end)
   -- otro tramo encima: el tráfico sigue fuera (se devolverá al acabar este)
   M.stop(true, true)
   -- lo del tramo anterior queda de repuesto: lo que coincida con este (ida y vuelta, salida en la meta) se reutiliza
@@ -600,7 +630,7 @@ function M.start(ev, st, info)
   -- la carretera tras la meta: ya si es un enlace del organizador; si no, al montar la meta (grafo cargado allí)
   local function findAfter()
     -- (otra vez al acercarse si el de antes era corto: el grafo de carreteras no estaba cargado allí)
-    if t.after and t.after.total >= dressing.STOP_AFTER_M + 40 then return end
+    if t.afterFixed or (t.after and t.after.total >= dressing.STOP_AFTER_M + 40) then return end
     local ap, how = afterPath(ev, cpath)
     local nt = ap and geo.track(ap)
     if nt and (not t.after or nt.total > t.after.total + 5) then
@@ -609,7 +639,18 @@ function M.start(ev, st, info)
       log('I', TAG, ('after the finish: %s, %.0f m, STOP at %.0f m'):format(how, t.after.total, t.stopAt))
     end
   end
-  findAfter()
+  -- (23-nov, el usuario) tramo posterior FIJO: el paquete puede traer st.afterPts (lat/lon, desde la meta hasta una calle
+  -- real); se usa tal cual y no se busca ni se recorta nada (meta en un río, STOP junto a la calle más próxima)
+  if type(st.afterPts) == 'table' and #st.afterPts >= 2 then
+    local nt = geo.track(st.afterPts)
+    if nt and nt.total >= 30 then
+      t.after, t._snapT, t.afterOff = nt, nil, nil
+      t.stopAt = math.max(30, nt.total - 3)   -- justo en el borde de la calle (23-nov)
+      t.afterFixed, t.finishCut, t.finishMoved, t.trimmed = true, true, 0, true
+      log('I', TAG, ('after the finish: fixed by the pack, %.0f m, STOP at %.0f m'):format(nt.total, t.stopAt))
+    end
+  end
+  if not t.afterFixed then findAfter() end
   local bp, bhow = beforePath(ev, cpath)
   -- norma de oro: salida y control horario en carretera (con el grafo cargado; si no, se repite en startLater)
   local cutM, removed = 0, nil
@@ -751,7 +792,7 @@ function M.start(ev, st, info)
   -- adelanta por el propio trazado para que el STOP quede en la calzada del tramo, a la distancia de frenada de la
   -- meta (norma 18-nov: nunca un control fuera de la calzada; Rey Silo dejaba el STOP en mitad del monte)
   local function pullFinishBack()
-    if t.after and t.after.total >= 60 then return end
+    if t.afterFixed or (t.after and t.after.total >= 60) then return end
     local want = math.min(dressing.STOP_AFTER_M, math.max(60, t.total * 0.12))
     if t.total - want < 500 then want = math.max(60, t.total - 500) end
     if want < 60 then return end
@@ -846,6 +887,40 @@ function M.start(ev, st, info)
     local okF, vF = pcall(checkFinish)
     if not okF then log('W', TAG, 'checkFinish: ' .. tostring(vF)) end
     if not t.finishCut then findAfter() end
+    -- (23-nov, el usuario: «la salida de la meta termina dentro de una casa») el STOP final del tramo posterior fijo cae en
+    -- zona libre: sin techo ni pared a menos de 3,5 m; si no, retrocede por el camino hasta el primer punto libre
+    pcall(function()
+      if not (t.afterFixed and t.after and t.stopAt) then return end
+      local a = api()
+      local function free(d)
+        local x, y = geo.at(t.after, d)
+        local la, lo = geo.toGeo(t.after, x, y)
+        local gx, gy = a.toGame(la, lo, 0)
+        if not gx then return nil end
+        local z = core_terrain.getTerrainHeight(vec3(gx, gy, 0))
+        if type(z) ~= 'number' or z < -10 then return nil end          -- terreno sin cargar: no se sabe
+        local dn = castRayStatic(vec3(gx, gy, z + 40), vec3(0, 0, -1), 80)
+        if type(dn) == 'number' and 40 - dn > z + 1.5 then return false end   -- techo o algo alto encima
+        for k = 0, 7 do
+          local an = k * math.pi / 4
+          local h = castRayStatic(vec3(gx, gy, z + 1.2), vec3(math.cos(an), math.sin(an), 0), 3.5)
+          if type(h) == 'number' and h < 3.4 then return false end
+        end
+        return true
+      end
+      local d0, d = t.stopAt, t.stopAt
+      while d >= 30 do
+        local f = free(d)
+        if f == nil then return end
+        if f then break end
+        d = d - 2
+      end
+      if d < 30 then d = 30 end
+      if d < d0 - 0.5 then
+        t.stopAt = d
+        log('W', TAG, ('after the finish: STOP moved %.0f m back to a free spot (house/roof at the end)'):format(d0 - d))
+      end
+    end)
     local okC, verdict = pcall(checkAfter)
     if (okC and verdict == 'unknown') or (okF and vF == 'unknown') then
       -- las carreteras tras la meta aún no están cargadas: la meta se monta cuando lo estén (si el coche no está ya
@@ -1008,7 +1083,20 @@ function M.refreshLine()
   end
   local a = api()
   local x, y, z = a.toGame(S.line.lat, S.line.lon, 0)
-  if x then startclock.setLine(vec3(x, y, z or 0)) end
+  if x then
+    -- (22-nov) con el sentido de la carretera en la salida: la cámara del reloj se coloca como la del juego
+    local fwd
+    pcall(function()
+      local ax, ay = geo.at(t, 0)
+      local bx, by = geo.at(t, 12)
+      local la, lo = geo.toGeo(t, ax, ay)
+      local lb, lb2 = geo.toGeo(t, bx, by)
+      local g1x, g1y = a.toGame(la, lo, 0)
+      local g2x, g2y = a.toGame(lb, lb2, 0)
+      if g1x and g2x then fwd = vec3(g2x - g1x, g2y - g1y, 0) end
+    end)
+    startclock.setLine(vec3(x, y, z or 0), fwd)
+  end
 end
 
 local function clearScreen()
@@ -1018,6 +1106,25 @@ local function clearScreen()
 end
 
 -- Cancelar: todo fuera ya
+-- (23-nov) al terminar o cancelar, el terreno vuelve a como estaba (se quita el camino generado, los bancos, la nieve): si el
+-- coche queda por debajo del suelo restaurado (o dentro de lo que se levantó) se sube a la superficie, sin tocar su giro
+local function safeCar()
+  pcall(function()
+    local veh = be:getPlayerVehicle(0)
+    if not veh then return end
+    local p = veh:getPosition()
+    local gz = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(p.x, p.y, 0))
+    if type(gz) ~= 'number' or gz < -10 then return end
+    local sf = be:getSurfaceHeightBelow(vec3(p.x, p.y, math.max(p.z, gz) + 3))
+    local top = math.max(gz, type(sf) == 'number' and sf or gz)
+    if p.z < top - 0.15 then
+      local q = quatFromDir(veh:getDirectionVector(), veh:getDirectionVectorUp())
+      veh:setPositionRotation(p.x, p.y, top + 0.6, q.x, q.y, q.z, q.w)
+      log('W', TAG, ('car was under the restored ground (%.2f < %.2f): lifted'):format(p.z, top))
+    end
+  end)
+end
+
 function M.stop(keepTraffic, recycle)
   if not recycle then guide.release() end
   if S then
@@ -1026,8 +1133,13 @@ function M.stop(keepTraffic, recycle)
     clearScreen()
     guihooks.trigger('EarthRaidHud', { phase = 'idle' })
     cleanupProps(keepTraffic, recycle)
+    safeCar()
+    pcall(function() core_jobsystem.create(function(job) job.sleep(1.2) safeCar() end, 1) end)
   elseif not recycle then
     props.flushSpare()
+    -- (23-nov, el usuario: «al terminar el rally sigue habiendo nieve»): sin tramo en curso (fin del rally, tramo ya
+    -- cerrado) la nieve tampoco se queda; solo se aplica mientras hay un tramo de nieve montado
+    winter.disable()
   end
 end
 
@@ -1239,7 +1351,7 @@ local function reground(dt)
   local lat, lon
   if a and a.position then lat, lon = a.position() end
   if lat then
-    local ok, n, trees = pcall(props.reground, lat, lon, M.REGROUND_M)
+    local ok, n, trees = pcall(props.reground, lat, lon, M.REGROUND_M, dressing.loading())
     if ok and trees and trees > 0 then startclock.ensure() end
     -- y nada en la calzada: lo que se colocó sin la carretera cargada se repasa al acercarse
     local okR, err = pcall(dressing.recheck, lat, lon)
@@ -1364,7 +1476,18 @@ function M.update(dtSim, dtReal)
   if S.opt.closures and S.closureTimer > M.CLOSURES_S and S.phase ~= 'toStop' and S.phase ~= 'done' then
     S.closureTimer = 0
     pcall(dressing.closures, S.track, S.along - 100, S.along + 2000)
+    pcall(dressing.pumpMedic)
   end
+  if S.phase == 'running' and not S.circuitMode and S.along then
+    pcall(guide.watch, S.track, S.along, dtReal or dtSim)
+  end
+  -- piloto de pruebas (dbg.pilot): solo si se ha cargado el modo de pruebas y está en marcha
+  do
+    local dg = package.loaded['earthRaid/dbg']
+    if dg and dg.tick then pcall(dg.tick, dtReal or dtSim) end
+  end
+  -- caminos generados donde el mapa no tiene camino (por delante del coche, en cualquier fase)
+  if not S.circuitMode then pcall(pathgen.update, S.track, S.along or 0, dtReal or dtSim) end
   local p = a.pose()
   if not p or p.camera then return end
   local t = S.track
@@ -1407,14 +1530,16 @@ function M.update(dtSim, dtReal)
       local left = S.startAt and (((S.startAt - (S.wall or 0) + 43200) % 86400) - 43200)
       S.phase, S.stagingLeft = 'staging', (left and left > M.COUNTDOWN_S + 1) and left or S.stagingInit or M.STAGING_S
       S.stagingInit = nil
+      -- una sola hora de salida para tarjeta, «Saltar reloj» y reloj de pista: startAt contra el reloj (calcado al juego)
+      S.startAt = ((S.wall or 0) + S.stagingLeft) % 86400
       guide.clear()
     end
   elseif S.phase == 'staging' then
     -- distancia del morro a la línea; pasado de ella no vale (hay que dar marcha atrás), como en el juego
-    S.distM = nose
     S.overLine = nose < -M.STAGED_OVER_M
+    S.distM = S.overLine and nose or math.max(0, nose)   -- pasado de la línea: negativo (BACK)
     S.staged = not S.overLine and nose <= M.STAGED_MAX_M and lat0 < 6 and speed < M.STOP_MS
-    S.stagingLeft = S.stagingLeft - dtSim
+    S.stagingLeft = S.startAt and (((S.startAt - (S.wall or 0) + 43200) % 86400) - 43200) or (S.stagingLeft - dtSim)
     if S.staged and S.opt.voice then
       if not S.saidWarn[30] and S.stagingLeft <= 30 then S.saidWarn[30] = true audio.say({ 'system_warningSeconds30' }) end
       if not S.saidWarn[15] and S.stagingLeft <= 15 then S.saidWarn[15] = true audio.say({ 'system_warningSeconds15' }) end
@@ -1423,7 +1548,7 @@ function M.update(dtSim, dtReal)
       S.phase, S.countdown, S.noseAtArm, S.saidCount = 'countdown', M.COUNTDOWN_S, nose, {}
       -- la ruta del GPS y la línea verde se arman ya, en la cuenta atrás: el planificador tarda en tenerlas y a la salida
       -- (GO) la línea verde no estaba (20-nov)
-      guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+      guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''), S.notes)
       guide.racingLine(S.opt.racingLine)
       S.lineArmed = true
       audio.clear()
@@ -1431,9 +1556,11 @@ function M.update(dtSim, dtReal)
       -- su propia cuenta atrás, que sonaba a destiempo y se cortaba al llegar la de verdad (19-nov)
       local preLen = audio.length('system_precountdown')
       if S.opt.voice and preLen and preLen <= M.PRECOUNT_MAX_S then audio.say({ 'system_precountdown' }) end
-    elseif S.stagingLeft <= 0 then
-      -- sin colocar a la hora: el minuto de espera vuelve a empezar (el juego no penaliza aquí: solo llegar tarde al control)
-      S.stagingLeft, S.saidWarn = M.STAGING_S, {}
+    elseif S.stagingLeft <= M.COUNTDOWN_S then
+      -- sin colocar a -10 s (rallyLoopManager:rescheduleNextSSStart + rallySuperCountdown): el juego pasa la salida a la
+      -- siguiente franja de 1 minuto = hora de salida + 60 s, sin penalizar (24-nov, el usuario: "el reloj se reiniciaba en 60 s")
+      S.startAt = ((S.startAt or ((S.wall or 0) + S.stagingLeft)) + M.RESCHEDULE_S) % 86400
+      S.stagingLeft, S.saidWarn = S.stagingLeft + M.RESCHEDULE_S, {}
       if S.opt.voice then audio.say({ 'system_warningSeconds30' }) end
     elseif math.sqrt((x - sx) ^ 2 + (y - sy) ^ 2) > M.NEAR_M * 3 then
       S.phase = 'approach'
@@ -1459,7 +1586,7 @@ function M.update(dtSim, dtReal)
         audio.say({ 'system_countdowngo' }, true)
       end
       if not S.lineArmed then
-        guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''))
+        guide.along(t, (S.eventName or '') .. ' - ' .. (S.title or ''), S.notes)
         guide.racingLine(S.opt.racingLine)
       end
       if not S.circuitMode then M.callNotes(0, true) end
@@ -1516,7 +1643,17 @@ function M.update(dtSim, dtReal)
       if not S.circuitMode then guide.liaison(S.opt.hardcore == true) end
       local a2 = not S.circuitMode and api() or nil
       local slat, slon = M.stopPoint(t)
-      if a2 and a2.gpsSet then pcall(a2.gpsSet, slat, slon, 'STOP') end
+      if a2 then
+        -- línea propia hasta el STOP (el GPS de Earth, sin carretera tras la meta, daba vueltas)
+        local gp, sa = {}, dressing.stopAt(t)
+        for f = 8, sa, 8 do
+          local la, lo = dressing.lineAt(t, t.total, f)
+          if la then gp[#gp + 1] = { la, lo } end
+        end
+        if slat then gp[#gp + 1] = { slat, slon } end
+        local okL, doneL = pcall(guide.toStop, gp)
+        if not (okL and doneL) and a2.gpsSet then pcall(a2.gpsSet, slat, slon, 'STOP') end
+      end
       log('I', TAG, ('stage %s finished: %.1f s + %d s'):format(S.stageId, S.time, S.penalty))
       -- circuito: bandera y resultado, sin control STOP
       if S.circuitMode then
@@ -1526,6 +1663,7 @@ function M.update(dtSim, dtReal)
       end
     end
   elseif S.phase == 'toStop' then
+    pcall(guide.watchStop, dtReal or dtSim)
     local past = pastFinish(t, p.lat, p.lon)
     local stopAt = dressing.stopAt(t)
     S.distM = math.max(0, stopAt - past)
@@ -1572,6 +1710,7 @@ function M.skipWait()
   end
   if S and S.phase == 'staging' and S.staged then
     S.stagingLeft = math.min(S.stagingLeft, M.COUNTDOWN_S)
+    S.startAt = ((S.wall or 0) + S.stagingLeft) % 86400
     return true
   end
   -- en el resultado: aceptar (se cierra y se retira el montaje del tramo)

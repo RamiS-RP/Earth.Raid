@@ -44,6 +44,8 @@ M.SHAPES = {
   specGridA = A .. 's_spectator_grid_a_2m.dae', specGridB = A .. 's_spectator_grid_b_2m.dae',
   specTapeBigA = A .. 's_spectator_tape_big_a.dae', specTapeBigB = A .. 's_spectator_tape_big_b.dae', specTapeBigCenter = A .. 's_spectator_tape_big_center.dae', specTarpAngle = A .. 's_spectator_tarp_angle.dae', cornerMarker = A .. 's_corner_marker.dae',
   danger = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_other_danger.dae',
+  bendL = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_bend_l.dae',
+  bendR = '/art/shapes/garage_and_dealership/Clutter/italy_traf_sign_warn_bend_r.dae',
   -- el box del parque de asistencia
   bigToolbox = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_01.dae',
   bigToolbox2 = '/art/shapes/garage_and_dealership/garage/s_big_toolbox_02.dae',
@@ -430,15 +432,20 @@ end
 
 -- Recoloca en altura lo que está a menos de radiusM de (lat, lon): lo que se puso sin terreno cargado y lo que ha
 -- quedado por encima o por debajo del suelo (el terreno de BeamNG.Earth se afina al acercarse)
-function M.reground(lat, lon, radiusM)
+-- NORMA (22-nov): nada se mueve a la vista. A menos de M.NEAR_FREEZE_M del jugador solo se corrige lo que nunca tuvo suelo
+-- o ha quedado a más de 1 m de él (flotando o enterrado se ve peor); `free` = pantalla de carga, se corrige todo.
+M.NEAR_FREEZE_M = 130
+function M.reground(lat, lon, radiusM, free)
   local k = math.cos(math.rad(lat))
   local n, trees = 0, 0
   for _, it in ipairs(items) do
     local dx = (it.lon - lon) * 111195 * k
     local dy = (it.lat - lat) * 111195
-    if (it.obj or it.line) and dx * dx + dy * dy < radiusM * radiusM then
+    local d2 = dx * dx + dy * dy
+    if (it.obj or it.line) and d2 < radiusM * radiusM then
       local _, _, z, ok = M.ground(it.lat, it.lon)
-      if ok and (it.pending or math.abs((it.z or 0) - z) > 0.25) then
+      local tol = (free or d2 > M.NEAR_FREEZE_M * M.NEAR_FREEZE_M) and 0.25 or 1.0
+      if ok and (it.pending or math.abs((it.z or 0) - z) > tol) then
         pcall(apply, it)
         n = n + 1
         if it.kind == 'tree' then trees = trees + 1 end

@@ -43,8 +43,11 @@ local function baseSchedule()
 end
 
 local function prox(distM, isStart)
-  local d = math.max(0, distM or 0)
-  return { isNear = d < 15, distance = d, distanceToPlane = d, isStopped = speedNow() < 0.5, isFrozen = false,
+  -- (24-nov, autorizado por el usuario) como el juego: en la línea de salida la distancia lleva signo y negativa = pasado
+  -- de la línea (la interfaz del juego pone entonces BACK); en el resto de controles no baja de 0
+  local d = distM or 0
+  if not isStart then d = math.max(0, d) end
+  return { isNear = d >= 0 and d < 15, distance = d, distanceToPlane = d, isStopped = speedNow() < 0.5, isFrozen = false,
     usingGroundMarkerDistance = false, isStartLine = isStart or false, isOverLineAllowed = false }
 end
 
@@ -75,7 +78,9 @@ local function fromStage(S, R, api)
   local sc = baseSchedule()
   sc.totalSSCount = laps or S.stageCount
   d.countdownData = { countdown = nil, state = nil }
-  local now = (R and R.clock) or nowSecs()
+  -- (23-nov: la caja de Stage, el reloj LED de la salida y «Saltar reloj» deben leer el MISMO reloj: S.wall, el que
+  -- también se le da al LED; antes la caja leía la hora del mapa redondeada y se desfasaba hasta 1 s)
+  local now = (R and R.clock) or S.wall or nowSecs()
   local canSkip = false
   local ph = S.phase
   if ph == 'approach' or ph == 'hold' or ph == 'tc' then
@@ -114,7 +119,10 @@ local function fromStage(S, R, api)
       d.activeState = 'countdown'
       d.countdownData = { countdown = math.max(0, math.ceil(S.countdown or 0)), state = 'countdown_running' }
     else
-      d.activeState = 'vehicleProximity'
+      -- (22-nov, el usuario: "se ve el cuadro de Stage cuando no debe"): el juego (rallyLoop.getUiStreamData) pasa el estado a
+      -- 'inactive' en la cuenta atrás con el reloj 3D: la tarjeta STAGED/«Start in» desaparece y en su sitio abre la
+      -- ventana de cámara del reloj. Con 'vehicleProximity' la tarjeta seguía debajo de la ventana.
+      d.activeState = 'inactive'
     end
     sc.label, sc.eventType, sc.ssLabel = 'SS' .. n, 'ss_start', 'SS' .. n
     d.vehicleProximity = prox(0, true)

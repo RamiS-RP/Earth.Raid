@@ -1,3 +1,4 @@
+-- ███ BLOQUEADO (23-nov, orden del usuario): funciona y está aprobado. NO modificar sin su permiso expreso. Ver LOCKED.md ███
 -- Raid.Earth: la carga al iniciar un tramo o un rally (como la pantalla de carga del juego).
 -- Al darle a Iniciar: el coche se congela, se lleva a la zona de salida, se espera a que BeamNG.Earth cargue el mundo
 -- y las carreteras de allí, se monta lo de esa zona (TC, salida, box) y se coloca todo; solo entonces se suelta el coche
@@ -99,6 +100,7 @@ function M.begin(spec)
   local covered = shownAt ~= nil and (os.clock() - shownAt) >= M.COVER_S
   L = spec
   L.step, L.t, L.frac = 'cover', covered and M.COVER_S or 0, 0
+  L.startAt = os.clock()
   freeze(true)
   send()
   log('I', TAG, 'loading: ' .. tostring(spec.title))
@@ -160,6 +162,11 @@ local function nextStep(s)
       note(('Objetos: se han colocado %d'):format(props.count()), ('Objects: %d placed'):format(props.count()))
     elseif L.step == 'place' then note('Coche: en la calzada, antes del control', 'Car: on the road, before the control') end
   end)
+  -- (22-nov) tiempos reales de cada paso, en el registro: ahí se ve qué tarda al cargar o reiniciar
+  local nowC = os.clock()
+  L.times = L.times or {}
+  L.times[#L.times + 1] = ('%s %.1fs'):format(L.step, nowC - (L.stepAt or L.startAt or nowC))
+  L.stepAt = nowC
   L.step, L.t, L.frac = s, 0, 0
   send()
 end
@@ -173,7 +180,9 @@ local function finish(why)
     -- la cámara detrás del coche, mirando la carretera (tras el teletransporte se queda donde estaba)
     pcall(function() if core_camera and core_camera.resetCamera then core_camera.resetCamera(0) end end)
   end
-  log('I', TAG, 'loading finished' .. (why and (' (' .. why .. ')') or ''))
+  local nowC = os.clock()
+  local times = (L.times and table.concat(L.times, ', ') or '') .. (L.step and (', ' .. L.step .. ' ' .. ('%.1fs'):format(nowC - (L.stepAt or nowC))) or '')
+  log('I', TAG, 'loading finished' .. (why and (' (' .. why .. ')') or '') .. ' [' .. times .. '; total ' .. ('%.1f'):format(nowC - (L.startAt or nowC)) .. 's]')
   L = nil
   -- primero la pantalla de inicio y después se quita la de carga: sin hueco en el que el coche se pueda mover
   if done then pcall(done) end
@@ -214,7 +223,7 @@ function M.update(dt)
     -- el aviso del teletransporte y el mundo listo (BeamNG.Earth deja el coche en el suelo con algo de retraso)
     if L.teleported then L.tpT = (L.tpT or 0) + dt end
     L.frac = math.min(0.95, L.t / 12)
-    if L.teleported and L.tpT > 2 and a.ready and a.ready() then nextStep('roads')
+    if L.teleported and L.tpT > (L.fast and 0.7 or 2) and a.ready and a.ready() then nextStep('roads')
     elseif L.t > M.TIMEOUT.tp then nextStep('roads') end
   elseif L.step == 'roads' then
     local okN, total = 0, #(L.near or {})
@@ -278,8 +287,9 @@ function M.update(dt)
     end
   elseif L.step == 'settle' then
     -- un momento para que el coche se asiente y la colisión de los objetos se rehaga; y la comprobación de suelo firme
-    L.frac = math.min(1, L.t / M.TIMEOUT.settle)
-    if L.t < M.TIMEOUT.settle then return end
+    local settleS = L.fast and 1.2 or M.TIMEOUT.settle   -- reinicio: el mundo ya estaba cargado
+    L.frac = math.min(1, L.t / settleS)
+    if L.t < settleS then return end
     local okS, why = standing()
     L.okT = okS and ((L.okT or 0) + (dt or 0)) or 0
     if L.okT >= 0.6 then finish() return end

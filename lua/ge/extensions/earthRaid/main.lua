@@ -226,6 +226,14 @@ local function importOne(src, force)
     info.status, info.error = 'error', tostring(okB and entry or ev)
     return info
   end
+  -- (23-nov) ajustes a mano por tramo (event.json: stageOverrides = { [idTramo] = { afterPts = {{lat,lon}, ...} } }); no se
+  -- pierden al reimportar el KML
+  if type(info.meta.stageOverrides) == 'table' then
+    for _, st in ipairs(ev.stages or {}) do
+      local ov = info.meta.stageOverrides[st.id]
+      if type(ov) == 'table' then for k, v in pairs(ov) do st[k] = v end end
+    end
+  end
   -- lo que no dice el jugador, deducido del archivo
   local guess = importer.guessMeta(ev, entry)
   entry.short = entry.short or guess.short
@@ -1151,7 +1159,7 @@ function M.uiPlay(eventId, stageId, reverse, force)
   local noPre = S.noPre == true      -- reinicio: sin la pantalla de inicio (se mira ahora: done llega mucho después)
   stage.holdJobs(true)
   local ok, err = loader.begin({
-    title = s.title, event = full.name, lang = es and 'es' or 'en', keepFrozen = not noPre,
+    title = s.title, event = full.name, lang = es and 'es' or 'en', keepFrozen = not noPre, fast = noPre,
     fail = function(e)
       stage.holdJobs(false)
       M.toast((es and 'No se puede viajar ahora: ' or 'Cannot travel now: ') .. tostring(e), 6)
@@ -1190,6 +1198,10 @@ function M.uiPlay(eventId, stageId, reverse, force)
         end
       end
       local atLat, atLon = dressing.lineAt(tt, 0, -(dressing.tcAt(tt) + M.TP_BEFORE_TC_M))
+      -- (22-nov, el usuario: "aparezco mirando a la calle cortada; hay que aparecer en una zona de fácil acceso"): por una
+      -- calle abierta que llegue al TC, no por una cortada ni 100 m en línea recta
+      local ol, oo = M.spawnBackFromTc(cur)
+      if ol then atLat, atLon = ol, oo end
       if not M.placeOnRoad(cur.tcLat, cur.tcLon, atLat, atLon) then
         -- sin carretera del juego por ahí: en la calzada del control (que siempre está en carretera), unos metros
         -- antes, mirando al control
@@ -1533,6 +1545,95 @@ function M.fallGuard(dt)
   end
 end
 
+-- Dónde se suelta el coche al reiniciar/ir a un TC (22-nov, el usuario: "aparezco mirando a la calle de atrás, hacia la
+-- ambulancia y la calle cortada; por ahí no puedo pasar"): desde el nodo de carretera del TC se camina hacia ATRÁS (lejos de la
+-- salida) por la red, sin tomar nunca una calle cortada por nosotros (cinta, ambulancia), hasta M.SPAWN_BACK_M metros, y ahí se
+-- pone el coche mirando al TC. Devuelve lat, lon, o nil (se usa el punto de siempre). MARK:spawn-open-v1
+M.SPAWN_BACK_M = 90
+function M.spawnBackFromTc(st)
+  local ok, la, lo = pcall(function()
+    local a = api()
+    local m = map.getMap()
+    if not (a and st and st.tcLat and st.track and m and m.nodes) then return nil end
+    local tx, ty = a.toGame(st.tcLat, st.tcLon, 0)
+    local t = st.track
+    local sla, slo = geo.toGeo(t, t.pts[1][1], t.pts[1][2])
+    local sx, sy = a.toGame(sla, slo, 0)
+    local fx, fy = sx - tx, sy - ty
+    local fl = math.sqrt(fx * fx + fy * fy)
+    if fl < 5 then return nil end
+    fx, fy = fx / fl, fy / fl
+    local cur, bd = nil, 1e9
+    for name, n in pairs(m.nodes) do
+      local d = (n.pos.x - tx) ^ 2 + (n.pos.y - ty) ^ 2
+      if d < bd then cur, bd = name, d end
+    end
+    if not cur or bd > 40 * 40 then return nil end
+    -- NORMA (22-nov, el usuario: "he vuelto a salir mirando para la dirección contraria"): el sitio de aparición no puede
+    -- depender de si los cortes ya estaban montados: antes de elegir calle se montan los cortes y el puesto médico de la zona
+    pcall(dressing.closures, t, -300, 400)
+    pcall(dressing.pumpMedic)
+    local tapes = {}
+    for _, it in ipairs(props.all()) do
+      if it.closure and it.lat and (it.kind == 'tape' or it.kind == 'tape6' or it.kind == 'tape10' or it.kind == 'ambulance') then
+        local gx, gy = a.toGame(it.lat, it.lon, 0)
+        if gx then tapes[#tapes + 1] = { gx, gy } end
+      end
+    end
+    local function closed(ax, ay, bx, by)
+      local l = math.sqrt((bx - ax) ^ 2 + (by - ay) ^ 2)
+      for d = 4, math.min(l, 24), 4 do
+        local px, py = ax + (bx - ax) * d / l, ay + (by - ay) * d / l
+        for _, c in ipairs(tapes) do
+          if (c[1] - px) ^ 2 + (c[2] - py) ^ 2 < 6 * 6 then return true end
+        end
+      end
+      return false
+    end
+    local prev, walked = nil, 0
+    local px, py = m.nodes[cur].pos.x, m.nodes[cur].pos.y
+    local lx, ly = px, py
+    local lastDx, lastDy = -fx, -fy
+    for _ = 1, 40 do
+      local c = m.nodes[cur]
+      local best, bs = nil, -2
+      local cands = {}
+      for nb in pairs(props.neighbors(cur)) do
+        local n = m.nodes[nb]
+        if n and nb ~= prev then
+          local dx, dy = n.pos.x - c.pos.x, n.pos.y - c.pos.y
+          local l = math.sqrt(dx * dx + dy * dy)
+          -- hacia atrás: nunca hacia la salida
+          if l > 0.5 and (dx / l) * fx + (dy / l) * fy < 0.3 then cands[#cands + 1] = { name = nb, dx = dx / l, dy = dy / l, l = l, n = n } end
+        end
+      end
+      -- en un cruce (2 o más salidas hacia atrás) se descarta la calle cortada; entre las abiertas, la más recta
+      for _, cd in ipairs(cands) do
+        if #cands < 2 or not closed(c.pos.x, c.pos.y, cd.n.pos.x, cd.n.pos.y) then
+          local sc = cd.dx * lastDx + cd.dy * lastDy
+          if sc > bs then best, bs = cd, sc end
+        end
+      end
+      if not best then break end
+      if walked + best.l >= M.SPAWN_BACK_M then
+        local u = M.SPAWN_BACK_M - walked
+        lx, ly = c.pos.x + best.dx * u, c.pos.y + best.dy * u
+        walked = M.SPAWN_BACK_M
+        break
+      end
+      walked = walked + best.l
+      prev, cur = cur, best.name
+      lx, ly = m.nodes[cur].pos.x, m.nodes[cur].pos.y
+      lastDx, lastDy = best.dx, best.dy
+    end
+    if walked < 15 then return nil end
+    local rl, ro = a.toGeo(lx, ly, 0)
+    return rl, ro
+  end)
+  if ok and la then return la, lo end
+  return nil
+end
+
 function M.placeOnRoad(lat, lon, atLat, atLon)
   local a, v = api(), be:getPlayerVehicle(0)
   if not (a and v) then return false end
@@ -1616,6 +1717,9 @@ local function afterTeleport(dt)
         local t = st.track
         local need = dressing.tcAt(t) + M.TP_BEFORE_TC_M
         atLat, atLon = dressing.lineAt(t, 0, -need)
+        -- mejor por una calle abierta que llega al TC, cerca de él (si se puede), y no 100 m por una cortada
+        local ol, oo = M.spawnBackFromTc(st)
+        if ol then atLat, atLon = ol, oo end
         if st.tcLat then tp.lat, tp.lon = st.tcLat, st.tcLon end
       end
       if atLat and not tp.atDone then
@@ -1697,8 +1801,26 @@ local function hardcoreTick()
 end
 function M.hardcoreActive() return hcOn end
 
+-- (24-nov, el usuario) Carga rápida: durante la pantalla de carga se activa «Full priority loading» de BeamNG.Earth (el mundo
+-- se construye con todos los recursos) y al acabar se deja como lo tenía el jugador.
+local prio = { was = nil }
+local function loadPriority(on)
+  local es = rawget(_G, 'beamngEarth_settings')
+  if not (es and es.get and es.set) then return end
+  if on and prio.was == nil then
+    local ok, cur = pcall(es.get, 'teleportPriority')
+    if not ok then return end
+    prio.was = cur == true
+    if not prio.was then pcall(es.set, 'teleportPriority', true) end
+  elseif not on and prio.was ~= nil then
+    if not prio.was then pcall(es.set, 'teleportPriority', false) end
+    prio.was = nil
+  end
+end
+
 function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
+  loadPriority(loader.active())
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
   pcall(M.fallGuard, dtReal)

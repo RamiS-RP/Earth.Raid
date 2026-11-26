@@ -77,7 +77,10 @@ end
 
 -- Los ajustes vigentes. El HUD de rally es siempre el del juego (no es un ajuste: vanilla no lo tiene). El modo hardcore
 -- (la voz del copiloto y nada más) apaga por encima las ayudas sin tocar lo guardado.
-M.HARDCORE_OFF = { visualNotes = false, racingLine = false, arrows = false, cautions = false }
+-- (22-nov, el usuario: "sin GPS es imposible orientarse en hardcore"): las flechas, los carteles de curva/peligro, las vallas
+-- y los cortes son objetos físicos del rally real, no ayudas de pantalla: en hardcore se quedan. Solo se quitan las ayudas
+-- (notas en pantalla y línea de carrera)
+M.HARDCORE_OFF = { visualNotes = false, racingLine = false }
 function M.get()
   local sig = nativeSig()
   if eff and sig == effSig then return eff end

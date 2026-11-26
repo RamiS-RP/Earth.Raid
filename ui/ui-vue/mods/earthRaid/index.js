@@ -85,7 +85,11 @@ const LOAD_ID = "earthRaid-loadscreen"
 let loadApp = null
 async function mountLoadScreen() {
   try {
-    if (loadApp || document.getElementById(LOAD_ID)) return
+    if (loadApp) return
+    // (23-nov) una capa que quedó de una carga anterior de la mod (recarga de la interfaz) sin su aplicación: vacía, sin
+    // pantalla de carga; se quita y se monta de nuevo
+    const old = document.getElementById(LOAD_ID)
+    if (old) old.remove()
     const LoadScreen = (await import("./LoadScreen.vue")).default
     const el = document.createElement("div")
     el.id = LOAD_ID
@@ -131,16 +135,35 @@ function clickLike(el) {
     el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }))
   }
 }
+// ¿la pestaña ya es la activa? (la propia o alguno de sus padres cercanos con aria-selected / clase de activa)
+function tabSelected(el) {
+  let t = el
+  const names = ["active", "selected", "is-active", "is-selected", "current"]
+  for (let i = 0; i < 3 && t; i++, t = t.parentElement) {
+    if (t.getAttribute && t.getAttribute("aria-selected") === "true") return true
+    if (t.classList && names.some(n => t.classList.contains(n))) return true
+  }
+  return false
+}
+// (23-nov, el usuario: «al darle a Escape quiero que sea la pestaña de Raid.Earth la activa, no la de conducción libre»)
+// el menú se monta por partes y a veces vuelve a la pestaña de inicio después del primer clic: se insiste cada ~0,5 s hasta
+// 6 s mientras la pestaña no esté activa (antes: un solo intento + otro a los 0,7 s)
+let pauseTry = 0
+function ensureTab() {
+  const t = findPauseTab()
+  if (!t) return
+  if (!tabSelected(t)) clickLike(t)
+  if (++pauseTry < 12) setTimeout(ensureTab, 500)
+}
 async function checkPause() {
   const tab = findPauseTab()
-  if (!tab) { pauseSeen = false; return }
+  if (!tab) { pauseSeen = false; pauseTry = 0; return }
   if (pauseSeen) return
   pauseSeen = true
   try {
     if (await lua.earthRaid_main.uiIsActive()) {
-      clickLike(tab)
-      // otra vez un momento después (el menú aún se está montando y a veces se come el primer clic)
-      setTimeout(() => { const t2 = findPauseTab(); if (t2) clickLike(t2) }, 700)
+      pauseTry = 0
+      ensureTab()
     }
   } catch (e) { /* none */ }
 }
