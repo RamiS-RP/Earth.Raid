@@ -1513,6 +1513,31 @@ function M.placeAt(lat, lon, faceLat, faceLon)
   local x, y = a.toGame(lat, lon, 0)
   local fx, fy = a.toGame(faceLat or lat, faceLon or lon, 0)
   local cp = v:getPosition()
+  -- (26-nov) en una zona con parches de BeamNG.Earth (el suelo por encima del terreno), si el parche de este punto aún no
+  -- ha llegado se espera: soltar el coche en el terreno de debajo lo dejaba cayendo (parque de Sierra Morena)
+  do
+    local th = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
+    local okG, g = pcall(props.trueGround, x, y)
+    -- el parche ya se ve pero su colisión aún no está (BeamNG.Earth la rehace después): el coche lo atravesaba
+    if type(th) == 'number' and okG and g and g > th + 1.0 then
+      local okR, d = pcall(castRayStatic, vec3(x, y, g + 5), vec3(0, 0, -1), 12)
+      if not (okR and type(d) == 'number' and d < 7) then
+        log('W', TAG, 'placeAt: the ground patch has no collision yet')
+        return false
+      end
+    end
+    if type(th) == 'number' and okG and (not g or g <= th + 1.0) then
+      for k = 0, 7 do
+        local ang = k * math.pi / 4
+        local okN, gn = pcall(props.trueGround, x + 45 * math.cos(ang), y + 45 * math.sin(ang))
+        local tn = core_terrain.getTerrainHeight(vec3(x + 45 * math.cos(ang), y + 45 * math.sin(ang), 0))
+        if okN and gn and type(tn) == 'number' and gn > tn + 1.0 then
+          log('W', TAG, 'placeAt: the ground patch here has not arrived yet')
+          return false
+        end
+      end
+    end
+  end
   local z = M.groundZ(x, y, cp.z, M.GROUND_TOL_M + 0.35 * math.sqrt((x - cp.x) ^ 2 + (y - cp.y) ^ 2))
   if not z then
     log('W', TAG, 'placeAt: no reliable ground yet')
