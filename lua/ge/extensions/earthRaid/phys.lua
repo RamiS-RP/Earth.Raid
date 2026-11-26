@@ -20,8 +20,10 @@ M.SPAWN_EVERY_S = 0.45        -- uno cada tanto: crear un vehículo cuesta de 10
 M.SCAN_EVERY_S = 0.25         -- la búsqueda del más cercano, no en cada fotograma
 -- con física solo lo que el coche puede tocar de verdad: conos en la calzada, cintas, lo del puesto de control y la
 -- meta (zona lenta) y la ambulancia; el resto de carteles del tramo queda estático (18-nov, rendimiento)
-M.PHYS_KINDS = { cone = true, coneS = true, coneY = true, tapeY = true, markY = true, tape = true, tape6 = true, tape10 = true, ambulance = true, start = true, finish = true,
-  stop = true, tc = true, tcEntry = true, finishEntry = true, endArea = true, rallyCar = true }
+-- (26-nov, el usuario: conos y carteles daban saltos en la meta; «como en el rally del juego», donde son TSStatic
+-- quietos) con física solo lo que no tiene modelo estático: ambulancia, coches de los boxes y las marcas amarillas.
+-- Antes también conos, cintas y carteles de control/salida/meta. MARK:phys-static-v1
+M.PHYS_KINDS = { tapeY = true, markY = true, ambulance = true, rallyCar = true }
 M.enabled = true
 
 -- MARK:phys-pool-v1 (20-nov) Rendimiento. Crear un vehículo es lo único caro del mod (100-800 ms: un tirón), así que:
@@ -41,11 +43,11 @@ M.LEVELS = {
 -- 1,5 s.) Durante el tramo cronometrado NO se crea nada: solo se reutilizan los de la reserva, que se llena antes (en
 -- el control horario, en la línea de salida y en la carga), incluidas la ambulancia y las cintas de los cortes.
 M.quiet = false               -- lo pone stage.lua en la cuenta atrás y en el tramo: ni crear ni hacer repuestos
-M.ALWAYS_WARM = { 'tape6', 'tape', 'tape10' }   -- cintas de corte: se montan por el camino, no están en la lista al empezar
+M.ALWAYS_WARM = {}   -- (26-nov) las cintas ya son estáticas; antes { 'tape6', 'tape', 'tape10' }   -- cintas de corte: se montan por el camino, no están en la lista al empezar
 -- «auto»: según la calidad elegida en BeamNG.Earth (él ya mira el equipo la primera vez)
 M.AUTO = { low = 'low', medium = 'low', high = 'medium', ultra = 'high', extreme = 'high' }
 M.POOL_MAX = 24               -- desactivados en reserva, como mucho
-M.PREWARM_PER = { cones = 6, rallysigns = 2, rallytape = 2, simple_traffic = 3 }   -- repuestos por configuración (solo estos modelos)
+M.PREWARM_PER = { simple_traffic = 3 }   -- (26-nov) conos, carteles y cintas ya no tienen física   -- repuestos por configuración (solo estos modelos)
 local levelT, levelName = -1, 'medium'
 function M.levelName()
   local now = os.clock()

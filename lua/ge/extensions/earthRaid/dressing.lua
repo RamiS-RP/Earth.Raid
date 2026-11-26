@@ -1016,7 +1016,12 @@ function M.endKit(t, endAlong, out, hw, D, role)
   -- 3,5 m, que las dejaba contra las fachadas)
   for _, sg in ipairs({ 1, -1 }) do
     local side = out * sg * (hw + M.END_FENCE_SIDE_M)
-    fenceRow(t, endAlong, side, out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M)
+    -- (26-nov, el usuario: «vallas alineadas, un extremo junto al otro, siguiendo la curva de cruces y aceras, sin cortar
+    -- el paso ni cruzarse con objetos o edificios»): por el BORDE REAL de la calzada, como las barreras de las curvas; en
+    -- la boca de una calle, hueco. Sin grafo cargado, la fila de antes a partir del eje.
+    local a1, a2 = endAlong + math.min(out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M), endAlong + math.max(out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M)
+    local okE, done = pcall(M.edgeAdFences, t, a1, a2, side > 0 and 1 or -1, M.END_FENCE_SIDE_M)
+    if not (okE and done) then fenceRow(t, endAlong, side, out * -M.END_FENCE_IN_M, out * M.END_FENCE_OUT_M) end
     local tside = out * sg * (hw + M.END_FENCE_SIDE_M + 2.5)
     local from = tside > 0 and tside - 2.5 or tside + 2.5
     for i = 0, 5 do
@@ -1353,6 +1358,54 @@ local function edgeFences(t, from, to, sideSign)
   return true
 end
 M.edgeFences = edgeFences
+
+-- Vallas publicitarias de salida/meta por el borde real (26-nov, MARK:ad-fences-edge-v1): piezas de FENCE_PITCH_M
+-- encadenadas extremo con extremo a `pad` m del borde; una pieza que pisaría calzada, un edificio u otro objeto se omite
+-- (nunca se desplaza) y la cadena sigue 1 m más allá. Devuelve false si el grafo no está (se usa la fila de siempre).
+M.AD_FENCE_CLEAR_M = 1.1
+function M.edgeAdFences(t, from, to, sideSign, pad)
+  if M.dry then return false end
+  local runs = realEdge(t, from, to, sideSign)
+  if not runs or #runs == 0 then return false end
+  local a = api()
+  local others = {}
+  for _, it in ipairs(props.all()) do
+    if it.lat and not tostring(it.kind):find('^fence') and not tostring(it.kind):find('^snd') and it.kind ~= 'line' then
+      local x, y = a.toGame(it.lat, it.lon, 0)
+      if x then others[#others + 1] = { x, y } end
+    end
+  end
+  local function blocked(x, y)
+    if onRoadG(x, y, 0.3) then return true end
+    for _, o in ipairs(others) do
+      if (o[1] - x) ^ 2 + (o[2] - y) ^ 2 < M.AD_FENCE_CLEAR_M ^ 2 then return true end
+    end
+    -- un edificio o un muro: algo sólido por encima del suelo
+    local g = props.trueGround and props.trueGround(x, y) or nil
+    if g then
+      local okR, d = pcall(castRayStatic, vec3(x, y, g + 25), vec3(0, 0, -1), 30)
+      if okR and type(d) == 'number' and d < 24.2 then return true end
+    end
+    return false
+  end
+  local n, yaw = 0, sideSign > 0 and 0 or 180
+  local half = M.FENCE_PITCH_M / 2
+  for _, run in ipairs(runs) do
+    if #run >= 2 then
+      chordChain(offsetRun(run, pad), M.FENCE_PITCH_M, function(cx, cy, dx, dy)
+        if blocked(cx, cy) or blocked(cx + dx * half, cy + dy * half) or blocked(cx - dx * half, cy - dy * half) then
+          M.skipped = M.skipped + 1
+          return 'skip'
+        end
+        local la, lo = a.toGeo(cx, cy, 0)
+        if not la then return 'skip' end
+        local it = props.add(M.FENCE_KINDS[n % #M.FENCE_KINDS + 1], la, lo, dx, dy, yaw, { row = true, noPush = true })
+        if it then it.roadOk = true n = n + 1 end
+      end)
+    end
+  end
+  return n > 0
+end
 function M.barriers(t, notes)
   local prevEnd = 0
   for _, nt in ipairs(notes) do

@@ -1518,6 +1518,7 @@ function M.update(dtSim, dtReal)
   local nose = (S.phase == 'staging' or S.phase == 'countdown' or S.phase == 'approach') and noseToLine(t, ahead) or 0
 
   if S.phase == 'hold' then
+    if S.tcX then S.distM = math.sqrt((x - S.tcX) ^ 2 + (y - S.tcY) ^ 2) end   -- (26-nov) para el HUD
     return
   elseif S.phase == 'grid' then
     S.distM = 0

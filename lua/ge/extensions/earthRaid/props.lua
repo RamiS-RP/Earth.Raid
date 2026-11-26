@@ -273,17 +273,17 @@ local function create(kind, opts)
     -- Colisión (17-nov): solo lo sólido (vallas, colchones, mesas, cajas de herramientas...) choca, con su propia
     -- malla de colisión. Carteles, conos y cintas no: son papel en un palo o plástico, y cerca del coche se cambian
     -- por su versión con física (phys.lua), que se cae o se rompe al tocarla.
-    if (opts and opts.noCollision) or not M.isSolid(kind) then o:setField('collisionType', 0, 'None')
-    else
-      if M.HARD[kind] then o:setField('collisionType', 0, 'Visible Mesh') end
-      M.collisionDirty = true
-    end
+    -- (26-nov, el usuario: «todos los objetos que spawneamos, como están en el rally del juego y con sus mismas
+    -- condiciones») la colisión es la que trae cada modelo, como los TSStatic del rally de Utah (sin tocar collisionType):
+    -- las barreras rojas y blancas, por ejemplo, no chocan. Antes: None salvo lo sólido y Visible Mesh en pacas/barreras.
+    if opts and opts.noCollision then o:setField('collisionType', 0, 'None')
+    else M.collisionDirty = true end
   end
   if kind == 'ambulance' or phys.PHYS_ONLY[kind] then pcall(function() o:setHidden(true) end) end
   register(o, kind)
   -- las vallas son prefabs (armazón + lona) y sus piezas traen colisión propia: fuera (20-nov, norma del usuario: lo que
   -- delimita el circuito no choca). Las piezas existen desde que el prefab se registra. MARK:fence-nocol-v1
-  if prefab and (tostring(kind):find('^fence') or (opts and opts.noCollision)) then
+  if prefab and (opts and opts.noCollision) then
     pcall(function()
       local g = o:getChildGroup()
       for i = 0, g:getCount() - 1 do

@@ -93,6 +93,12 @@ local function fromStage(S, R, api)
   elseif ph == 'approach' or ph == 'hold' or ph == 'tc' then
     d.activeState = 'vehicleProximity'
     sc.label, sc.eventType, sc.ssLabel = 'TC' .. n, 'tc', tostring(n)
+    -- (26-nov) en un rally, el nombre y la hora del control son los de la hoja de tiempos (TC2 para el SS2 de Canarias)
+    local cur = R and R.it and R.it.items and R.it.items[R.idx]
+    if cur and cur.label then
+      sc.label = cur.label
+      if cur.dueMin and not S.tcDue then S.tcDue = cur.dueMin * 60 end
+    end
     local due = S.tcDue or (math.ceil((now + 30) / 60) * 60)
     S.tcDue = due
     sc.eventWallClockStart, sc.eventWallClockEnd = hhmm(due), hhmm(due + 60)
@@ -230,7 +236,9 @@ function M.update(stage, rally, api)
   local S = stage.state()
   local R = rally.active() and rally.state() or nil
   local data
-  if S and S.track and S.phase ~= 'idle' then
+  -- (26-nov) en un rally, el tramo ya montado pero en espera ('hold', camino del TC) no manda en el HUD: manda el enlace
+  -- del rally (TC n, hora y distancia por el GPS). Antes salía «STOP 0.0m» todo el enlace (distM aún sin calcular)
+  if S and S.track and S.phase ~= 'idle' and not (R and S.phase == 'hold') then
     local ok, d = pcall(fromStage, S, R, api)
     data = ok and d or nil
     if data and R then data.timecardData = timecard(R) end

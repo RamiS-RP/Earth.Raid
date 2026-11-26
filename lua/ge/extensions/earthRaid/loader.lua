@@ -1,4 +1,5 @@
 -- ███ BLOQUEADO (23-nov, orden del usuario): funciona y está aprobado. NO modificar sin su permiso expreso. Ver LOCKED.md ███
+-- (26-nov: cambiado con permiso del usuario: el coche congelado tras cada viaje/colocación, sin caer ni moverse en la carga)
 -- Raid.Earth: la carga al iniciar un tramo o un rally (como la pantalla de carga del juego).
 -- Al darle a Iniciar: el coche se congela, se lleva a la zona de salida, se espera a que BeamNG.Earth cargue el mundo
 -- y las carreteras de allí, se monta lo de esa zona (TC, salida, box) y se coloca todo; solo entonces se suelta el coche
@@ -25,7 +26,7 @@ M.TP_RETRY_S = 25            -- BeamNG.Earth rechaza el viaje mientras carga el 
 -- sobre suelo firme, y si no, se viaja de nuevo y se prueba otra colocación (hasta M.GROUND_TRIES veces).
 M.GROUND_WAIT_S = 5          -- lo que se espera, tras colocar, a que el coche quede sobre suelo firme
 M.GROUND_TRIES = 3
-M.PLACE_WAIT_S = 6           -- la colocación puede decir «aún no hay suelo fiable»: se reintenta hasta esto
+M.PLACE_WAIT_S = 15          -- la colocación puede decir «aún no hay suelo fiable»: se reintenta hasta esto (26-nov: 6 -> 15, parches de suelo de BeamNG.Earth)
 M.HOP_ROADS_S = 25           -- tras un viaje intermedio, lo que se espera a que haya carretera en el destino
 
 local L                      -- la carga en curso
@@ -148,7 +149,9 @@ function M.hopped(key) return L ~= nil and L.hopDone ~= nil and L.hopDone[key] =
 function M.active() return L ~= nil end
 function M.covering() return L ~= nil and L.only == true end
 function M.roadsOk() return L ~= nil and L.roadsOk == true end
-function M.onTeleported() if L then L.teleported = true L.tpT = 0 end end
+-- (26-nov, el usuario: «en la carga se oye el coche moverse, caer al vacío, se mueve el volante; el juego no lo hace»)
+-- el viaje de BeamNG.Earth reinicia el coche y le quita el congelado: se vuelve a congelar al llegar
+function M.onTeleported() if L then L.teleported = true L.tpT = 0 freeze(true) end end
 
 local function nextStep(s)
   -- lo que deja hecho el paso que acaba
@@ -283,6 +286,8 @@ function M.update(dt)
     -- lo resuelve con un viaje nuevo)
     if placed or L.t > M.PLACE_WAIT_S then
       if not placed then log('W', TAG, 'loading: could not place the car, relying on the ground check') end
+      -- colocar también reinicia el coche: congelado hasta que acabe la carga (o hasta Iniciar con keepFrozen)
+      freeze(true)
       nextStep('settle')
     end
   elseif L.step == 'settle' then

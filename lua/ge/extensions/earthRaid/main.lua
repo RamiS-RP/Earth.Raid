@@ -1265,6 +1265,15 @@ function M.uiStartRally(eventId, fromRun, force)
   S.target = { eventId = eventId }
   local rs = rally.state()
   local start = rs.it.start
+  -- (26-nov) un aparcamiento elegido por el usuario cerca de la asistencia (servicepark.PREFER): se viaja a él, que es
+  -- donde se monta el parque (si no, sus plazas no llegaban: «no site found» en Sierra Morena)
+  if start then
+    for _, pf in ipairs(servicepark.PREFER or {}) do
+      local dy = (start[1] - pf.lat) * 111320
+      local dx = (start[2] - pf.lon) * 111320 * math.cos(math.rad(start[1]))
+      if dx * dx + dy * dy < 3000 * 3000 then start = { pf.lat, pf.lon } break end
+    end
+  end
   local lat, lon = a.position()
   local es = spanish()
   -- siempre con la pantalla de carga: el parque (boxes, TC0) se monta en ella aunque ya estés al lado

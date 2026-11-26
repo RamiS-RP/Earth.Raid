@@ -101,6 +101,16 @@ function M.search(lat, lon, towardLat, towardLon)
     return { x0 = x0, y0 = y0, lat = lat, lon = lon, t0 = os.clock(), phase = 'done',
       site = { manual = man, x = cx, y = cy, z = terrainZ(cx, cy) or 0, exitX = cx, exitY = cy, hx = 0, hy = 1, len = 40, wid = 40 } }
   end
+  -- un aparcamiento elegido por el usuario a menos de 3 km: la búsqueda se centra en él
+  for _, pf in ipairs(M.PREFER) do
+    local dy = (lat - pf.lat) * 111320
+    local dx = (lon - pf.lon) * 111320 * math.cos(math.rad(lat))
+    if dx * dx + dy * dy < 3000 * 3000 then
+      lat, lon = pf.lat, pf.lon
+      x0, y0 = a.toGame(lat, lon, 0)
+      break
+    end
+  end
   local h = { x0 = x0, y0 = y0, lat = lat, lon = lon, t0 = os.clock(), n = math.floor(2 * M.R / M.STEP) + 1,
     grid = {}, z = {}, i = 1, phase = 'buildings', polys = nil, site = nil, tx = nil, ty = nil }
   if towardLat then h.tx, h.ty = a.toGame(towardLat, towardLon, 0) end
@@ -357,9 +367,40 @@ local function rectAt(h, x, y)
   return nil
 end
 
+-- Aparcamientos elegidos por el usuario (26-nov): si uno de los aparcamientos encontrados tiene plazas a menos de r m de
+-- este punto, es el parque de asistencia, aunque haya otro mayor o más cerca del punto del organizador. El resto (boxes,
+-- vallado, TC0 en la salida asfaltada) es el automático, igual que en todos los rallies.
+M.PREFER = {
+  -- Sierra Morena 2026: aparcamiento de la plaza de toros de Córdoba (el coche del usuario aparcado allí)
+  -- gate: el acceso que marcó (el paso de la acera a la avenida curva del norte); allí van el hueco del vallado y el TC0
+  { name = 'sierra-morena-plaza-toros', lat = 37.8811398, lon = -4.7942082, r = 60, gate = { 37.8813468, -4.7945695 } },
+}
+local function preferredFirst(list)
+  local a = api()
+  if not (a and a.toGame) then return list end
+  for _, pf in ipairs(M.PREFER) do
+    local px, py = a.toGame(pf.lat, pf.lon, 0)
+    if px then
+      for i, L in ipairs(list) do
+        local hit = false
+        for _, st in ipairs(L.pts or {}) do
+          if (st[1] - px) ^ 2 + (st[2] - py) ^ 2 < pf.r * pf.r then hit = true break end
+        end
+        if hit then
+          if i > 1 then table.remove(list, i) table.insert(list, 1, L) end
+          L.preferred, L.gate = pf.name, pf.gate
+          log('I', TAG, 'parking lot chosen by the user: ' .. pf.name)
+          return list
+        end
+      end
+    end
+  end
+  return list
+end
+
 local function tryLots(h)
   -- primero los aparcamientos de BeamNG.Earth (plazas del servidor): el más grande y cercano con carretera para salir
-  for _, L in ipairs(lots(h)) do
+  for _, L in ipairs(preferredFirst(lots(h))) do
     -- la carretera de salida: la más cercana FUERA del aparcamiento (dentro suele haber pasillos en el grafo), buscada
     -- desde fuera de cada lado del rectángulo
     local function inside(x, y, pad)
@@ -383,7 +424,8 @@ local function tryLots(h)
     end
     if n1 and rd and L.wid >= 14 and L.len >= 20 then
       h.site = { x = L.cx, y = L.cy, z = terrainZ(L.cx, L.cy) or L.z, hx = L.ux, hy = L.uy, len = L.len, wid = L.wid,
-        exitX = px, exitY = py, n1 = n1, n2 = n2, roadD = rd, far = L.far, clear = 0, lot = L.n, stalls = L.pts, tx = h.tx, ty = h.ty }
+        exitX = px, exitY = py, n1 = n1, n2 = n2, roadD = rd, far = L.far, clear = 0, lot = L.n, stalls = L.pts, tx = h.tx, ty = h.ty,
+        gate = L.gate }
       h.phase = 'done'
       log('I', TAG, ('parking lot: %d stalls, %.0f x %.0f m, %.0f m from the service point, road at %.0f m (%.1f s)'):format(
         L.n, L.len, L.wid, L.far, rd, os.clock() - h.t0))
@@ -790,6 +832,42 @@ function M.graphReady(site)
 end
 
 local function mouthRoute(m, h, cx, cy)
+  -- (26-nov) acceso marcado por el usuario (M.PREFER.gate): la salida es esa, hasta la carretera de verdad más cercana
+  if M.gateHint then
+    local gx, gy = M.gateHint[1], M.gateHint[2]
+    local best, bx, by, br
+    for _, nd in pairs(m.nodes) do
+      if (nd.pos.x - gx) ^ 2 + (nd.pos.y - gy) ^ 2 < 60 ^ 2 then
+        for nb, ed in pairs(nd.links or {}) do
+          local o = m.nodes[nb]
+          local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+          if o and dr > M.LOT_DRIV then
+            local vx, vy = o.pos.x - nd.pos.x, o.pos.y - nd.pos.y
+            local L2 = vx * vx + vy * vy
+            local u = L2 > 0 and math.max(0, math.min(1, ((gx - nd.pos.x) * vx + (gy - nd.pos.y) * vy) / L2)) or 0
+            local qx, qy = nd.pos.x + vx * u, nd.pos.y + vy * u
+            local d2 = (qx - gx) ^ 2 + (qy - gy) ^ 2
+            if not inHull(h, qx, qy, 1) and (not best or d2 < best) then best, bx, by, br = d2, qx, qy, nd.radius or 3 end
+          end
+        end
+      end
+    end
+    if bx then
+      log('I', TAG, string.format('lot exit at the user\'s gate (%.1f, %.1f) -> road (%.1f, %.1f)', gx, gy, bx, by))
+      -- la ruta cruza el borde del recinto justo en el acceso y en perpendicular (si no, el hueco y el TC0 quedaban 10 m
+      -- más allá, donde la diagonal del centro al acceso cortaba el borde)
+      if M.hullEdgePoint then
+        local ex, ey = M.hullEdgePoint(h, gx, gy)
+        local nx, ny = bx - ex, by - ey
+        local nl = math.sqrt(nx * nx + ny * ny)
+        if ex and nl > 0.5 then
+          nx, ny = nx / nl, ny / nl
+          return { { cx, cy, br }, { ex - nx * 6, ey - ny * 6, br }, { ex + nx * 2, ey + ny * 2, br }, { bx, by, br } }
+        end
+      end
+      return { { cx, cy, br }, { gx, gy, br }, { bx, by, br } }
+    end
+  end
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
   local adj, cls = {}, {}
   for k, nd in pairs(m.nodes) do
@@ -907,6 +985,7 @@ local function hullEdgePoint(h, x, y)
   end
   return bx, by, bd and math.sqrt(bd) or 1e9
 end
+M.hullEdgePoint = hullEdgePoint
 function M.pavedMouthRoute(m, h, cx, cy, tx, ty)
   if M.isPaved(cx, cy) == nil then return nil end
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
@@ -1005,11 +1084,43 @@ local function exitMouth(h, cx, cy, z)
 end
 M.exitMouth = exitMouth   -- (26-nov) para la auditoría de boxes
 
+-- Árboles de BeamNG.Earth (objetos Forest: castRayStatic no los ve) cerca del parque, una vez por montaje (26-nov: en el
+-- aparcamiento de la plaza de toros salía un árbol dentro de una carpa)
+M.TREE_CLEAR_M = 2.2
+local treeCache = nil
+function M.cacheTrees(cx, cy, r)
+  treeCache = {}
+  local z = terrainZ(cx, cy) or 0
+  for _, name in ipairs(scenetree.findClassObjects('Forest') or {}) do
+    local f = scenetree.findObject(name)
+    local ok, items = pcall(function() return f:getData():getItemsCircle(vec3(cx, cy, z), r) end)
+    if ok and items then
+      for _, it in ipairs(items) do
+        local okP, p = pcall(function() return it:getPosition() end)
+        if okP and p then treeCache[#treeCache + 1] = { p.x, p.y } end
+      end
+    end
+  end
+  return #treeCache
+end
+local function treeAt(x, y, r)
+  if not treeCache then return false end
+  for _, t in ipairs(treeCache) do
+    if (t[1] - x) ^ 2 + (t[2] - y) ^ 2 < r * r then return true end
+  end
+  return false
+end
+M.treeAt = treeAt
 -- ¿cabe la carpa 3x6 de una plaza (girada como la plaza) sin tocar un edificio, un muro o un árbol?
 local function boxFree(p)
   local hdg = math.rad(p[4] or 0)
   local fx, fy = math.cos(hdg), math.sin(hdg)
   local sx, sy = fy, -fx
+  for _, f in ipairs({ -3, 0, 3 }) do
+    for _, sd in ipairs({ -1.7, 0, 1.7 }) do
+      if treeAt(p[1] + fx * f + sx * sd, p[2] + fy * f + sy * sd, M.TREE_CLEAR_M) then return false end
+    end
+  end
   for _, f in ipairs({ -3, 0, 3 }) do
     for _, sd in ipairs({ -1.7, 0, 1.7 }) do
       local ok, d = pcall(castRayStatic, vec3(p[1] + fx * f + sx * sd, p[2] + fy * f + sy * sd, (p[3] or 0) + 25), vec3(0, 0, -1), 40)
@@ -1488,6 +1599,13 @@ function M.build(site)
   local a = api()
   M.tcSpot = nil
   if not (a and site) then return nil end
+  -- los árboles del recinto, para no poner carpas encima
+  pcall(M.cacheTrees, site.x, site.y, math.max(60, (site.len or 60) / 2 + (site.wid or 60) / 2 + 20))
+  M.gateHint = nil
+  if site.gate then
+    local gx, gy = a.toGame(site.gate[1], site.gate[2], 0)
+    if gx then M.gateHint = { gx, gy } end
+  end
   -- (26-nov) la altura del sitio, otra vez ahora (la de la búsqueda podía ser del terreno aún sin afinar)
   do
     local z = terrainZ(site.x, site.y)
