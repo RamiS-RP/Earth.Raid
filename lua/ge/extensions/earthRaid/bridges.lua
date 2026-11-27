@@ -24,6 +24,7 @@ M.KNOWN = {
 }
 
 local list, objs, matsLoaded = {}, {}, false
+local serialR = 0
 
 local function api() return rawget(_G, 'beamngEarth_api') end
 
@@ -64,6 +65,105 @@ function M.pushOut(x, y)
   return x + side.x * (want - l), y + side.y * (want - l), true
 end
 
+-- (27-nov, el usuario: «a la salida del puente hay un resalto; allánalo un poco y haz un camino levantándolo con un
+-- montículo de 0,5 a 1 m como mucho, para no tocar el suelo de Earth») sin editar el terreno: una rampa de placas de
+-- nieve compacta (la malla del hielo, 6 m de ancho, tramos de RAMP_SEG m inclinados) que sale del tablero y va por encima
+-- del terreno hasta juntarse con él. El perfil es la envolvente superior (casco convexo por arriba) del terreno más alto
+-- en el ancho del camino: nunca queda por debajo del suelo y no hace escalones. Si para eso tuviera que subir más de
+-- RAMP_MAX_RAISE m sobre el terreno, ese lado no se hace. MARK:bridge-ramp-v1
+M.RAMP_SHAPE = '/art/earthRaid/ice/ice_slab.dae'
+M.RAMP_MATS = '/art/earthRaid/ice/main.materials.json'
+M.RAMP_W, M.RAMP_FROM, M.RAMP_LEN, M.RAMP_SEG, M.RAMP_MAX_RAISE = 5, 10, 40, 2.5, 1.1
+local function addPlate(x, y, z, fx, fy, fz, len)
+  local ok, o = pcall(function()
+    local s = createObject('TSStatic')
+    s:setField('shapeName', 0, M.RAMP_SHAPE)
+    s:setField('collisionType', 0, 'Visible Mesh')
+    s:setField('decalType', 0, 'Visible Mesh')
+    s:setField('canSave', 0, '0')
+    local q = quatFromDir(vec3(fx, fy, fz):normalized(), vec3(0, 0, 1))
+    local m = QuatF(q.x, q.y, q.z, q.w):getMatrix()
+    m:setPosition(vec3(x, y, z))
+    s:setTransform(m)
+    s.scale = vec3(M.RAMP_W / 20, (len + 0.15) / 20, 1)
+    serialR = (serialR or 0) + 1
+    s:registerObject(('earthRaid_bridgeramp_%d_%d'):format(serialR, os.time()))
+    if scenetree.MissionGroup then scenetree.MissionGroup:addObject(s) end
+    return s
+  end)
+  if ok and o then objs[#objs + 1] = o return true end
+  return false
+end
+local function ramps(b)
+  local th = core_terrain.getTerrainHeight
+  pcall(loadJsonMaterialsFile, M.RAMP_MATS)
+  local side = vec3(-b.dir.y, b.dir.x, 0)
+  local made = 0
+  for _, sg in ipairs({ 1, -1 }) do
+    -- el terreno más alto en el ancho del camino, cada 2 m
+    local pts = { { M.RAMP_FROM, b.z } }
+    local ok = true
+    local low = {}
+    for s = M.RAMP_FROM + 2, M.RAMP_FROM + M.RAMP_LEN, 2 do
+      local hi, lo = -1e9, 1e9
+      for _, l in ipairs({ -M.RAMP_W / 2, -M.RAMP_W / 4, 0, M.RAMP_W / 4, M.RAMP_W / 2 }) do
+        local p = b.c + b.dir * (s * sg) + side * l
+        local z = th(vec3(p.x, p.y, 0))
+        if not z or z <= M.UNLOADED_Z then ok = false break end
+        hi, lo = math.max(hi, z), math.min(lo, z)
+      end
+      if not ok then break end
+      pts[#pts + 1] = { s, hi + 0.03 }
+      low[s] = lo
+    end
+    if ok and #pts > 3 then
+      -- casco convexo por arriba desde el tablero
+      local hull, i = { pts[1] }, 1
+      while i < #pts do
+        local a, bestJ, bestK = pts[i], nil, -1e9
+        for j = i + 1, #pts do
+          local k = (pts[j][2] - a[2]) / (pts[j][1] - a[1])
+          if k >= bestK then bestK, bestJ = k, j end
+        end
+        hull[#hull + 1] = pts[bestJ]
+        i = bestJ
+      end
+      -- ¿cuánto sube sobre el terreno? (lo más bajo del ancho)
+      local raise = 0
+      for _, p in ipairs(pts) do
+        local hz
+        for h = 1, #hull - 1 do
+          if p[1] >= hull[h][1] and p[1] <= hull[h + 1][1] then
+            hz = hull[h][2] + (hull[h + 1][2] - hull[h][2]) * (p[1] - hull[h][1]) / (hull[h + 1][1] - hull[h][1])
+            break
+          end
+        end
+        -- (sobre el tablero no cuenta: debajo está la madera, no el suelo)
+        if hz and low[p[1]] and p[1] > M.LEN / 2 then raise = math.max(raise, hz - low[p[1]]) end
+      end
+      if raise > M.RAMP_MAX_RAISE then
+        log('W', TAG, ('bridge %d: ramp on side %d would rise %.1f m over the ground: not made'):format(b.i, sg, raise))
+      else
+        -- las placas, a lo largo del casco (tramos de RAMP_SEG m como mucho)
+        for h = 1, #hull - 1 do
+          local s0, z0, s1, z1 = hull[h][1], hull[h][2], hull[h + 1][1], hull[h + 1][2]
+          local n = math.max(1, math.ceil((s1 - s0) / M.RAMP_SEG))
+          for q = 0, n - 1 do
+            local sa, sb = s0 + (s1 - s0) * q / n, s0 + (s1 - s0) * (q + 1) / n
+            local za, zb = z0 + (z1 - z0) * q / n, z0 + (z1 - z0) * (q + 1) / n
+            local sm, zm = (sa + sb) / 2, (za + zb) / 2
+            local p = b.c + b.dir * (sm * sg)
+            local len = math.sqrt((sb - sa) ^ 2 + (zb - za) ^ 2)
+            if addPlate(p.x, p.y, zm, b.dir.x * sg * (sb - sa), b.dir.y * sg * (sb - sa), zb - za, len) then made = made + 1 end
+          end
+        end
+        log('I', TAG, ('bridge %d: ramp on side %d, %d plates, up to %.2f m over the ground'):format(b.i, sg, made, raise))
+      end
+    end
+  end
+  return made
+end
+
 local function place(b)
   local th = core_terrain and core_terrain.getTerrainHeight
   if not th then return false end
@@ -90,6 +190,7 @@ local function place(b)
   if not ok or not o then log('W', TAG, 'bridge: ' .. tostring(o)) b.failed = true return false end
   objs[#objs + 1] = o
   b.z, b.placed = z, true
+  pcall(ramps, b)
   log('I', TAG, ('wooden bridge %d: %.0f m between the banks, deck at %.2f'):format(b.i, b.span, z))
   return true
 end

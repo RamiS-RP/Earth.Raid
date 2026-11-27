@@ -23,6 +23,10 @@ local clean = require('earthRaid/clean')
 local winter = require('earthRaid/winter')
 local bridges = require('earthRaid/bridges')
 local M = {}
+-- metas adelantadas a mano (evento/tramo -> metros), para paquetes importados que se regeneran (MARK:finish-back-v1)
+M.FINISH_BACK = {
+  ['imp-rally-sweden-2027/shakedown-umea-city'] = 500,   -- 27-nov, el usuario: la meta caía en mitad del río
+}
 local function spanishUI()
   local ok, l = pcall(function() return Lua:getSelectedLanguage() end)
   return ok and tostring(l):sub(1, 2) == 'es'
@@ -710,7 +714,27 @@ function M.start(ev, st, info)
   end
   -- (23-nov, el usuario) tramo posterior FIJO: el paquete puede traer st.afterPts (lat/lon, desde la meta hasta una calle
   -- real); se usa tal cual y no se busca ni se recorta nada (meta en un río, STOP junto a la calle más próxima)
-  if type(st.afterPts) == 'table' and #st.afterPts >= 2 then
+  -- (27-nov, el usuario: «la meta del shakedown no me gusta, hay que adelantarla unos 500 m») meta adelantada por el propio
+  -- trazado: st.finishBackM en el paquete, o M.FINISH_BACK[evento/tramo] (los paquetes importados se regeneran). Lo que
+  -- queda del trazado pasa a ser el camino de después de la meta (frenada y STOP); el afterPts del paquete, que salía de la
+  -- meta vieja, ya no vale. MARK:finish-back-v1
+  local back = tonumber(st.finishBackM) or M.FINISH_BACK[tostring(ev.id) .. '/' .. tostring(st.id)]
+  if back and back > 0 and t.total - back >= 300 then
+    local newTotal = t.total - back
+    local pts = { { geo.toGeo(t, geo.at(t, newTotal)) } }
+    for i = 1, #t.pts do
+      if t.cum[i] > newTotal + 0.5 then pts[#pts + 1] = { geo.toGeo(t, t.pts[i][1], t.pts[i][2]) } end
+    end
+    if #pts >= 2 then
+      geo.truncate(t, newTotal)
+      local nt = geo.track(pts)
+      t.after, t._snapT, t.afterOff = nt, nil, nil
+      t.stopAt = math.max(60, math.min(dressing.STOP_AFTER_M, nt.total - 5))
+      t.afterFixed, t.finishCut, t.finishMoved, t.trimmed = true, true, back, true
+      log('I', TAG, ('finish moved %.0f m back (pack/user): stage %.0f m, STOP at %.0f m'):format(back, t.total, t.stopAt))
+    end
+  end
+  if not t.afterFixed and type(st.afterPts) == 'table' and #st.afterPts >= 2 then
     local nt = geo.track(st.afterPts)
     if nt and nt.total >= 30 then
       t.after, t._snapT, t.afterOff = nt, nil, nil

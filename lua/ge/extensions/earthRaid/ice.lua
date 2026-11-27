@@ -20,16 +20,20 @@ M.MAX = 1600         -- tope de losas
 -- toca el tramo se hiela entero a lo largo de sus nodos, hasta RIVER_R m del tramo (el mar, solo junto al tramo)
 M.RIVER_R = 700
 M.RIVER_TOUCH_M = 80 -- un río cuenta si alguno de sus tramos pasa a menos de esto del trazado
--- banderines que marcan el camino sobre el hielo (27-nov, el usuario): a cada lado, cada FLAG_STEP m
-M.FLAG_SHAPE = '/art/shapes/race/flagMarkerOrange.dae'
-M.FLAG_STEP, M.FLAG_SIDE = 14, 5.0
+-- el camino sobre el hielo marcado a los dos lados (27-nov, el usuario: primero banderines; luego «sustituir los banderines
+-- por mallas de seguridad naranjas de 12 m, con ángulo ajustable»): la malla naranja de Utah (10 m, larga en Y) estirada a
+-- 12 m y girada con el trazado en cada tramo; un hueco de FLAG_STEP - 12 m entre mallas
+M.FLAG_SHAPE = '/art/shapes/race/ut_race_mesh_barricade_.DAE'
+M.FLAG_LEN = 12
+M.FLAG_STEP, M.FLAG_SIDE = 14, 6.0
 M.RECHECK_S = 3
 M.LEVEL_R = M.TILE * 1.5   -- losas vecinas (también en diagonal)
-M.LEVEL_MAX = 1.5         -- diferencia máxima que se iguala (más: son aguas distintas, p. ej. un río que baja)
+M.LEVEL_MAX = 0.5         -- diferencia máxima que se iguala (más: son aguas distintas, p. ej. un río que baja)
 M.UNLOADED_Z = -15.9   -- altura que devuelve el terreno de Earth donde aún no ha cargado
 
 local road = nil     -- { {x, y}, ... } en coordenadas del juego
 local slabs = {}     -- [key] = obj
+local base = {}      -- [key] = altura de la losa sobre su agua (sin igualar)
 local count = 0
 local t = 0
 local matsLoaded = false
@@ -84,6 +88,7 @@ local function addSlab(key, x, y, z)
   end)
   if not ok or not o then log('W', TAG, 'ice slab: ' .. tostring(o)) return false end
   slabs[key], count = o, count + 1
+  base[key] = z
   return true
 end
 
@@ -209,16 +214,19 @@ local function build()
   -- (27-nov, visto en Umeå: el río a 0,68 m y la bahía a 1,0 m dejaban escalones de 30 cm entre losas) todas las losas que
   -- se tocan (a menos de LEVEL_R m) quedan a la misma altura: la más alta del grupo
   if added > 0 or removed > 0 then
+    -- (27-nov, tarde) sin encadenar: cada losa sube como mucho a la más alta de sus vecinas sobre SU altura de agua original
+    -- (base). Encadenado, con el río entero, todo el hielo de la bahía acababa a la altura del río de arriba (2,9 m: 2 m
+    -- por encima del agua y de los barcos)
     local list = {}
-    for _, o in pairs(slabs) do local okP, pos = pcall(function() return o:getPosition() end) if okP then list[#list + 1] = { o = o, p = pos, z = pos.z } end end
-    for _ = 1, 6 do
-      local changed = false
-      for _, a in ipairs(list) do
-        for _, b in ipairs(list) do
-          if b.z > a.z + 0.001 and (a.p.x - b.p.x) ^ 2 + (a.p.y - b.p.y) ^ 2 <= M.LEVEL_R ^ 2 and b.z - a.z <= M.LEVEL_MAX then a.z, changed = b.z, true end
-        end
+    for key, o in pairs(slabs) do
+      local okP, pos = pcall(function() return o:getPosition() end)
+      if okP then list[#list + 1] = { o = o, p = pos, base = base[key] or pos.z } end
+    end
+    for _, a in ipairs(list) do
+      a.z = a.base
+      for _, b in ipairs(list) do
+        if b.base > a.z and b.base - a.base <= M.LEVEL_MAX and (a.p.x - b.p.x) ^ 2 + (a.p.y - b.p.y) ^ 2 <= M.LEVEL_R ^ 2 then a.z = b.base end
       end
-      if not changed then break end
     end
     for _, a in ipairs(list) do
       if math.abs(a.z - a.p.z) > 0.001 then pcall(function() a.o:setPosition(vec3(a.p.x, a.p.y, a.z)) end) end
@@ -250,6 +258,14 @@ end
 local flags, flagDone = {}, {}
 local function placeFlags()
   if not road or #road < 2 then return end
+  -- las ya puestas siguen a su losa si esta cambió de altura al igualar
+  for _, f in ipairs(flags) do
+    local z = f.key and slabs[f.key] and M.topAt(f.x, f.y)
+    if z and math.abs(z - f.z) > 0.01 then
+      pcall(function() local p = f.o:getPosition() f.o:setPosition(vec3(p.x, p.y, z)) end)
+      f.z = z
+    end
+  end
   local acc, n = 0, 0
   for k = 2, #road do
     local a, b = road[k - 1], road[k]
@@ -260,18 +276,30 @@ local function placeFlags()
       acc = 0
       local key = math.floor(b[1] / 4) .. '_' .. math.floor(b[2] / 4)
       if not flagDone[key] then
+        -- la dirección de la malla: la del trazado en los 12 m que cubre (de aquí hacia atrás)
+        local k0 = k
+        local back = 0
+        while k0 > 1 and back < M.FLAG_LEN do
+          back = back + math.sqrt((road[k0][1] - road[k0 - 1][1]) ^ 2 + (road[k0][2] - road[k0 - 1][2]) ^ 2)
+          k0 = k0 - 1
+        end
+        local mx, my = b[1] - road[k0][1], b[2] - road[k0][2]
+        local ml = math.sqrt(mx * mx + my * my)
         local ux, uy = dx / L, dy / L
+        if ml > 1 then ux, uy = mx / ml, my / ml end
+        -- el centro de la malla, a mitad de esos 12 m
+        local cxm, cym = b[1] - ux * M.FLAG_LEN / 2, b[2] - uy * M.FLAG_LEN / 2
         local ok = true
         local tops = {}
         for _, sd in ipairs({ -1, 1 }) do
-          local x, y = b[1] - uy * M.FLAG_SIDE * sd, b[2] + ux * M.FLAG_SIDE * sd
+          local x, y = cxm - uy * M.FLAG_SIDE * sd, cym + ux * M.FLAG_SIDE * sd
           -- ¿sobre una losa? (rayo contra lo estático, que el terreno no da la altura del hielo)
           local ti, tj = math.floor(x / M.TILE), math.floor(y / M.TILE)
           local slab = slabs[ti .. '_' .. tj]
           if not slab then ok = false break end
           local okP, sp = pcall(function() return slab:getPosition() end)
           if not okP then ok = false break end
-          tops[#tops + 1] = { x, y, sp.z }
+          tops[#tops + 1] = { x, y, sp.z, ux, uy }
         end
         if ok then
           flagDone[key] = true
@@ -281,20 +309,26 @@ local function placeFlags()
               f:setField('shapeName', 0, M.FLAG_SHAPE)
               f:setField('collisionType', 0, 'None')
               f:setField('canSave', 0, '0')
-              f:setPosition(vec3(tp[1], tp[2], tp[3]))
-              f.scale = vec3(1, 1, 1)
+              local q = quatFromDir(vec3(tp[4], tp[5], 0), vec3(0, 0, 1))
+              local m = QuatF(q.x, q.y, q.z, q.w):getMatrix()
+              m:setPosition(vec3(tp[1], tp[2], tp[3]))
+              f:setTransform(m)
+              f.scale = vec3(1, M.FLAG_LEN / 10, 1)
               serialF = (serialF or 0) + 1
               f:registerObject(('earthRaid_iceflag_%d_%d'):format(serialF, os.time()))
               if scenetree.MissionGroup then scenetree.MissionGroup:addObject(f) end
               return f
             end)
-            if okF and o then flags[#flags + 1] = o n = n + 1 end
+            if okF and o then
+              flags[#flags + 1] = { o = o, x = tp[1], y = tp[2], z = tp[3], key = math.floor(tp[1] / M.TILE) .. '_' .. math.floor(tp[2] / M.TILE) }
+              n = n + 1
+            end
           end
         end
       end
     end
   end
-  if n > 0 then log('I', TAG, ('ice: %d flags along the way'):format(n)) end
+  if n > 0 then log('I', TAG, ('ice: %d safety nets along the way'):format(n)) end
 end
 
 -- la cara de arriba del hielo en (x, y), o nil si ahí no hay losa (props.ground: los carteles de meta en el río iban al fondo)
@@ -320,10 +354,11 @@ function M.update(dt)
 end
 
 function M.clear()
-  for _, f in ipairs(flags) do pcall(function() f:delete() end) end
+  for _, f in ipairs(flags) do pcall(function() f.o:delete() end) end
   flags, flagDone = {}, {}
   local n = 0
   for k, o in pairs(slabs) do pcall(function() o:delete() end) slabs[k] = nil n = n + 1 end
+  base = {}
   count, road = 0, nil
   if n > 0 then
     pcall(function() be:reloadStaticCollision(false) end)
