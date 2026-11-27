@@ -14,6 +14,9 @@ local M = {}
 local TAG = 'earthRaid.roadmesh'
 
 M.ENABLED = true
+-- (27-nov, el usuario: «aquí no te he pedido nada; deshaz esta recta. Solo la entrada al puente y la salida, cruzando el
+-- campo hacia el camino de destino») solo los huecos que llevan un puente (pathgen: p.bridge)
+M.ONLY_BRIDGES = true
 M.MATERIAL = 'earthRaid_dirtroad'      -- la textura de las pistas de tierra de Earth (bne_dirt_gravel), pero opaca
 M.MATERIALS = '/art/earthRaid/road/main.materials.json'
 M.WIDTH = 5.0            -- calzada
@@ -92,6 +95,7 @@ local function buildRun(run, startOnDeck, endOnDeck)
       hi = math.max(hi, z)
     end
     n.hi = hi
+    n.c = th(n.x, n.y)
   end
   local s0, s1 = nodes[1].s, nodes[#nodes].s
   for k, n in ipairs(nodes) do
@@ -105,9 +109,10 @@ local function buildRun(run, startOnDeck, endOnDeck)
     z = z + M.MOUND * n.taper + 0.03
     n.z = z
   end
-  -- los extremos que dan a un tablero: a su altura
-  if startOnDeck and nodes[1].deck then nodes[1].z = nodes[1].deck end
-  if endOnDeck and nodes[#nodes].deck then nodes[#nodes].z = nodes[#nodes].deck end
+  -- los extremos que dan a un tablero: a su altura; los que dan al suelo (la pista real), un poco enterrados en el centro,
+  -- para que no asome el canto de la malla (se veía un escalón negro al empezar)
+  if startOnDeck and nodes[1].deck then nodes[1].z = nodes[1].deck elseif nodes[1].c then nodes[1].z = nodes[1].c - 0.06 end
+  if endOnDeck and nodes[#nodes].deck then nodes[#nodes].z = nodes[#nodes].deck elseif nodes[#nodes].c then nodes[#nodes].z = nodes[#nodes].c - 0.06 end
   -- sin cambios bruscos: hacia delante y hacia atrás, sin bajar del suelo
   for pass = 1, 2 do
     local a, b, st = 2, #nodes, 1
@@ -148,6 +153,11 @@ local function buildGroup(group, out)
     end
   end
   table.sort(pts, function(a, b) return a.s < b.s end)
+  if M.ONLY_BRIDGES then
+    local has = false
+    for _, p in ipairs(pts) do if p.bridge then has = true break end end
+    if not has then return end
+  end
   local before = #roads
   local run, prevBridge = {}, false
   local function flush(nextIsBridge)
