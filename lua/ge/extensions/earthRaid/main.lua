@@ -1306,7 +1306,7 @@ function M.uiStartRally(eventId, fromRun, force)
     for _, pf in ipairs(servicepark.PREFER or {}) do
       local dy = (start[1] - pf.lat) * 111320
       local dx = (start[2] - pf.lon) * 111320 * math.cos(math.rad(start[1]))
-      if dx * dx + dy * dy < 3000 * 3000 then start = { pf.lat, pf.lon } break end
+      if dx * dx + dy * dy < (pf.reach or 3000) ^ 2 then start = { pf.lat, pf.lon } break end
     end
   end
   local lat, lon = a.position()

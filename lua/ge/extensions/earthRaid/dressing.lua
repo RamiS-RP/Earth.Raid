@@ -418,6 +418,8 @@ M.EDGE_MARGIN_M = 0.45
 -- ahí se quedan: solo se mueven si de verdad pisan la calzada (r+0,25).
 M.EDGE_SIGN = { start = true, finish = true, endArea = true, finishEntry = true }
 M.EDGE_SIGN_MARGIN_M, M.EDGE_SIGN_TARGET_M = 0.25, 0.4
+M.BOARD_PULL = { start = true, finish = true, stop = true, tc = true, endArea = true, finishEntry = true }
+M.BOARD_PULL_MIN_M, M.BOARD_PULL_MAX_M = 2.0, 8.0
 -- el puesto de un control o de un médico se coloca con su propia lógica (carpa libre, calle cortada): no se toca
 M.POST_KINDS = { gazebo3x3 = true, gazebo3x6 = true, gazebo3x6b = true, table = true, chair = true,
   laptop = true, extinguisher = true, ambulance = true, rallyCar = true, tcEntry = true, tc = true }
@@ -452,7 +454,19 @@ function M.edgeGuard(plat, plon)
             local r = math.max(r1 + (r2 - r1) * u, u < 0.5 and r1 or r2)
             local d = math.sqrt((q.x - cx) ^ 2 + (q.y - cy) ^ 2)
             local margin = M.EDGE_SIGN[it.kind] and M.EDGE_SIGN_MARGIN_M or M.EDGE_MARGIN_M
-            if d < r + margin then
+            -- (27-nov, el usuario: «acerca los carteles que están a 4-5 m del borde al límite de la calzada») un cartel de
+            -- línea colocado desde un eje del tramo desviado del de la carretera queda lejos del borde: se acerca a r+0,4
+            -- (solo entre BOARD_PULL_MIN y BOARD_PULL_MAX m por fuera: más lejos puede ser otra carretera)
+            if M.BOARD_PULL[it.kind] and d > r + M.BOARD_PULL_MIN_M and d < r + M.BOARD_PULL_MAX_M then
+              local f = (r + M.EDGE_SIGN_TARGET_M) / d
+              local nx, ny2 = cx + (q.x - cx) * f, cy + (q.y - cy) * f
+              local la, lo = a.toGeo(nx, ny2, q.z)
+              if la then
+                local la0, lo0 = a.toGeo(q.x, q.y, q.z)
+                props.move(it, it.lat + (la - la0), it.lon + (lo - lo0))
+                moved = moved + 1
+              end
+            elseif d < r + margin then
               local row = M.ROW_KINDS[it.kind] or tostring(it.kind):find('^fence')
               if row or d < 0.3 then
                 props.hide(it) hidden = hidden + 1

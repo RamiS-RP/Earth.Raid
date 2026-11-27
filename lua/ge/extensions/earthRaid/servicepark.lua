@@ -105,7 +105,7 @@ function M.search(lat, lon, towardLat, towardLon)
   for _, pf in ipairs(M.PREFER) do
     local dy = (lat - pf.lat) * 111320
     local dx = (lon - pf.lon) * 111320 * math.cos(math.rad(lat))
-    if dx * dx + dy * dy < 3000 * 3000 then
+    if dx * dx + dy * dy < (pf.reach or 3000) ^ 2 then
       lat, lon = pf.lat, pf.lon
       x0, y0 = a.toGame(lat, lon, 0)
       break
@@ -312,6 +312,7 @@ M.LOT_PAD = 3          -- margen alrededor de las plazas
 M.LOT_R = 600          -- el aparcamiento más cercano, hasta a esta distancia del punto del organizador (20-nov)
 M.LOTS_WAIT_S = 3      -- las plazas llegan de BeamNG.Earth poco a poco: espera a que dejen de aumentar...
 M.LOTS_WAIT_MAX_S = 10 -- ...como mucho esto
+M.PREF_WAIT_S = 30     -- el aparcamiento elegido por el usuario sin salida todavía: se reintenta hasta esto
 
 -- Los aparcamientos cerca del punto (racimos de plazas), del mejor al peor: { cx, cy, z, ux, uy, len, wid, n, far }
 local function lots(h)
@@ -430,6 +431,10 @@ M.PREFER = {
   -- Sierra Morena 2026: aparcamiento de la plaza de toros de Córdoba (el coche del usuario aparcado allí)
   -- gate: el acceso que marcó (el paso de la acera a la avenida curva del norte); allí van el hueco del vallado y el TC0
   { name = 'sierra-morena-plaza-toros', lat = 37.8811398, lon = -4.7942082, r = 60, gate = { 37.8813468, -4.7945695 } },
+  -- Rally Sweden 2027 (27-nov, el usuario: «el parque de asistencia en el parking más cercano a 2 km del TC1»): el
+  -- aparcamiento asfaltado de Ersboda (38 plazas), a 409 m del TC1 de la SS1; el de Nolia que da el organizador queda a
+  -- 5 km del primer tramo. reach: hasta dónde se aplica desde el punto del organizador (por defecto 3 km)
+  { name = 'sweden-tc1-ersboda', lat = 63.869498, lon = 20.302698, r = 60, reach = 6000 },
 }
 local function preferredFirst(list)
   local a = api()
@@ -511,6 +516,9 @@ local function tryLots(h)
         if a1 then n1, n2, rd, px, py = a1, a2, d, ax, ay end
       end
     end
+    -- (27-nov, Suecia) el aparcamiento elegido, recién llegados: el grafo de las calles de alrededor aún no ha cargado y no
+    -- se encontraba salida; se vuelve a intentar (M.step) en vez de irse a un descampado
+    if not n1 and L.preferred then h.prefNoExit = true end
     if n1 and rd and L.wid >= 14 and L.len >= 20 then
       h.site = { x = L.cx, y = L.cy, z = terrainZ(L.cx, L.cy) or L.z, hx = L.ux, hy = L.uy, len = L.len, wid = L.wid,
         exitX = px, exitY = py, n1 = n1, n2 = n2, roadD = rd, far = L.far, clear = 0, lot = L.n, stalls = L.pts, tx = h.tx, ty = h.ty,
@@ -664,9 +672,14 @@ function M.step(h, ms)
       local waited = now - h.t0
       local stable = h.lotN and h.lotN >= M.LOT_MIN and now - (h.lotChange or now) >= 1.5 and waited >= M.LOTS_WAIT_S
       local empty = (h.lotN or 0) < M.LOT_MIN and now - (h.lotChange or now) >= 3.5 and waited >= 5   -- sin plazas en la zona
-      if stable or empty or waited >= M.LOTS_WAIT_MAX_S then
+      if (stable or empty or waited >= M.LOTS_WAIT_MAX_S) and now >= (h.retryAt or 0) then
         h.lotsTried = true
+        h.prefNoExit = nil
         if tryLots(h) then return true end
+        if h.prefNoExit and waited < M.PREF_WAIT_S then
+          h.lotsTried, h.retryAt = nil, now + 2
+          return false
+        end
       else
         return false
       end

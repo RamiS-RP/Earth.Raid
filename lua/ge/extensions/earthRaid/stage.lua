@@ -21,6 +21,7 @@ local phys = require('earthRaid/phys')
 local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local winter = require('earthRaid/winter')
+local bridges = require('earthRaid/bridges')
 local M = {}
 local function spanishUI()
   local ok, l = pcall(function() return Lua:getSelectedLanguage() end)
@@ -302,6 +303,7 @@ end
 
 local function cleanupProps(keepTraffic, recycle)
   pcall(pathgen.clear)
+  pcall(bridges.clear)
   if recycle then props.retire() else props.clear() props.setVirtualRoad(nil) end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
@@ -565,6 +567,7 @@ function M.userTc(t, st)
   end
   t.tcAlong = nil
   t.medicPoint = st.reverse and st.medicPointR or st.medicPoint
+  t.woodBridges = st.woodBridges   -- puentes de madera sobre cruces sin tablero (bridges.lua)
   local tp = st.reverse and st.tcPointR or st.tcPoint
   if type(tp) == 'table' and tp[1] then
     local px, py = geo.toLocal(t.before, tp[1], tp[2])
@@ -1081,6 +1084,7 @@ function M.start(ev, st, info)
     add(t)
     add(t.after)
     props.setVirtualRoad(pts, hw)
+    pcall(bridges.set, t.woodBridges or (S and bridges.KNOWN[tostring(S.eventId) .. '/' .. tostring(S.stageId)]))
     if winter.active() then winter.setRoad(pts, hw) end   -- bancos de nieve a los lados del tramo
   end
   pcall(S.setVirtual)
@@ -1512,6 +1516,7 @@ function M.update(dtSim, dtReal)
   -- los objetos encolados, poco a poco; la colisión se rehace una vez cuando ya están todos (no tras cada tanda)
   guide.tick(dtReal or dtSim)
   winter.update(dtReal or dtSim)
+  pcall(bridges.update, dtReal or dtSim or 0)
   pcall(preloadAhead, dtReal or dtSim or 0)
   -- carteles, conos y cintas con física cerca del coche
   if props.count() > 0 then

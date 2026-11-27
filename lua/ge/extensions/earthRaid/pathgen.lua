@@ -67,6 +67,7 @@ M.ROAD_MATS = { [0] = true, [2] = true, [6] = true }
 M.stats = { sections = 0, cells = 0, removed = 0, barrels = 0, bridges = 0, rebuilt = 0 }
 
 local function api() return rawget(_G, 'beamngEarth_api') end
+local bridges = require('earthRaid/bridges')
 local function terrain() return scenetree.findObject('bngEarthTerrain') end
 local function th(x, y)
   local h = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
@@ -166,6 +167,7 @@ local function narrowing(s, rad, ax, ay, dx, dy, total)
     for _, sg in ipairs({ 1, -1 }) do
       -- (la calzada que se ve es más ancha que el radio del grafo: 1,5 m por fuera, nunca dentro)
       local x, y = ax + dy * (rad + 1.5) * sg, ay - dx * (rad + 1.5) * sg
+      x, y = bridges.pushOut(x, y)
       local la, lo = a.toGeo(x, y, th(x, y) or 0)
       if la then
         local it = props.add('barrel', la, lo, dx, dy, 0)
@@ -1148,6 +1150,7 @@ local function barrelPair(S, i, half, marks, gap)
   local a = api()
   for _, sg in ipairs({ 1, -1 }) do
     local x, y = p.x + p.nx * half * sg, p.y + p.ny * half * sg
+    x, y = bridges.pushOut(x, y)   -- (27-nov) con puente de madera, fuera de su paso
     local la, lo = a.toGeo(x, y, th(x, y) or p.th)
     if la then
       local it = props.add('barrel', la, lo, p.dx, p.dy, 0)

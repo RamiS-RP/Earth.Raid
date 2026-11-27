@@ -1,0 +1,17 @@
+{
+ "earthRaid_bridge_deck": {
+  "name": "earthRaid_bridge_deck", "mapTo": "earthRaid_bridge_deck", "class": "Material",
+  "persistentId": "7f1c2a9e-3b4d-4e21-9c55-earthraid0brd",
+  "Stages": [ { "colorMap": "/assets/materials/tileable/wood/wood_planks/wood_planks_d.dds",
+    "normalMap": "/assets/materials/tileable/wood/wood_planks/wood_planks_n.dds",
+    "specularMap": "/assets/materials/tileable/wood/wood_planks/wood_planks_s.dds" }, {}, {}, {} ],
+  "groundType": "WOOD", "translucent": false
+ },
+ "earthRaid_bridge_beam": {
+  "name": "earthRaid_bridge_beam", "mapTo": "earthRaid_bridge_beam", "class": "Material",
+  "persistentId": "7f1c2a9e-3b4d-4e21-9c55-earthraid0bbm",
+  "Stages": [ { "colorMap": "/assets/materials/tileable/wood/oldwood/old_wood_d.dds",
+    "normalMap": "/assets/materials/tileable/wood/oldwood/old_wood_n.dds" }, {}, {}, {} ],
+  "groundType": "WOOD", "translucent": false
+ }
+}
