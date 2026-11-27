@@ -10,11 +10,19 @@ local TAG = 'earthRaid.ice'
 
 M.SHAPE = '/art/earthRaid/ice/ice_slab.dae'
 M.MATERIALS = '/art/earthRaid/ice/main.materials.json'
-M.TILE = 20          -- lado de la losa (m)
+M.TILE = 40          -- lado de la losa (m): la malla mide 20 m y se escala (27-nov: el río entero con menos objetos)
 M.ICE_R = 45         -- distancia al tramo hasta la que se hiela el agua (m)
 M.STEP = 8           -- cada cuántos metros del tramo se mira
+M.GROUND = 'SNOW'    -- modelo de suelo del hielo
 M.TOP = 0.06         -- la cara de arriba, sobre la superficie del agua (m)
-M.MAX = 600          -- tope de losas
+M.MAX = 1600         -- tope de losas
+-- (27-nov, el usuario: «el río no está congelado del todo; me gustaría que estuviese el río completo») el río que cruza o
+-- toca el tramo se hiela entero a lo largo de sus nodos, hasta RIVER_R m del tramo (el mar, solo junto al tramo)
+M.RIVER_R = 700
+M.RIVER_TOUCH_M = 80 -- un río cuenta si alguno de sus tramos pasa a menos de esto del trazado
+-- banderines que marcan el camino sobre el hielo (27-nov, el usuario): a cada lado, cada FLAG_STEP m
+M.FLAG_SHAPE = '/art/shapes/race/flagMarkerOrange.dae'
+M.FLAG_STEP, M.FLAG_SIDE = 14, 5.0
 M.RECHECK_S = 3
 M.LEVEL_R = M.TILE * 1.5   -- losas vecinas (también en diagonal)
 M.LEVEL_MAX = 1.5         -- diferencia máxima que se iguala (más: son aguas distintas, p. ej. un río que baja)
@@ -25,6 +33,7 @@ local slabs = {}     -- [key] = obj
 local count = 0
 local t = 0
 local matsLoaded = false
+local serialF = 0
 
 -- superficie del agua que cubre (x, y) si el suelo z queda por debajo; nil si no hay agua
 local function surfaceAt(list, x, y, z)
@@ -53,7 +62,13 @@ M.surfaceAt = surfaceAt
 
 local function addSlab(key, x, y, z)
   if slabs[key] or count >= M.MAX then return false end
-  if not matsLoaded then matsLoaded = true pcall(loadJsonMaterialsFile, M.MATERIALS) end
+  if not matsLoaded then
+    matsLoaded = true
+    pcall(loadJsonMaterialsFile, M.MATERIALS)
+    -- (27-nov, el usuario: «que deslice un poco menos, que sea controlable») agarre de nieve compacta (SNOW: 0,65/0,40)
+    -- en vez de hielo vivo (ICE: 0,40/0,20); también si el material ya estaba cargado de antes
+    pcall(function() local m = scenetree.findObject('earthRaid_ice') if m then m:setField('groundType', 0, M.GROUND) end end)
+  end
   local ok, o = pcall(function()
     local s = createObject('TSStatic')
     s:setField('shapeName', 0, M.SHAPE)
@@ -62,7 +77,7 @@ local function addSlab(key, x, y, z)
     s:setField('canSave', 0, '0')
     s.canSave = false
     s:setPosition(vec3(x, y, z))
-    s.scale = vec3(1, 1, 1)
+    s.scale = vec3(M.TILE / 20, M.TILE / 20, 1)
     s:registerObject(('earthRaid_ice_%s_%d'):format(key, os.time()))
     if scenetree.MissionGroup then scenetree.MissionGroup:addObject(s) end
     return s
@@ -111,6 +126,72 @@ local function build()
       end
     end
   end
+  -- el río entero (por sus nodos), si toca el trazado
+  local function tryCell(i, j, w)
+    local key = i .. '_' .. j
+    if slabs[key] or seen[key] then return end
+    seen[key] = true
+    local cx, cy = (i + 0.5) * T, (j + 0.5) * T
+    local surf
+    for _, o in ipairs({ { 0, 0 }, { -0.4, -0.4 }, { 0.4, -0.4 }, { 0.4, 0.4 }, { -0.4, 0.4 } }) do
+      local x, y = cx + o[1] * T, cy + o[2] * T
+      local z = core_terrain.getTerrainHeight(vec3(x, y, 0))
+      if z and z <= M.UNLOADED_Z then seen[key] = nil z = nil end
+      local s = z and surfaceAt({ w }, x, y, z)
+      if s and (not surf or s > surf) then surf = s end
+    end
+    if surf and addSlab(key, cx, cy, surf + M.TOP) then added = added + 1 end
+  end
+  local function nearRoad(x, y, r)
+    local r2 = r * r
+    for k = 1, #road, 3 do local p = road[k] if (p[1] - x) ^ 2 + (p[2] - y) ^ 2 <= r2 then return true end end
+    return false
+  end
+  -- el río de Umeå son bloques de agua (WaterBlock) en mosaico, no un River: los que quedan a menos de RIVER_R del trazado
+  -- también se hielan enteros (el mar abierto, un bloque de kilómetros, no)
+  for _, w in ipairs(W) do
+    if not w.nodes and (w[3] - w[1]) < 1500 and (w[4] - w[2]) < 1500 then
+      local near = false
+      for k = 1, #road, 3 do
+        local p = road[k]
+        local qx, qy = math.max(w[1], math.min(w[3], p[1])), math.max(w[2], math.min(w[4], p[2]))
+        if (qx - p[1]) ^ 2 + (qy - p[2]) ^ 2 <= M.RIVER_R ^ 2 then near = true break end
+      end
+      if near then
+        for i = math.floor(w[1] / T), math.floor(w[3] / T) do
+          for j = math.floor(w[2] / T), math.floor(w[4] / T) do
+            if nearRoad((i + 0.5) * T, (j + 0.5) * T, M.RIVER_R) then tryCell(i, j, w) end
+          end
+        end
+      end
+    end
+  end
+  for _, w in ipairs(W) do
+    if w.nodes and #w.nodes >= 2 then
+      local touch = false
+      for k = 1, #w.nodes do
+        local nd = w.nodes[k]
+        if nearRoad(nd[1], nd[2], M.RIVER_TOUCH_M + nd[4]) then touch = true break end
+      end
+      if touch then
+        for k = 1, #w.nodes - 1 do
+          local a, b = w.nodes[k], w.nodes[k + 1]
+          local L = math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+          local n = math.max(1, math.ceil(L / M.STEP))
+          for q = 0, n do
+            local f = q / n
+            local x, y = a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f
+            if nearRoad(x, y, M.RIVER_R) then
+              local hw = a[4] + (b[4] - a[4]) * f + T * 0.5
+              local i0, i1 = math.floor((x - hw) / T), math.floor((x + hw) / T)
+              local j0, j1 = math.floor((y - hw) / T), math.floor((y + hw) / T)
+              for i = i0, i1 do for j = j0, j1 do tryCell(i, j, w) end end
+            end
+          end
+        end
+      end
+    end
+  end
   -- y las ya puestas que, con el terreno ya cargado, resultan no estar sobre agua (orilla alta): fuera
   local removed = 0
   for key, o in pairs(slabs) do
@@ -143,10 +224,85 @@ local function build()
       if math.abs(a.z - a.p.z) > 0.001 then pcall(function() a.o:setPosition(vec3(a.p.x, a.p.y, a.z)) end) end
     end
     pcall(function() be:reloadStaticCollision(false) end)
+    -- (27-nov, el usuario: «la meta no la he visto») lo que ya estaba puesto sobre el agua (la meta del shakedown cae en el
+    -- río) se había colocado en el fondo: se sube a la cara del hielo
+    pcall(function()
+      local props = require('earthRaid/props')
+      local a = rawget(_G, 'beamngEarth_api')
+      if not (props.reground and a) then return end
+      local moved = 0
+      for _, o in pairs(slabs) do
+        local okP, pos = pcall(function() return o:getPosition() end)
+        if okP and pos then
+          local la, lo = a.toGeo(pos.x, pos.y, pos.z)
+          if la then moved = moved + (props.reground(la, lo, M.TILE * 0.75, true) or 0) end
+        end
+      end
+      if moved > 0 then log('I', TAG, ('ice: %d objects lifted onto the ice'):format(moved)) end
+    end)
     if removed > 0 then log('I', TAG, ('frozen water: %d ice slabs on dry land removed'):format(removed)) end
     log('I', TAG, ('frozen water: %d ice slabs (%d in total)'):format(added, count))
   end
   return added
+end
+
+-- banderines a los dos lados del trazado donde va sobre el hielo (cada FLAG_STEP m), a la altura de la losa
+local flags, flagDone = {}, {}
+local function placeFlags()
+  if not road or #road < 2 then return end
+  local acc, n = 0, 0
+  for k = 2, #road do
+    local a, b = road[k - 1], road[k]
+    local dx, dy = b[1] - a[1], b[2] - a[2]
+    local L = math.sqrt(dx * dx + dy * dy)
+    acc = acc + L
+    if L > 0.1 and acc >= M.FLAG_STEP then
+      acc = 0
+      local key = math.floor(b[1] / 4) .. '_' .. math.floor(b[2] / 4)
+      if not flagDone[key] then
+        local ux, uy = dx / L, dy / L
+        local ok = true
+        local tops = {}
+        for _, sd in ipairs({ -1, 1 }) do
+          local x, y = b[1] - uy * M.FLAG_SIDE * sd, b[2] + ux * M.FLAG_SIDE * sd
+          -- ¿sobre una losa? (rayo contra lo estático, que el terreno no da la altura del hielo)
+          local ti, tj = math.floor(x / M.TILE), math.floor(y / M.TILE)
+          local slab = slabs[ti .. '_' .. tj]
+          if not slab then ok = false break end
+          local okP, sp = pcall(function() return slab:getPosition() end)
+          if not okP then ok = false break end
+          tops[#tops + 1] = { x, y, sp.z }
+        end
+        if ok then
+          flagDone[key] = true
+          for _, tp in ipairs(tops) do
+            local okF, o = pcall(function()
+              local f = createObject('TSStatic')
+              f:setField('shapeName', 0, M.FLAG_SHAPE)
+              f:setField('collisionType', 0, 'None')
+              f:setField('canSave', 0, '0')
+              f:setPosition(vec3(tp[1], tp[2], tp[3]))
+              f.scale = vec3(1, 1, 1)
+              serialF = (serialF or 0) + 1
+              f:registerObject(('earthRaid_iceflag_%d_%d'):format(serialF, os.time()))
+              if scenetree.MissionGroup then scenetree.MissionGroup:addObject(f) end
+              return f
+            end)
+            if okF and o then flags[#flags + 1] = o n = n + 1 end
+          end
+        end
+      end
+    end
+  end
+  if n > 0 then log('I', TAG, ('ice: %d flags along the way'):format(n)) end
+end
+
+-- la cara de arriba del hielo en (x, y), o nil si ahí no hay losa (props.ground: los carteles de meta en el río iban al fondo)
+function M.topAt(x, y)
+  local o = slabs[math.floor(x / M.TILE) .. '_' .. math.floor(y / M.TILE)]
+  if not o then return nil end
+  local ok, p = pcall(function() return o:getPosition() end)
+  return ok and p and p.z or nil
 end
 
 function M.setRoad(pts)
@@ -160,9 +316,12 @@ function M.update(dt)
   if t < M.RECHECK_S then return end
   t = 0
   pcall(build)
+  pcall(placeFlags)
 end
 
 function M.clear()
+  for _, f in ipairs(flags) do pcall(function() f:delete() end) end
+  flags, flagDone = {}, {}
   local n = 0
   for k, o in pairs(slabs) do pcall(function() o:delete() end) slabs[k] = nil n = n + 1 end
   count, road = 0, nil

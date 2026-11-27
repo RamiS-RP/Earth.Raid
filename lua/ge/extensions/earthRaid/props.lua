@@ -125,6 +125,13 @@ function M.ground(lat, lon)
   local a = api()
   local x, y, z = a.toGame(lat, lon, 0)
   if not x then return nil end
+  -- sobre el río helado (ice.lua), la cara del hielo (27-nov: la meta del shakedown quedaba en el fondo del río)
+  do
+    local okI, ice = pcall(require, 'earthRaid/ice')
+    local zt = okI and ice.topAt and ice.topAt(x, y)
+    local th = zt and core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))
+    if zt and type(th) == 'number' and th > -15.9 and zt > th then return x, y, zt, true end
+  end
   do
     local g = M.trueGround(x, y)
     local th0 = core_terrain and core_terrain.getTerrainHeight and core_terrain.getTerrainHeight(vec3(x, y, 0))

@@ -507,8 +507,21 @@ function M.snowDust(on)
   return true
 end
 
-function M.disable()
+-- (27-nov, el usuario: «Suecia carga sin la nieve y al salir de boxes se activa; la nieve tiene que aparecer mientras carga y
+-- desaparecer una vez finaliza el tramo o el rally completo») en un rally de nieve, la nieve se pone al cargar el rally (el
+-- parque de asistencia incluido) y se mantiene entre tramos y en los enlaces: hold(true). Los tramos solo quitan lo suyo
+-- (hielo del río, bancos); la nieve se va al terminar o cancelar el rally (hold(false) + disable). MARK:winter-hold-v1
+local held = false
+function M.hold(on) held = on == true end
+function M.held() return held end
+
+function M.disable(force)
   pcall(ice.clear)
+  if held and not force then
+    pcall(restoreBanks)
+    road = nil
+    return false
+  end
   pcall(M.snowDust, false)
   if not saved then return false end
   local s = saved
@@ -538,7 +551,7 @@ function M.toggle() if saved then return M.disable() else return M.enable() end 
 
 -- Llamada por el tramo: snow = true si su superficie es nieve
 function M.forStage(isSnow)
-  if isSnow then M.enable() else M.disable() end
+  if isSnow then M.enable() elseif not held then M.disable() end
 end
 
 return M

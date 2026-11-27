@@ -1925,9 +1925,20 @@ local function loadPriority(on)
   end
 end
 
+-- (27-nov, el usuario: «sigo escuchando el coche con la pantalla de carga; en el juego no pasa») mientras está la pantalla de
+-- carga, el sonido del mundo (bus SimTime: coche, ambiente, tráfico) va en silencio; la interfaz se sigue oyendo. MARK:load-mute-v1
+local loadMuted = false
+local function loadMute(on)
+  if on == loadMuted then return end
+  loadMuted = on
+  pcall(Engine.Audio.setBusMute, 'bus:/SimTime', on)
+end
+M.loadMute = loadMute
+
 function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   loadPriority(loader.active())
+  loadMute(loader.active())
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
   pcall(M.fallGuard, dtReal)
@@ -2018,7 +2029,7 @@ function M.onBeamNGEarthTeleported()
 end
 function M.onBeamNGEarthAddonOptions() readOptions() end
 function M.onBeamNGEarthRebased() stage.onRebased() end
-function M.onExtensionUnloaded() pcall(guard.release) pcall(regiontraffic.uninstall) rally.stop() stage.stop() end
+function M.onExtensionUnloaded() pcall(loadMute, false) pcall(guard.release) pcall(regiontraffic.uninstall) rally.stop() stage.stop() end
 -- el menú de recuperación del juego: «poner de pie» es un volcado (flip), lo demás una recuperación
 local flipAt = -10
 function M.onRecoveryPromptButtonPressed(id)

@@ -245,6 +245,16 @@ function M.start(ev, fromRun, hooks)
     if item.stage then R.rows[#R.rows + 1] = { kind = 'ss', label = 'SS' .. item.run, title = item.stage.title } end
   end
   log('I', TAG, ('rally %s: %d controls, from run %s, TC0 %s'):format(ev.id, #it.items, tostring(fromRun or 1), hhmm(startMin * 60)))
+  -- rally de nieve: nieve desde la carga (el parque incluido) hasta el final del rally (MARK:winter-hold-v1)
+  local snow = false
+  for _, item in ipairs(it.items) do
+    if item.stage and dressing.normSurface(item.stage.surface or ev.surface) == 'snow' then snow = true break end
+  end
+  if snow then
+    local w = require('earthRaid/winter')
+    w.hold(true)
+    pcall(w.enable)
+  end
   return true
 end
 
@@ -261,6 +271,8 @@ function M.stop()
   pcall(guide.release)
   if not R then return end
   if stage.active() then stage.stop() end
+  -- fin o cancelación del rally: la nieve que se mantenía entre tramos se quita (MARK:winter-hold-v1)
+  pcall(function() local w = require('earthRaid/winter') if w.held() then w.hold(false) w.disable(true) end end)
   stage.trafficBack()
   pcall(tz.clear)
   guide.clear()
