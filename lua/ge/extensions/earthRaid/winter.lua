@@ -13,6 +13,7 @@
 -- Si falta la textura, se hacen solo 1 y 2. Coste: sin objetos nuevos; el refresco del terreno, una vez.
 local M = {}
 local alpha = require('earthRaid/alpha')
+local ice = require('earthRaid/ice')   -- (27-nov) río y mar helados: losas de hielo
 local TAG = 'earthRaid.winter'
 
 M.MATERIALS = { 'bngEarthGroundGrass', 'bngEarthGroundLawn', 'bngEarthGroundLoose', 'bngEarthGroundMud', 'beamngEarthDirt', 'bngEarthGroundRock' }
@@ -22,7 +23,11 @@ M.GROUNDMODEL = 'SNOW'
 -- se guarda para los bancos de nieve: se pintan con el material de barro de Earth (índice 3, bngEarthGroundMud).
 -- (23-nov, probado: con el terreno sin repintar el cauce del río y los barros de Earth eran MUD y el coche se quedaba parado; el
 -- usuario: «el río, todo hielo»): sin bancos (alpha.TERRAIN_EDIT=false) el barro de Earth es ICE, no MUD
-M.GROUNDMODELS = { bngEarthGroundMud = alpha.TERRAIN_EDIT and 'MUD' or 'ICE', bngEarthGroundRock = 'ICE' }   -- (23-nov) Rock = la calzada sobre río helado   -- (23-nov, 5.ª, el usuario) los bancos son MUD blanco: ruedas enterradas, frena, levanta barro
+-- (27-nov, el usuario: «los caminos de tierra se comportan como hielo; quiero tierra mojada, como MUD pero no tan exagerado,
+-- el barro que deja la nieve») los materiales de camino (tierra suelta, tierra, barro) pasan a GRAVEL_WET (agarre 0,6, sin
+-- hundirse); fuera de la calzada la hierba sigue siendo nieve (SNOW). El río ya no depende del fondo: lleva su losa de hielo.
+M.GROUNDMODELS = { bngEarthGroundMud = alpha.TERRAIN_EDIT and 'MUD' or 'GRAVEL_WET', bngEarthGroundLoose = 'GRAVEL_WET',
+  beamngEarthDirt = 'GRAVEL_WET', bngEarthGroundRock = alpha.TERRAIN_EDIT and 'ICE' or 'GRAVEL_WET' }   -- (23-nov) Rock = la calzada sobre río helado   -- (23-nov, 5.ª, el usuario) los bancos son MUD blanco: ruedas enterradas, frena, levanta barro
 M.PLAIN_MAT = 1              -- bngEarthGroundGrass (SNOW): lo que sustituye al barro de Earth cerca de la calzada sin banco
 M.BANK_MAT = 4               -- material del terreno con el que se pintan los bancos (nieve sucia con barro)
 M.BANK_DETAIL = { 1, 1 }      -- (23-nov, 4.ª) blanco del todo como el suelo: con 0,8 el barro oscuro se veía negro y no parecía nieve
@@ -212,6 +217,7 @@ end
 function M.setRoad(pts, hw)
   restoreBanks()
   waterList = nil
+  pcall(ice.setRoad, pts)
   if not alpha.TERRAIN_EDIT or not M.BANK.enabled or not pts or #pts < 2 then road = nil return end   -- (23-nov, ALPHA) sin bancos
   local cum = { 0 }
   for i = 2, #pts do
@@ -434,6 +440,7 @@ end
 -- Cada fotograma (barato si no hay nieve): bancos y vegetación que cargó tarde
 function M.update(dt)
   if not saved then return end
+  pcall(ice.update, dt)
   vegT = vegT + (dt or 0)
   if vegT >= M.VEG_CHECK_S then vegT = 0 snowVeg() end
   updateBanks()
@@ -460,6 +467,7 @@ function M.enable()
     end
   end
   refresh(tb)
+  pcall(M.snowDust, true)
   local w = extensions.beamngEarth_weather
   if w and w.setPreset then
     saved.preset = w.preset and w.preset() or nil
@@ -473,7 +481,35 @@ function M.enable()
   return true
 end
 
+-- (27-nov, el usuario: «la nieve del exterior de la calzada está bien; me gustaría que soltase un poco más de polvo de nieve»)
+-- el polvo que levantan las ruedas en la nieve es el emisor del juego BNGP_83 (partícula BNG_snow_contact): con nieve, el
+-- doble de partículas, algo más grandes, que duran más y caen más despacio; al terminar se deja como estaba
+M.DUST = { emitter = 'BNGP_83', particle = 'BNG_snow_contact',
+  e = { ejectionPeriodMS = '5', ejectionVelocity = '1.8', velocityVariance = '0.6' },
+  p = { sizes = '0.18', lifetimeMS = '2100', gravityCoefficient = '0.45' } }
+local dustSaved = nil
+function M.snowDust(on)
+  local e, p = scenetree.findObject(M.DUST.emitter), scenetree.findObject(M.DUST.particle)
+  if not (e and p) then return false end
+  if on then
+    if dustSaved then return true end
+    dustSaved = { e = {}, p = {} }
+    for f, v in pairs(M.DUST.e) do dustSaved.e[f] = e:getField(f, 0) e:setField(f, 0, v) end
+    for f, v in pairs(M.DUST.p) do dustSaved.p[f] = p:getField(f, 0) p:setField(f, 0, v) end
+  else
+    if not dustSaved then return true end
+    for f, v in pairs(dustSaved.e) do e:setField(f, 0, v) end
+    for f, v in pairs(dustSaved.p) do p:setField(f, 0, v) end
+    dustSaved = nil
+  end
+  pcall(function() p:reload() end)
+  pcall(function() e:reload() end)
+  return true
+end
+
 function M.disable()
+  pcall(ice.clear)
+  pcall(M.snowDust, false)
   if not saved then return false end
   local s = saved
   saved = nil

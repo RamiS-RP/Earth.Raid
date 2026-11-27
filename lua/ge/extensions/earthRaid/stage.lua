@@ -1434,6 +1434,47 @@ local function reground(dt, heightOnly)
 end
 
 -- el punto del STOP (tras la meta, por la carretera que sigue o en la prolongación del trazado)
+-- (27-nov, el usuario: «el shakedown no tiene salida a carretera en la meta: que al terminar te lleve a una zona segura y no
+-- te deje en mitad del río») al acabar, si el coche está en el agua o sin carretera del juego a menos de SAFE_ROAD_M, se lleva
+-- a la carretera más cercana que esté en seco, mirando a lo largo de ella. MARK:safe-spot-v1
+M.SAFE_ROAD_M = 25
+function M.safeSpot()
+  local v = be:getPlayerVehicle(0)
+  if not v then return false end
+  local p = v:getPosition()
+  local m = map.getMap()
+  if not (m and m.nodes) then return false end
+  local W = {}
+  pcall(function() W = require('earthRaid/servicepark').waterBodies() end)
+  local ice = require('earthRaid/ice')
+  local gz = core_terrain.getTerrainHeight(vec3(p.x, p.y, 0)) or p.z
+  local wet = ice.surfaceAt(W, p.x, p.y, gz) ~= nil   -- sobre agua (el hielo se quita al terminar)
+  local near = false
+  for _, nd in pairs(m.nodes) do
+    if (nd.pos.x - p.x) ^ 2 + (nd.pos.y - p.y) ^ 2 < M.SAFE_ROAD_M ^ 2 then near = true break end
+  end
+  if near and not wet then return false end
+  local best, bd, bn
+  for id, nd in pairs(m.nodes) do
+    local d = (nd.pos.x - p.x) ^ 2 + (nd.pos.y - p.y) ^ 2
+    if (nd.radius or 0) >= 2 and d < 2000 * 2000 and (not bd or d < bd) then
+      local z = core_terrain.getTerrainHeight(vec3(nd.pos.x, nd.pos.y, 0)) or nd.pos.z
+      if z > ice.UNLOADED_Z and not ice.surfaceAt(W, nd.pos.x, nd.pos.y, z) then best, bd, bn = nd, d, id end
+    end
+  end
+  if not best then return false end
+  local dir = vec3(1, 0, 0)
+  for nb in pairs(best.links or {}) do
+    local q = m.nodes[nb]
+    if q then dir = vec3(q.pos.x - best.pos.x, q.pos.y - best.pos.y, 0) break end
+  end
+  if dir:length() < 0.01 then dir = vec3(1, 0, 0) end
+  local tp = vec3(best.pos.x, best.pos.y, best.pos.z + 0.6)
+  spawn.safeTeleport(v, tp, quatFromDir(dir:normalized(), vec3(0, 0, 1)))
+  log('I', TAG, ('finish: no safe road here (water=%s): car taken to the nearest road, %.0f m away'):format(tostring(wet), math.sqrt(bd)))
+  return true
+end
+
 function M.stopPoint(t)
   local s = dressing.stopAt(t)
   if t.after then return geo.toGeo(t.after, geo.at(t.after, math.min(s, t.after.total))) end
@@ -1749,6 +1790,7 @@ function M.update(dtSim, dtReal)
       -- el resultado: en un rally, unos segundos; en un tramo suelto, hasta aceptarlo (Mayús+E) o DONE_ACCEPT_S
       S.phase, S.doneLeft = 'done', S.session and M.DONE_SHOW_S or M.DONE_ACCEPT_S
       guide.clear()
+      pcall(M.safeSpot)
       if S.session and S.session.onStop then pcall(S.session.onStop) end
     end
   elseif S.phase == 'done' then
