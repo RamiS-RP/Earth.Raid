@@ -1,3 +1,4 @@
+-- BLOQUEADO (27-nov, orden del usuario): no tocar sin su permiso. Ver LOCKED.md.
 -- Raid.Earth: las apps del rally del propio juego (rallyDashboard, rallyTimecard, rallyCountdown, rallyStageTiming,
 -- rallyStageProgress) en vez de un HUD propio (18-nov, el usuario: "que no se note que es un mod externo").
 -- Todas leen un solo stream de la UI, 'rallyLoop', que en el juego publica gameplay_rallyLoop. Mientras hay un tramo o
