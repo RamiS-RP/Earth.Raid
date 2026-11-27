@@ -1018,7 +1018,13 @@ local function mouthRoute(m, h, cx, cy)
     local okP, paved = pcall(M.pavedMouthRoute, m, h, cx, cy)
     if okP and paved then return paved end
   end
-  -- sin unión asfaltada: la recta del box al punto más cercano de una carretera de verdad, como la línea que pinta el GPS
+  -- sin unión asfaltada: el lado del recinto con el paso limpio al camino más cercano (MARK:open-side-v1)
+  if not lotStreets and M.clearSideRoute then
+    local okS, side = pcall(M.clearSideRoute, m, h, cx, cy)
+    if okS and side then return side end
+    if not okS then log('W', TAG, 'open side: ' .. tostring(side)) end
+  end
+  -- y si no hay ninguno limpio: la recta del box al punto más cercano de una carretera de verdad, como la línea del GPS
   if start and not lotStreets then
     local bx, by, bd, brad
     for _, nd in pairs(m.nodes) do
@@ -1154,6 +1160,7 @@ function M.pavedMouthRoute(m, h, cx, cy, tx, ty)
 end
 
 local function exitMouth(h, cx, cy, z)
+  M._openSide = nil
   local okM, m = pcall(map.getMap)
   local route = okM and m and m.nodes and mouthRoute(m, h, cx, cy) or nil
   M.dbg = { hull = h, cx = cx, cy = cy, route = route }
@@ -1187,8 +1194,11 @@ local function exitMouth(h, cx, cy, z)
             end
             if bnx and bnx * ux + bny * uy > 0.2 then ux, uy = bnx, bny end
           end
+          local os_ = M._openSide
           return { x = x, y = y, z = terrainZ(x, y) or z, ux = ux, uy = uy, bx = -ux, by = -uy,
-            hw = math.max(2.5, math.min(3.5, rad + 1)), gate = true, mouth = true }
+            -- lado abierto: el carril del TC0 ocupa el lado, con las casetas hacia sus extremos
+            hw = os_ and math.max(3, math.min(8, os_.L / 2 - 3.5)) or math.max(2.5, math.min(3.5, rad + 1)),
+            gate = true, mouth = true, openSide = os_ ~= nil and os_.L <= M.OPEN_SIDE_MAX_M or nil }
         end
       end
     end
@@ -1224,6 +1234,99 @@ local function treeAt(x, y, r)
   return false
 end
 M.treeAt = treeAt
+
+-- NORMA (27-nov, el usuario, Suecia: «si el parking no tiene boca, comprueba que no haya ningún obstáculo hasta el camino más
+-- cercano; la salida tenía una valla justo enfrente y donde te indico está limpio»). Sin calles del aparcamiento ni acceso
+-- asfaltado, la salida es el LADO del recinto que da al camino más cercano con el paso limpio: desde puntos del lado, hacia
+-- fuera y en perpendicular, hasta la calzada; el pasillo (OPEN_CORRIDOR_W m de ancho) sin objetos del mundo (casetas,
+-- remolques, muros: rayo de arriba abajo), sin árboles y sin escalones. Gana el lado con el camino más cerca; en él, el punto
+-- limpio más centrado. Ese lado queda abierto (sin valla) y el TC0 en medio, con una caseta a cada extremo. MARK:open-side-v1
+M.OPEN_CORRIDOR_W, M.OPEN_MAX_M, M.OPEN_SIDE_MAX_M = 6, 45, 45
+function M.clearSideRoute(m, h, cx, cy)
+  local R2 = (M.GATE_SEARCH_M + 40) ^ 2
+  local segs = {}
+  for _, nd in pairs(m.nodes) do
+    if (nd.pos.x - cx) ^ 2 + (nd.pos.y - cy) ^ 2 <= R2 then
+      for nb, ed in pairs(nd.links or {}) do
+        local o = m.nodes[nb]
+        local dr = type(ed) == 'table' and tonumber(ed.drivability) or 1
+        if o and dr > M.LOT_DRIV then
+          segs[#segs + 1] = { nd.pos.x, nd.pos.y, o.pos.x, o.pos.y, math.max(nd.radius or 2.5, o.radius or 2.5) }
+        end
+      end
+    end
+  end
+  if #segs == 0 then return nil end
+  local function onRoad(x, y)
+    for _, g in ipairs(segs) do
+      local vx, vy = g[3] - g[1], g[4] - g[2]
+      local L2 = vx * vx + vy * vy
+      local t = L2 > 0 and math.max(0, math.min(1, ((x - g[1]) * vx + (y - g[2]) * vy) / L2)) or 0
+      if (x - g[1] - vx * t) ^ 2 + (y - g[2] - vy * t) ^ 2 < g[5] * g[5] then return g[5] end
+    end
+    return nil
+  end
+  local function blockedAt(x, y, z0)
+    local z = terrainZ(x, y)
+    if not z then return true end
+    if treeAt(x, y, 1.5) then return true end
+    local ok, d = pcall(castRayStatic, vec3(x, y, z + 25), vec3(0, 0, -1), 40)
+    if ok and d and d < 24.6 then return true end   -- algo de más de 0,4 m sobre el suelo
+    return false, z
+  end
+  local best
+  for i = 1, #h do
+    local A, B = h[i], h[i % #h + 1]
+    local ex, ey = B[1] - A[1], B[2] - A[2]
+    local L = math.sqrt(ex * ex + ey * ey)
+    if L >= 8 then
+      ex, ey = ex / L, ey / L
+      local nx, ny = ey, -ex             -- hacia fuera (el interior queda a la izquierda)
+      local ok_ = {}
+      local minS
+      for t = 3, L - 3, 2 do
+        local Ex, Ey = A[1] + ex * t, A[2] + ey * t
+        local hitS, rad
+        for s = 0, M.OPEN_MAX_M, 1 do
+          local r = onRoad(Ex + nx * s, Ey + ny * s)
+          if r then hitS, rad = s, r break end
+        end
+        if hitS then
+          local clear, zPrev = true, terrainZ(Ex, Ey)
+          local hw = M.OPEN_CORRIDOR_W / 2
+          for s = 0, math.max(0, hitS - 0.5), 1 do
+            for _, l in ipairs({ -hw, 0, hw }) do
+              local b, z = blockedAt(Ex + nx * s + ex * l, Ey + ny * s + ey * l)
+              if b then clear = false break end
+              if l == 0 then
+                if zPrev and math.abs(z - zPrev) > 0.6 then clear = false break end
+                zPrev = z
+              end
+            end
+            if not clear then break end
+          end
+          if clear then
+            ok_[#ok_ + 1] = { t = t, s = hitS, x = Ex, y = Ey, qx = Ex + nx * hitS, qy = Ey + ny * hitS, rad = rad }
+            if not minS or hitS < minS then minS = hitS end
+          end
+        end
+      end
+      if minS and (not best or minS < best.s) then
+        -- en el lado, el punto limpio más centrado con el camino casi igual de cerca
+        local pick
+        for _, c in ipairs(ok_) do
+          if c.s <= minS + 6 and (not pick or math.abs(c.t - L / 2) < math.abs(pick.t - L / 2)) then pick = c end
+        end
+        best = { s = minS, c = pick, i = i, L = L, nx = nx, ny = ny }
+      end
+    end
+  end
+  if not best then return nil end
+  local c = best.c
+  M._openSide = { i = best.i, L = best.L }
+  log('I', TAG, string.format('lot exit: open side %.0f m long, clear path of %.0f m to the road at (%.1f, %.1f)', best.L, c.s, c.qx, c.qy))
+  return { { cx, cy, c.rad }, { c.x - best.nx * 3, c.y - best.ny * 3, c.rad }, { c.x + best.nx * 1, c.y + best.ny * 1, c.rad }, { c.qx, c.qy, c.rad } }
+end
 -- ¿cabe la carpa 3x6 de una plaza (girada como la plaza) sin tocar un edificio, un muro o un árbol?
 local function boxFree(p)
   local hdg = math.rad(p[4] or 0)
@@ -1418,6 +1521,8 @@ local function lotFence(site)
     if L > 1 then
       ex, ey = ex / L, ey / L
       local OFF = runSet[i] and M.RUN_OFF_M or M.LOT_FENCE_OFF_M
+      -- lado abierto (MARK:open-side-v1): sin valla en todo el lado de la salida
+      if runSet[i] and M.tcSpot and M.tcSpot.openSide then goto nextSide end
       local ox, oy = ey * OFF, -ex * OFF       -- hacia fuera (derecha del lado)
       local la0, lo0 = a.toGeo(A[1], A[2], z0)
       local la1, lo1 = a.toGeo(A[1] + ex * 10, A[2] + ey * 10, z0)
@@ -1452,6 +1557,7 @@ local function lotFence(site)
         else skipped = skipped + 1 end
       end
     end
+    ::nextSide::
   end
   -- (26-nov) con el tope de piezas, primero las más cercanas a la salida (TC0) y a los boxes: antes se cortaba según por qué
   -- esquina empezaba la vuelta y el lado de la salida podía quedar sin vallar
@@ -1486,7 +1592,7 @@ local function lotFence(site)
       end
     end
   end
-  if runA and runB and streetAlong then
+  if runA and runB and streetAlong and not (M.tcSpot and M.tcSpot.openSide) then
     local ex, ey = runB[1] - runA[1], runB[2] - runA[2]
     local L = math.sqrt(ex * ex + ey * ey)
     if L > 3 then
