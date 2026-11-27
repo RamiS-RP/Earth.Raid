@@ -1928,6 +1928,7 @@ end
 -- (27-nov, el usuario: «sigo escuchando el coche con la pantalla de carga; en el juego no pasa») mientras está la pantalla de
 -- carga, el sonido del mundo (bus SimTime: coche, ambiente, tráfico) va en silencio; la interfaz se sigue oyendo. MARK:load-mute-v1
 local loadMuted = false
+M.LOAD_PAUSE_S = 8
 local function loadMute(on)
   if on == loadMuted then return end
   loadMuted = on
@@ -1939,6 +1940,23 @@ function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   loadPriority(loader.active())
   loadMute(loader.active())
+  -- (27-nov, el usuario: «se ha quedado colgado cargando») el cargador no avanza con el juego en pausa (BeamNG.Earth pausa
+  -- mientras carga el terreno de un viaje). Si la pausa sigue más de LOAD_PAUSE_S s con Earth listo y sin recolocar el mundo
+  -- (una pausa del menú o de perder el foco con la pantalla de carga puesta), se quita: la carga se quedaba parada para
+  -- siempre (5 min en el shakedown). MARK:load-unpause-v1
+  if loader.active() and simTimeAuthority and simTimeAuthority.getPause and simTimeAuthority.getPause() then
+    S.loadPausedT = (S.loadPausedT or 0) + (dtReal or 0)
+    if S.loadPausedT > M.LOAD_PAUSE_S then
+      local a = rawget(_G, 'beamngEarth_api')
+      local okR, ready = pcall(function() return a and a.ready() end)
+      local okB, reb = pcall(function() return a and a.rebasing() end)
+      if okR and ready and not (okB and reb) then
+        S.loadPausedT = 0
+        pcall(simTimeAuthority.pause, false)
+        log('W', TAG, 'loading: the game was paused with Earth ready; resumed so the loading goes on')
+      end
+    end
+  else S.loadPausedT = 0 end
   if not S.earthLevel and not (loader.active() or stage.active() or rally.active()) then return end
   pcall(afterTeleport, dtReal)
   pcall(M.fallGuard, dtReal)
