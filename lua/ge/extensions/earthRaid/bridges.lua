@@ -1,4 +1,4 @@
--- Raid.Earth: puentes de madera sobre cruces sin tablero (27-nov, el usuario: «arreglar la entrada al puente del
+-- Earth.Raid: puentes de madera sobre cruces sin tablero (27-nov, el usuario: «arreglar la entrada al puente del
 -- shakedown; probar un puente de madera encima y si no, aplanar el montículo»).
 --
 -- El paquete marca cada cruce en el tramo con `woodBridges = { { la1, lo1, la2, lo2 }, ... }`: los dos puntos de la

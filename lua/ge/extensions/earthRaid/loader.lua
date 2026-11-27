@@ -1,6 +1,6 @@
 -- ███ BLOQUEADO (23-nov, orden del usuario): funciona y está aprobado. NO modificar sin su permiso expreso. Ver LOCKED.md ███
 -- (26-nov: cambiado con permiso del usuario: el coche congelado tras cada viaje/colocación, sin caer ni moverse en la carga)
--- Raid.Earth: la carga al iniciar un tramo o un rally (como la pantalla de carga del juego).
+-- Earth.Raid: la carga al iniciar un tramo o un rally (como la pantalla de carga del juego).
 -- Al darle a Iniciar: el coche se congela, se lleva a la zona de salida, se espera a que BeamNG.Earth cargue el mundo
 -- y las carreteras de allí, se monta lo de esa zona (TC, salida, box) y se coloca todo; solo entonces se suelta el coche
 -- en la calzada, M.BEFORE_TC_M antes del control horario y mirando hacia él (o en el box del rally). Así los objetos no

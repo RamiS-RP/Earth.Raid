@@ -1,4 +1,4 @@
--- Raid.Earth: sin trampas (18-nov, el usuario). Durante un tramo no se puede cambiar de coche ni teletransportarse
+-- Earth.Raid: sin trampas (18-nov, el usuario). Durante un tramo no se puede cambiar de coche ni teletransportarse
 -- (F7 = dropPlayerAtCameraNoReset, volver a casa, cambiar de vehículo, selector de vehículos y piezas). Se puede
 -- recuperar el coche (R, o mantenerlo para volver atrás en el tiempo) con su penalización.
 --  - Tramo suelto: el coche se puede cambiar hasta fichar en el TC.

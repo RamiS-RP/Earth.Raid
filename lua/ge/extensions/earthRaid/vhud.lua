@@ -1,8 +1,8 @@
 -- BLOQUEADO (27-nov, orden del usuario): no tocar sin su permiso. Ver LOCKED.md.
--- Raid.Earth: las apps del rally del propio juego (rallyDashboard, rallyTimecard, rallyCountdown, rallyStageTiming,
+-- Earth.Raid: las apps del rally del propio juego (rallyDashboard, rallyTimecard, rallyCountdown, rallyStageTiming,
 -- rallyStageProgress) en vez de un HUD propio (18-nov, el usuario: "que no se note que es un mod externo").
 -- Todas leen un solo stream de la UI, 'rallyLoop', que en el juego publica gameplay_rallyLoop. Mientras hay un tramo o
--- un rally de Raid.Earth se publica ese stream con nuestros datos, con el mismo formato que el juego
+-- un rally de Earth.Raid se publica ese stream con nuestros datos, con el mismo formato que el juego
 -- (ui/modules/apps/rallyLoop/mockdata/*.json), desde onGuiUpdate: va después del onUpdate de gameplay_rallyLoop, así
 -- que el nuestro es el que llega a la UI ese fotograma.
 local M = {}

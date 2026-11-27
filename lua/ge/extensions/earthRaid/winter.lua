@@ -1,4 +1,4 @@
--- Raid.Earth: tramos con nieve. Petición del usuario, 21-nov: nevada y agarre de nieve en el Rally de Suecia, y probar
+-- Earth.Raid: tramos con nieve. Petición del usuario, 21-nov: nevada y agarre de nieve en el Rally de Suecia, y probar
 -- una textura blanca en el suelo.
 --
 -- Qué hace (todo en memoria; al terminar el tramo se deja como estaba):

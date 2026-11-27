@@ -1,5 +1,5 @@
 <template>
-  <!-- Raid.Earth: el mapa de la ficha del evento (petición del usuario, 19-nov: "un mapa estático marcando los tramos
+  <!-- Earth.Raid: el mapa de la ficha del evento (petición del usuario, 19-nov: "un mapa estático marcando los tramos
        para tener una idea visual de por dónde están pasando"). Teselas del mapa de BeamNG.Earth (EOX terrain-light y
        su capa de rótulos; el navegador del juego no carga nada por http, así que se piden a su servidor como archivos
        en /temp, igual que hace su mapa del mundo), encima los tramos en rojo (el elegido en naranja), los enlaces en

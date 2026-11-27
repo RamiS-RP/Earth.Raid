@@ -1,4 +1,4 @@
--- Raid.Earth: modo de pruebas (22-nov). Atajos para comprobar un tramo sin conducirlo entero, desde la consola del juego
+-- Earth.Raid: modo de pruebas (22-nov). Atajos para comprobar un tramo sin conducirlo entero, desde la consola del juego
 -- (o por MCP):  local d = require('earthRaid/dbg')
 --   d.status()        fase, metros, línea de guía (propia o no, longitud, desvío máximo del trazado), caminos generados
 --   d.go(metros)      lleva el coche a ese punto del tramo, en el CENTRO de la calzada y mirando en el sentido de marcha

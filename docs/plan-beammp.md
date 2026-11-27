@@ -1,4 +1,4 @@
-# Raid.Earth en BeamMP (BeamNG.Earth multijugador): plan
+# Earth.Raid en BeamMP (BeamNG.Earth multijugador): plan
 
 18-nov. Objetivo: un rally virtual en un servidor BeamMP con BeamNG.Earth. Los jugadores salen por orden y el servidor guarda los tiempos. Sin coste de rendimiento para los demás jugadores ni para el servidor.
 
@@ -31,12 +31,12 @@
 - **Servidor:** una tabla en memoria por evento y un JSON al acabar cada tramo. Temporizadores de 1 s para las salidas.
 
 ## Clasificación
-- **Fase 1, en el servidor:** `Resources/Server/RaidEarth/results/<evento>.json`. En el juego se ve con la hoja de tiempos (`rallyTimecard`) y con una tabla como la de las misiones (`MissionLeaderboards.vue`).
+- **Fase 1, en el servidor:** `Resources/Server/EarthRaid/results/<evento>.json`. En el juego se ve con la hoja de tiempos (`rallyTimecard`) y con una tabla como la de las misiones (`MissionLeaderboards.vue`).
 - **Fase 2, global (opcional):** el plugin del servidor manda los resultados a un servicio web gratuito (Supabase o Cloudflare Worker + D1) con una clave del servidor. Los clientes nunca escriben ahí directamente.
 
 ## Fases
 1. **Cliente en modo multijugador:** detectar BeamMP (`MPGameNetwork`/`MPVehicleGE`); objetos con física solo locales; semilla; reloj sincronizado.
-2. **Plugin del servidor** (`Resources/Server/RaidEarth/main.lua`): eventos, inscripción, orden y horas de salida, validación de tiempos, clasificación.
+2. **Plugin del servidor** (`Resources/Server/EarthRaid/main.lua`): eventos, inscripción, orden y horas de salida, validación de tiempos, clasificación.
 3. **UI:** hoja de tiempos y panel con los datos del servidor; tabla de clasificación; aviso «tu salida en 2 min».
 4. **Pruebas:** servidor local de BeamMP con dos clientes y después un servidor real.
 

@@ -1,4 +1,4 @@
--- Raid.Earth: importador de rutas. Convierte un archivo de mapa en un evento con el formato del catálogo.
+-- Earth.Raid: importador de rutas. Convierte un archivo de mapa en un evento con el formato del catálogo.
 -- Formatos: KML (Google Earth / My Maps / visores de mapas), KMZ (el KML comprimido; main.lua lo descomprime), GPX
 -- (tracks, rutas y waypoints), GeoJSON (LineString, MultiLineString, Point) y OSM XML (vías con nombre).
 -- Entiende la forma de nombrar de los organizadores y de los mapas de rallies ("Special Stage - SS 2/5 Valleseco -

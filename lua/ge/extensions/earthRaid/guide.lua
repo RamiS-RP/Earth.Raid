@@ -1,4 +1,4 @@
--- Raid.Earth: el GPS de BeamNG.Earth para llevar al jugador a la salida y, en el tramo, por el trazado hasta la meta.
+-- Earth.Raid: el GPS de BeamNG.Earth para llevar al jugador a la salida y, en el tramo, por el trazado hasta la meta.
 local geo = require('earthRaid/geo')
 local M = {}
 local TAG = 'earthRaid'
@@ -305,15 +305,15 @@ function M.restoreBlueLine()
 end
 
 -- Fuera del tramo (hacia el TC y del TC a la salida) solo la línea azul del GPS: el mod Racing Line sigue por su cuenta
--- cualquier ruta del GPS ("seguir navegación"), así que mientras Raid.Earth tiene un tramo se le apaga eso y se borra
--- su línea; al terminar con Raid.Earth se le devuelve.
+-- cualquier ruta del GPS ("seguir navegación"), así que mientras Earth.Raid tiene un tramo se le apaga eso y se borra
+-- su línea; al terminar con Earth.Raid se le devuelve.
 function M.hold()
   rl.held = true
   rlAction('tg_navFollow', false)
   rlAction('clear')
   rlAction('tg_navFollow', false)
 end
--- en un mapa normal (rally vanilla, etc.): el mod Racing Line, tal como estaba sin Raid.Earth
+-- en un mapa normal (rally vanilla, etc.): el mod Racing Line, tal como estaba sin Earth.Raid
 function M.restoreAll()
   rl.held = true
   M.release()

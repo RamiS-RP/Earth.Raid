@@ -1,4 +1,4 @@
-# Earth.Raid (Raid.Earth)
+# Earth.Raid
 
 [Español](README.md) · **English**
 
@@ -12,9 +12,9 @@ Real rallies, raids and the Dakar in **BeamNG.drive**, on the real-world map of 
 
 ### 1. Events, in the pause menu
 
-Raid.Earth has its own tab in the pause menu (**Esc → Raid.Earth**), next to BeamNG.Earth and BeamMP. The list shows every event with its logo, place, championship and dates, how many stages it has, the timed kilometres and how far away you are. Routes are imported and settings changed from the same tab.
+Earth.Raid has its own tab in the pause menu (**Esc → Earth.Raid**), next to BeamNG.Earth and BeamMP. The list shows every event with its logo, place, championship and dates, how many stages it has, the timed kilometres and how far away you are. Routes are imported and settings changed from the same tab.
 
-![Raid.Earth tab of the pause menu with the list of events](docs/img/01-pause-menu-events.jpg)
+![Earth.Raid tab of the pause menu with the list of events](docs/img/01-pause-menu-events.jpg)
 
 ### 2. The event sheet
 
@@ -77,7 +77,7 @@ On the stage: time control with a stop, staging at the start line, countdown on 
 ## Requirements
 
 - BeamNG.drive 0.40 or later.
-- BeamNG.Earth, with its level loaded. Raid.Earth uses its add-on API: real position, GPS, teleport and places.
+- BeamNG.Earth, with its level loaded. Earth.Raid uses its add-on API: real position, GPS, teleport and places.
 
 ## Install
 
@@ -102,7 +102,7 @@ Add more from the menu (⤓ Import).
 1. Download `earth_raid.zip` from [Releases](https://github.com/RamiS-RP/Earth.Raid/releases) (or build it with `tools/package.sh`).
 2. Copy it **as it is, without unzipping**, into `<BeamNG user folder>/current/mods/`.
    - The zip must have `lua/`, `ui/`, `scripts/`… at its root. A zip with a folder inside (e.g. `raid-earth/lua/…`, the one GitHub's *Code → Download ZIP* gives you) **does not work**: the mod is listed but the menu never shows up.
-3. Enter BeamNG.Earth and open **Esc → Raid.Earth**. For a shortcut, bind it in Options → Controls → "Raid.Earth: open the events menu".
+3. Enter BeamNG.Earth and open **Esc → Earth.Raid**. For a shortcut, bind it in Options → Controls → "Earth.Raid: open the events menu".
 4. Keep **a single copy**: if you installed from Add-ons (`earth_raid-1.zip`) and also by hand (`earth_raid.zip`), delete one. Two copies overwrite each other.
 
 ## Co-driver and voices
@@ -119,8 +119,8 @@ They are optional, but rallying feels much better with them. **Step by step:**
 1. Open each link in the table (it is BeamNG's official website).
 2. Click **Subscribe** (installs by itself) or **Download** (you get a `.zip`).
    - If you download it, copy that `.zip` **as it is, without unzipping it**, into your mods folder: `Documents\BeamNG.drive\<version>\mods` (or start the game → main menu → **Mods** → **Open mods folder**).
-3. Start the game. **Raid.Earth turns on by itself** the recommended mods it finds downloaded (to stop that, switch off Raid.Earth → Settings → "Turn on downloaded recommended mods automatically").
-4. To check: Raid.Earth → Settings → **Recommended mods**: each one says *enabled*, *downloaded* or *not installed*.
+3. Start the game. **Earth.Raid turns on by itself** the recommended mods it finds downloaded (to stop that, switch off Earth.Raid → Settings → "Turn on downloaded recommended mods automatically").
+4. To check: Earth.Raid → Settings → **Recommended mods**: each one says *enabled*, *downloaded* or *not installed*.
 
 | Mod | What it does |
 |---|---|
@@ -130,7 +130,7 @@ They are optional, but rallying feels much better with them. **Step by step:**
 | [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Realistic headlights and fog lights: a must for night stages. |
 | [Smoke Dust FX](https://www.beamng.com/resources/smoke-dust-fx.39628/) | Realistic smoke and dust, above all on gravel stages. |
 
-**Language:** Raid.Earth follows the game's language (Spanish or English for now).
+**Language:** Earth.Raid follows the game's language (Spanish or English for now).
 
 **Surfaces:** every stage is labelled with its FIA surface: tarmac, gravel, snow or mixed. When you import a route, pick it in the form or leave it on *Automatic* (it is read from the names: "tierra", "gravel", "snow"...). On gravel tracks and paths the game has no road for, the stage line itself counts as the road, so nothing is placed on it.
 

@@ -1,4 +1,4 @@
--- Raid.Earth: notas de copiloto a partir de la geometría del tramo, con la escala y los colores del rally del juego
+-- Earth.Raid: notas de copiloto a partir de la geometría del tramo, con la escala y los colores del rally del juego
 -- (compositors/styles/english/numbering/one_to_six.lua y enthusiast.lua):
 --   grado por diámetro de la curva: 1 < 35 m, 2 < 65, 3 < 116, 4 < 190, 5 < 260, 6 el resto
 --   horquilla (HP) y escuadra (SQ) por ángulo; "long" / "extra long" por longitud; "tightens" / "opens" si el radio cambia

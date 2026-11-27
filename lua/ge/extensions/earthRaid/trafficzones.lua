@@ -1,4 +1,4 @@
--- Raid.Earth: el tráfico no entra en las zonas del rally (19-nov: coches "locos" invadían el camino a los TC, las
+-- Earth.Raid: el tráfico no entra en las zonas del rally (19-nov: coches "locos" invadían el camino a los TC, las
 -- salidas y las metas). Cada segundo, los coches del tráfico que estén dentro de una zona (los controles, la salida,
 -- la meta y el STOP, y el propio tramo mientras está montado) se reaparecen lejos (respawn del juego); si no se puede,
 -- se quitan. Las calles que salen del tramo ya se cortan con cinta (dressing.closures).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Raid.Earth: crea un voicepack de copiloto para BeamNG (mismo formato que los del juego) en otro idioma.
+"""Earth.Raid: crea un voicepack de copiloto para BeamNG (mismo formato que los del juego) en otro idioma.
 
 Lee las frases de un archivo como es.json (una por cada nota del juego: "four_right": "cuatro derecha"), las convierte
 en voz con un motor TTS y escribe un mod listo para copiar a mods/:
@@ -9,7 +9,7 @@ en voz con un motor TTS y escribe un mod listo para copiar a mods/:
       metadata.json    (duración de cada audio)
       audio/pacenote_<nota>.ogg
 
-Raid.Earth (y el rally del juego) listan cualquier voicepack de esa carpeta: el copiloto se elige en Ajustes.
+Earth.Raid (y el rally del juego) listan cualquier voicepack de esa carpeta: el copiloto se elige en Ajustes.
 
 Motores:
   --engine piper    voz neuronal, la mejor. Necesita `pip install piper-tts` y un modelo .onnx (con su .onnx.json),

@@ -1,5 +1,5 @@
 {
-  "_comment": "Raid.Earth: frases en español (castellano) para cada nota del voicepack del juego (mismos nombres que gameplay/rally/compositors/voicepacks). Corrige o mejora libremente; make_voicepack.py genera los .ogg.",
+  "_comment": "Earth.Raid: frases en español (castellano) para cada nota del voicepack del juego (mismos nombres que gameplay/rally/compositors/voicepacks). Corrige o mejora libremente; make_voicepack.py genera los .ogg.",
   "40": "cuarenta", "50": "cincuenta", "60": "sesenta", "70": "setenta", "80": "ochenta", "90": "noventa",
   "100": "cien", "150": "ciento cincuenta", "200": "doscientos", "250": "doscientos cincuenta", "300": "trescientos",
   "350": "trescientos cincuenta", "400": "cuatrocientos", "450": "cuatrocientos cincuenta", "500": "quinientos",

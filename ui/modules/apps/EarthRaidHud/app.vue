@@ -505,7 +505,7 @@ const frameStyle = computed(() => {
 </style>
 
 <style lang="scss">
-/* pantalla de carga de Raid.Earth: a pantalla completa, por encima de todo, como la del juego */
+/* pantalla de carga de Earth.Raid: a pantalla completa, por encima de todo, como la del juego */
 .erh-load { position: fixed; inset: 0; z-index: 9999; pointer-events: auto;
   background: radial-gradient(ellipse at 30% 40%, rgba(40, 42, 48, 0.97), rgba(8, 9, 11, 0.99));
   display: flex; align-items: flex-end; justify-content: flex-start; padding: 0 0 7vh 6vw; color: #f2f2f2; }

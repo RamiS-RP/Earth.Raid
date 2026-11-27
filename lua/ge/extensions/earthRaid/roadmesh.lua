@@ -1,4 +1,4 @@
--- Raid.Earth: camino de tierra donde el tramo va sin calzada (27-nov, el usuario, Shakedown de Umeå: «los caminos que has
+-- Earth.Raid: camino de tierra donde el tramo va sin calzada (27-nov, el usuario, Shakedown de Umeå: «los caminos que has
 -- hecho en el puente sobresalen mucho; deben ser más naturales y de camino de tierra como la pista de la que viene y a la que
 -- sale. Ha de trazarse todo el camino que hay sin calzada; lo que anulamos estaba bastante bien generado: algo así, con un
 -- pequeño montículo. Natural, bien alineado con el suelo, sin escalones, y siguiendo la curva de la línea del tramo»).

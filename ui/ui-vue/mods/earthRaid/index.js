@@ -1,4 +1,4 @@
-// Raid.Earth: la página del menú como ruta propia ("earthRaid", la abre earthRaid_main.uiOpen con ui_router.navigate)
+// Earth.Raid: la página del menú como ruta propia ("earthRaid", la abre earthRaid_main.uiOpen con ui_router.navigate)
 // y un botón en la pestaña Mods del menú de pausa. Sigue ui/ui-vue/mods/README.md del juego.
 import { lua } from "@/bridge"
 import { createApp } from "vue"
@@ -21,28 +21,28 @@ async function registerRoute() {
         path: "/earth-raid",
         name: "earthRaid",
         component: RaidMenu,
-        meta: { luaRoute: { title: "Raid.Earth", backTarget: "play" } },
+        meta: { luaRoute: { title: "Earth.Raid", backTarget: "play" } },
       },
       // la pantalla de inicio tras la carga (resumen, normas, ajustes, Iniciar); atrás: la ficha del evento
       {
         path: "/earth-raid-start",
         name: "earthRaidStart",
         component: StartScreen,
-        meta: { luaRoute: { title: "Raid.Earth", backTarget: "earthRaid" } },
+        meta: { luaRoute: { title: "Earth.Raid", backTarget: "earthRaid" } },
       },
     ]
     window.bngRoutes.add([{ path: SOURCE, routes }])
     const result = await lua.extensions.ui_router_routeManager.registerModRoutes(SOURCE, toLuaRoutes(routes))
     if (!result?.success) {
       window.bngRoutes.remove([SOURCE])
-      console.error("Raid.Earth: route not registered", result?.errors)
+      console.error("Earth.Raid: route not registered", result?.errors)
     }
   } catch (e) {
-    console.error("Raid.Earth: route failed", e)
+    console.error("Earth.Raid: route failed", e)
   }
 }
 
-// Raid.Earth en el menú de pausa (Esc) con su propia pestaña, como BeamNG.Earth y BeamMP (petición del usuario,
+// Earth.Raid en el menú de pausa (Esc) con su propia pestaña, como BeamNG.Earth y BeamMP (petición del usuario,
 // 17-nov: "que parezca una parte más del juego"): botones a la izquierda (Eventos, Importar, Ajustes) y el estado del
 // tramo en la tarjeta de la derecha. Ya no hay atajo Ctrl+Mayús+G (chocaba con el de las gráficas del juego).
 const TAB_ID = "earthRaid"
@@ -62,7 +62,7 @@ async function registerButton() {
     try { await pa.unregisterModButton(BUTTON_ID) } catch (e) { /* none */ }
     await pa.registerModTab({
       id: TAB_ID,
-      label: "Raid.Earth",
+      label: "Earth.Raid",
       icon: "rallyHelmet",
       card2ComponentName: `${MOD_ROOT}/PausePage.vue`,
       card2Props: { page: "status" },
@@ -75,11 +75,11 @@ async function registerButton() {
       })
     }
   } catch (e) {
-    console.error("Raid.Earth: pause menu tab failed", e)
+    console.error("Earth.Raid: pause menu tab failed", e)
   }
 }
 
-// la pantalla de carga de Raid.Earth: una capa propia sobre toda la interfaz (no depende de que la app del HUD esté
+// la pantalla de carga de Earth.Raid: una capa propia sobre toda la interfaz (no depende de que la app del HUD esté
 // en el diseño de pantalla)
 const LOAD_ID = "earthRaid-loadscreen"
 let loadApp = null
@@ -97,11 +97,11 @@ async function mountLoadScreen() {
     loadApp = createApp(LoadScreen)
     loadApp.mount(el)
   } catch (e) {
-    console.error("Raid.Earth: load screen failed", e)
+    console.error("Earth.Raid: load screen failed", e)
   }
 }
 
-// Con un tramo o un rally en marcha, al abrir el menú de pausa se abre la pestaña de Raid.Earth (abandonar, reiniciar)
+// Con un tramo o un rally en marcha, al abrir el menú de pausa se abre la pestaña de Earth.Raid (abandonar, reiniciar)
 let pauseObserver = null
 let pauseSeen = false
 function watchPause() {
@@ -115,12 +115,12 @@ function watchPause() {
   })
   pauseObserver.observe(document.body, { childList: true, subtree: true })
 }
-// la pestaña "Raid.Earth" del menú de pausa: el nodo de texto exacto (el botón puede ser cualquier elemento)
+// la pestaña "Earth.Raid" del menú de pausa: el nodo de texto exacto (el botón puede ser cualquier elemento)
 function findPauseTab() {
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
   let n
   while ((n = w.nextNode())) {
-    if (n.textContent.trim().toLowerCase() !== "raid.earth") continue
+    if (n.textContent.trim().toLowerCase() !== "earth.raid") continue
     const el = n.parentElement
     if (el && el.offsetParent !== null) return el
   }
@@ -145,7 +145,7 @@ function tabSelected(el) {
   }
   return false
 }
-// (23-nov, el usuario: «al darle a Escape quiero que sea la pestaña de Raid.Earth la activa, no la de conducción libre»)
+// (23-nov, el usuario: «al darle a Escape quiero que sea la pestaña de Earth.Raid la activa, no la de conducción libre»)
 // el menú se monta por partes y a veces vuelve a la pestaña de inicio después del primer clic: se insiste cada ~0,5 s hasta
 // 6 s mientras la pestaña no esté activa (antes: un solo intento + otro a los 0,7 s)
 let pauseTry = 0
@@ -189,6 +189,6 @@ export async function onUnload() {
       await lua.extensions.ui_router_routeManager.unregisterModRoutes(SOURCE, { fallbackRoute: "play" })
     }
   } catch (e) {
-    console.error("Raid.Earth: unload failed", e)
+    console.error("Earth.Raid: unload failed", e)
   }
 }

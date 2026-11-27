@@ -1,5 +1,5 @@
 <template>
-  <!-- Raid.Earth: la pantalla de inicio, como la del modo rally del juego (MissionControl + MissionRallyInfo +
+  <!-- Earth.Raid: la pantalla de inicio, como la del modo rally del juego (MissionControl + MissionRallyInfo +
        MissionRallySettings): aparece tras la pantalla de carga, con el coche parado en el box de asistencia o antes
        del control horario, y el mundo detrás. Rally completo: resumen y normas a la izquierda, ajustes a la derecha;
        tramo suelto: una sola columna. Iniciar suelta el coche. Petición del usuario, 19-nov. -->

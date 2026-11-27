@@ -1,4 +1,4 @@
--- Raid.Earth: los ajustes del jugador para los tramos (como la pantalla "Ajustes" del rally del juego), guardados en
+-- Earth.Raid: los ajustes del jugador para los tramos (como la pantalla "Ajustes" del rally del juego), guardados en
 -- /settings/earthRaid/settings.json, y la lista de copilotos (los voicepacks del juego con audio).
 local M = {}
 
@@ -35,7 +35,7 @@ local raw = nil
 local eff = nil
 local effSig = nil
 
--- Opciones del menú nativo Ajustes > Jugabilidad > Rally que Raid.Earth respeta (la fuente de verdad es el juego):
+-- Opciones del menú nativo Ajustes > Jugabilidad > Rally que Earth.Raid respeta (la fuente de verdad es el juego):
 -- nuestra clave -> clave nativa. Si el jugador las cambia en el menú del juego, aquí se nota en el siguiente tramo.
 M.NATIVE = {
   visualNotes = 'rallyVisualPacenotes',    -- notas visuales

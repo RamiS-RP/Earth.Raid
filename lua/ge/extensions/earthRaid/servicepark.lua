@@ -1,4 +1,4 @@
--- Raid.Earth: el parque de asistencia en el mejor sitio posible. Petición del usuario, 19-nov: "cuando se den estos
+-- Earth.Raid: el parque de asistencia en el mejor sitio posible. Petición del usuario, 19-nov: "cuando se den estos
 -- casos [el box dentro de un edificio] hay que utilizar la mejor zona posible: aparcamientos, descampados con acceso a
 -- la calzada, zonas donde puedan habilitarse los boxes sin problema de colisiones, que puedan maniobrar los vehículos y
 -- esté lo más plano posible". Y como en el rally del juego: boxes de carpas 3x6 con separación, y un control horario

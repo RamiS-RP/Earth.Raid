@@ -1,4 +1,4 @@
--- Raid.Earth: punto de entrada (extensión "earthRaid_main").
+-- Earth.Raid: punto de entrada (extensión "earthRaid_main").
 -- Funciona sobre la API de BeamNG.Earth (beamngEarth_api v1): propone los eventos del catálogo cercanos, publica el
 -- menú (catálogo, ficha del rally, ajustes, clasificaciones) y arranca los tramos (stage.lua).
 local M = {}
@@ -355,13 +355,13 @@ end
 local function proposalText(p)
   local e, st = p.event, p.stage
   if spanish() then
-    local t = ('Raid.Earth: %s en esta zona (%d tramos, %s cronometrados).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
+    local t = ('Earth.Raid: %s en esta zona (%d tramos, %s cronometrados).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
     if st then t = t .. (' Tramo más cercano: %s (%s), salida a %s.'):format(st.title, km(st.km * 1000), km(p.stageM)) end
-    return t .. ' Esc → Raid.Earth para verlo.'
+    return t .. ' Esc → Earth.Raid para verlo.'
   end
-  local t = ('Raid.Earth: %s is in this area (%d stages, %s timed).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
+  local t = ('Earth.Raid: %s is in this area (%d stages, %s timed).'):format(e.name, e.stageCount or 0, km((e.stageKm or 0) * 1000))
   if st then t = t .. (' Nearest stage: %s (%s), start %s away.'):format(st.title, km(st.km * 1000), km(p.stageM)) end
-  return t .. ' Esc → Raid.Earth to see it.'
+  return t .. ' Esc → Earth.Raid to see it.'
 end
 
 -- Un mensaje en pantalla con categoría propia (otro mensaje del juego no lo pisa) y el tiempo pedido
@@ -513,7 +513,7 @@ local function eventCard(ev, lat, lon)
 end
 
 -- Mods recomendados para una mejor experiencia (README). Si el jugador los tiene descargados pero desactivados, se
--- activan al cargar Raid.Earth (petición del usuario, 17-nov), salvo que lo apague en Ajustes (recModsAuto).
+-- activan al cargar Earth.Raid (petición del usuario, 17-nov), salvo que lo apague en Ajustes (recModsAuto).
 M.RECOMMENDED = {
   { id = 'racingline', name = 'Racing Line Mod', match = { 'racingline', 'racing_line' },
     url = 'https://www.beamng.com/resources/racing-line-mod.39806/' },
@@ -564,7 +564,7 @@ function M.enableRecommended()
   end
   if #done > 0 then
     log('I', TAG, 'recommended mods enabled: ' .. table.concat(done, ', '))
-    M.toast((spanish() and 'Raid.Earth activó los mods recomendados: ' or 'Raid.Earth enabled the recommended mods: ')
+    M.toast((spanish() and 'Earth.Raid activó los mods recomendados: ' or 'Earth.Raid enabled the recommended mods: ')
       .. table.concat(done, ', '), 8)
   end
   return done
@@ -572,7 +572,7 @@ end
 
 -- (20-nov) Los copilotos que vienen como mods aparte (earth_raid_voice_*: el de voz real y el zip antiguo de la voz en
 -- español) se quedaban desactivados: al arrancar, el gestor de mods dejaba apagados todos los mods salvo los
--- recomendados, que Raid.Earth reactiva, y los copilotos desaparecían del selector. Se reactivan igual.
+-- recomendados, que Earth.Raid reactiva, y los copilotos desaparecían del selector. Se reactivan igual.
 function M.enableVoiceMods()
   local done = {}
   for name, m in pairs(modsDb()) do
@@ -718,7 +718,7 @@ function M.uiClose() U.open = false navigate('play') end
 function M.uiState() U.open = true M.publishState() end
 -- el idioma del juego para la interfaz ('es' o 'en')
 function M.uiLang() return spanish() and 'es' or 'en' end
--- ¿tramo o rally en marcha? (el menú de pausa abre entonces la pestaña de Raid.Earth)
+-- ¿tramo o rally en marcha? (el menú de pausa abre entonces la pestaña de Earth.Raid)
 function M.uiIsActive() return (stage.state() ~= nil) or rally.active() or loader.active() end
 -- el estado para la pestaña del menú de pausa (sin abrir el menú)
 function M.uiPeek() refresh() U.peek = true M.publishState() end
@@ -1002,7 +1002,7 @@ function M.uiGo(eventId, stageId, mode, reverse)
             .. (es and ': sigue el GPS y para en el control para fichar.' or ': follow the GPS and stop at the control to check in.'), 8)
           M.uiClose()
         else
-          M.toast('Raid.Earth: ' .. tostring(errT or 'no se pudo'), 6)
+          M.toast('Earth.Raid: ' .. tostring(errT or 'no se pudo'), 6)
           M.publishState()
         end
       else
@@ -1011,7 +1011,7 @@ function M.uiGo(eventId, stageId, mode, reverse)
           M.toast((es and 'GPS al control horario de ' or 'GPS set to the time control of ') .. s.title, 6)
           M.uiClose()
         else
-          M.toast('Raid.Earth: ' .. tostring(err or 'no se pudo'), 6)
+          M.toast('Earth.Raid: ' .. tostring(err or 'no se pudo'), 6)
           M.publishState()
         end
       end
@@ -1075,7 +1075,7 @@ function M.uiStart(eventId, stageId, reverse, graphReady)
       local s = play
       number = s0.kind == 'ss' and n or nil
       local ok, err = stage.start(full, s, { number = number, count = count, graphReady = graphReady == true })
-      if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
+      if not ok then M.toast('Earth.Raid: ' .. tostring(err), 6) return end
       stage.setLang(spanish() and 'es' or 'en')
       S.target = { eventId = eventId, stageId = s.id }
       M.toast((spanish() and 'Tramo preparado: ' or 'Stage ready: ') .. s.title, 6)
@@ -1107,7 +1107,7 @@ local function coverSpec(statusEs, statusEn, run)
   local st, rs = stage.state(), rally.active() and rally.state() or nil
   local evId = (st and st.eventId) or (rs and rs.ev and rs.ev.id) or (S.pre and S.pre.eventId)
   local full = evId and M.event(evId) or nil
-  return { title = (st and st.title) or (full and full.name) or 'Raid.Earth', event = full and full.name or nil,
+  return { title = (st and st.title) or (full and full.name) or 'Earth.Raid', event = full and full.name or nil,
     logo = full and full._base and full.logo and (full._base .. full.logo) or nil, lang = es and 'es' or 'en',
     description = full and M.loadingText(full, nil, es) or nil, status = es and statusEs or statusEn, run = run }
 end
@@ -1175,8 +1175,8 @@ end
 -- reinicios y la auditoría, que ya han cancelado lo anterior.
 local function refuseIfBusy(force)
   if force or not M.busy() then return false end
-  M.toast(spanish() and 'Ya hay un evento en marcha: abandónalo (Esc → Raid.Earth → Abandonar) antes de empezar otro.'
-    or 'An event is already running: retire from it (Esc → Raid.Earth → Retire) before starting another.', 8)
+  M.toast(spanish() and 'Ya hay un evento en marcha: abandónalo (Esc → Earth.Raid → Abandonar) antes de empezar otro.'
+    or 'An event is already running: retire from it (Esc → Earth.Raid → Retire) before starting another.', 8)
   return true
 end
 function M.uiPlay(eventId, stageId, reverse, force)
@@ -1294,7 +1294,7 @@ function M.uiStartRally(eventId, fromRun, force)
       pcall(servicepark.build, site)
       props.group = nil
     end })
-  if not ok then M.toast('Raid.Earth: ' .. tostring(err), 6) return end
+  if not ok then M.toast('Earth.Raid: ' .. tostring(err), 6) return end
   rally.state().lang = spanish() and 'es' or 'en'
   -- (18-nov) ya no se añaden apps a las disposiciones del jugador: las del juego van en earthRaidLoop/earthRaidStage
   S.target = { eventId = eventId }
@@ -1495,7 +1495,7 @@ local function cleanLayouts()
       end
     end
   end
-  if n > 0 then log('I', TAG, ('removed %d Raid.Earth apps from the player layouts'):format(n)) end
+  if n > 0 then log('I', TAG, ('removed %d Earth.Raid apps from the player layouts'):format(n)) end
 end
 M.cleanLayouts = cleanLayouts
 
@@ -1510,7 +1510,7 @@ function M.onExtensionLoaded()
   refresh()
   if settings.get().recModsAuto ~= false then pcall(M.enableRecommended) pcall(M.enableVoiceMods) end
   S.earthLevel = M.isEarthLevel()
-  log('I', TAG, 'Raid.Earth ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
+  log('I', TAG, 'Earth.Raid ' .. M.VERSION .. ' loaded (' .. S.reason .. ')')
 end
 
 M.TP_BEFORE_TC_M = 100
@@ -2015,8 +2015,8 @@ function M.onBeamNGEarthWorldReady()
   -- una vez por sesión: dónde está el menú (quien lo instala por primera vez no lo encuentra)
   if not S.hello then
     S.hello = true
-    M.toast(spanish() and 'Raid.Earth listo: Esc → pestaña Raid.Earth.'
-      or 'Raid.Earth ready: Esc → Raid.Earth tab.', 8)
+    M.toast(spanish() and 'Earth.Raid listo: Esc → pestaña Earth.Raid.'
+      or 'Earth.Raid ready: Esc → Earth.Raid tab.', 8)
   end
 end
 -- en un mapa sin BeamNG.Earth: avisar de que hace falta (si no, parece que el mod no hace nada)

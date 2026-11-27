@@ -1,4 +1,4 @@
--- Raid.Earth: limpia el trazado de un tramo antes de usarlo. Algunos KMZ de organizador están dibujados a mano y la
+-- Earth.Raid: limpia el trazado de un tramo antes de usarlo. Algunos KMZ de organizador están dibujados a mano y la
 -- línea va en zigzag a los lados de una carretera recta (Córdoba SS1: 921 m de línea para 560 m de avenida): de ahí
 -- salen curvas falsas, flechas y carteles que sobran, y puntos de GPS que caen en otras calles.
 -- Regla: un tramo de la línea que nunca se aparta más de CORRIDOR_M de la recta entre sus extremos, pero es al menos

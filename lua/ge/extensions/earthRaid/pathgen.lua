@@ -1,4 +1,4 @@
--- Raid.Earth: caminos generados donde el tramo pasa por terreno sin camino en BeamNG.Earth.
+-- Earth.Raid: caminos generados donde el tramo pasa por terreno sin camino en BeamNG.Earth.
 -- ESTÁNDAR (22-nov, el usuario, Shakedown de Umeå: "donde la carretera está cortada y no se han generado los caminos,
 -- trazar un camino igual que los que hay; aplana el terreno por donde pase la calzada; indica los estrechamientos —puentes,
 -- salidas de caminos, árboles muy cerca— con barreras redondas"). Vale para todos los tramos y rallies:

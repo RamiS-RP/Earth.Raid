@@ -184,8 +184,8 @@
       }
     }
   ],
-  "description": "Raid.Earth: the game Rally Stage layout (rallyModeStage) plus the BeamNG.Earth map credits",
-  "title": "Raid.Earth - Stage",
+  "description": "Earth.Raid: the game Rally Stage layout (rallyModeStage) plus the BeamNG.Earth map credits",
+  "title": "Earth.Raid - Stage",
   "type": "earthRaidStage",
   "version": 12
 }

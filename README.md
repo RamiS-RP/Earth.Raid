@@ -1,4 +1,4 @@
-# Earth.Raid (Raid.Earth)
+# Earth.Raid
 
 **Español** · [English](README.en.md)
 
@@ -12,9 +12,9 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 ### 1. Los eventos, en el menú de pausa
 
-Raid.Earth tiene su propia pestaña en el menú de pausa (**Esc → Raid.Earth**), junto a BeamNG.Earth y BeamMP. La lista enseña cada evento con su logo, lugar, campeonato y fechas, cuántos tramos tiene, los kilómetros cronometrados y a qué distancia estás. Desde ahí también se importan rutas y se cambian los ajustes.
+Earth.Raid tiene su propia pestaña en el menú de pausa (**Esc → Earth.Raid**), junto a BeamNG.Earth y BeamMP. La lista enseña cada evento con su logo, lugar, campeonato y fechas, cuántos tramos tiene, los kilómetros cronometrados y a qué distancia estás. Desde ahí también se importan rutas y se cambian los ajustes.
 
-![Pestaña Raid.Earth del menú de pausa con la lista de eventos](docs/img/01-pause-menu-events.jpg)
+![Pestaña Earth.Raid del menú de pausa con la lista de eventos](docs/img/01-pause-menu-events.jpg)
 
 ### 2. La ficha del evento
 
@@ -77,7 +77,7 @@ En el tramo: control horario con parada, colocación en la línea de salida, cue
 ## Requisitos
 
 - BeamNG.drive 0.40 o posterior.
-- BeamNG.Earth, con su nivel cargado. Raid.Earth usa su API de complementos: posición real, GPS, teletransporte y lugares.
+- BeamNG.Earth, con su nivel cargado. Earth.Raid usa su API de complementos: posición real, GPS, teletransporte y lugares.
 
 ## Instalar
 
@@ -102,7 +102,7 @@ Puedes añadir más desde el menú (⤓ Importar).
 1. Descarga `earth_raid.zip` de [Releases](https://github.com/RamiS-RP/Earth.Raid/releases) (o créalo con `tools/package.sh`).
 2. Cópialo **tal cual, sin descomprimir**, a `<carpeta de usuario de BeamNG>/current/mods/`.
    - El zip debe tener `lua/`, `ui/`, `scripts/`… en su raíz. Un zip con una carpeta dentro (p. ej. `raid-earth/lua/…`, el que da *Code → Download ZIP* de GitHub) **no funciona**: el mod sale en la lista pero no aparece el menú.
-3. Entra en BeamNG.Earth y abre **Esc → Raid.Earth**. Si quieres un atajo, asígnalo en Opciones → Controles → «Raid.Earth: open the events menu».
+3. Entra en BeamNG.Earth y abre **Esc → Earth.Raid**. Si quieres un atajo, asígnalo en Opciones → Controles → «Earth.Raid: open the events menu».
 4. Ten **una sola copia**: si instalaste desde Add-ons (`earth_raid-1.zip`) y además a mano (`earth_raid.zip`), borra una. Dos copias a la vez se pisan.
 
 ## Copiloto y voces
@@ -119,8 +119,8 @@ No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:
 1. Entra en cada enlace de la tabla (es la web oficial de BeamNG).
 2. Pulsa **Subscribe** (se instala solo) o **Download** (se descarga un `.zip`).
    - Si lo descargas, copia ese `.zip` **tal cual, sin descomprimir**, a tu carpeta de mods: `Documentos\BeamNG.drive\<versión>\mods` (o abre el juego → menú principal → **Mods** → **Abrir carpeta de mods**).
-3. Abre el juego. **Raid.Earth activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Raid.Earth → Ajustes → «Activar solos los mods recomendados descargados»).
-4. Para comprobarlo: Raid.Earth → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
+3. Abre el juego. **Earth.Raid activa solo** los mods recomendados que encuentre descargados (si no quieres, apágalo en Earth.Raid → Ajustes → «Activar solos los mods recomendados descargados»).
+4. Para comprobarlo: Earth.Raid → Ajustes → **Mods recomendados**: cada uno dice *activado*, *descargado* o *no instalado*.
 
 | Mod | Para qué sirve |
 |---|---|
@@ -130,7 +130,7 @@ No son obligatorios, pero con ellos el rally se vive mucho mejor. **Paso a paso:
 | [Realistic Headlights & Fogs V2](https://www.beamng.com/resources/realistic-headlights-fogs-v2.38672/) | Faros y antinieblas realistas: imprescindible en tramos de noche. |
 | [Smoke Dust FX](https://www.beamng.com/resources/smoke-dust-fx.39628/) | Humo y polvo realistas, sobre todo en tramos de tierra. |
 
-**Idioma:** Raid.Earth usa el idioma del juego (por ahora español o inglés).
+**Idioma:** Earth.Raid usa el idioma del juego (por ahora español o inglés).
 
 **Superficies:** cada tramo lleva su superficie FIA: asfalto, tierra (grava), nieve o mixto. Al importar una ruta, elígela en el formulario o déjala en *Automática* (se lee de los nombres: «tierra», «grava», «nieve»...). En pistas y caminos de tierra que el juego no tiene como carretera, el propio trazado del tramo cuenta como calzada, así que no se pone nada encima.
 

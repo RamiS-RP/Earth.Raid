@@ -1,4 +1,4 @@
--- Raid.Earth: objetos con física de verdad cerca del coche.
+-- Earth.Raid: objetos con física de verdad cerca del coche.
 -- Los carteles de rally, los conos y las cintas de corte del juego existen también como "vehículos" ligeros con
 -- física (vehicles/rallysigns, cones, rallytape): un cartel es papel en un palo y se cae al tocarlo, un cono sale
 -- rodando y una cinta se rompe. Mantener decenas de ellos todo el tramo cuesta, así que:

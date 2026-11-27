@@ -1,4 +1,4 @@
--- Raid.Earth: control de calidad automático de los tramos (18-nov, el usuario: "comprueba que todos los tramos
+-- Earth.Raid: control de calidad automático de los tramos (18-nov, el usuario: "comprueba que todos los tramos
 -- cumplan la norma"). Para cada tramo: viaje a la salida con la carga normal, se mide el control horario y la salida;
 -- viaje a la meta, se mide la meta y el STOP; se cuentan los objetos que han quedado en la calzada. Mueve el coche del
 -- jugador: solo cuando no esté jugando. Resultado en /settings/earthRaid/audit.json y en el log (tag earthRaid.audit).

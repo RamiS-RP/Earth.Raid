@@ -1,4 +1,4 @@
--- Raid.Earth: tráfico según la zona del mundo (19-nov, el usuario: "si estoy en Europa, más coches de esa zona").
+-- Earth.Raid: tráfico según la zona del mundo (19-nov, el usuario: "si estoy en Europa, más coches de esa zona").
 -- El juego elige los coches del tráfico por el país del mapa (info.json del nivel: usa, germany, italy...), y el mapa
 -- de BeamNG.Earth no tiene uno: es el mundo entero. Aquí se mira dónde está el jugador (lat, lon y el país que da
 -- BeamNG.Earth) y, solo en mapas de BeamNG.Earth, se añade al grupo de tráfico que crea el juego un filtro por país de

@@ -1,4 +1,4 @@
--- Raid.Earth: un tramo en marcha, con las fases del rally del juego:
+-- Earth.Raid: un tramo en marcha, con las fases del rally del juego:
 --   hold      (rally completo) montado, a la espera de que el jugador fiche en el control horario (rally.lua)
 --   approach  GPS hasta la salida
 --   staging   colocarse en la línea: el morro a menos de 1 m de ella, sin pasarla y parado (como el juego). 60 s (en el

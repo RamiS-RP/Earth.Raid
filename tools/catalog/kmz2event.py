@@ -1,4 +1,4 @@
-"""KMZ de organizador -> evento Raid.Earth (JSON en lat/lon) + índice de catálogo."""
+"""KMZ de organizador -> evento Earth.Raid (JSON en lat/lon) + índice de catálogo."""
 import sys, zipfile, re, html, json, math, os
 import xml.etree.ElementTree as ET
 

@@ -1,4 +1,4 @@
--- Raid.Earth: los objetos de un tramo con los modelos del rally del juego.
+-- Earth.Raid: los objetos de un tramo con los modelos del rally del juego.
 -- Cada objeto se guarda en lat/lon + dirección de marcha + giro: tras un cambio de origen de BeamNG.Earth se recoloca
 -- (M.replace). El giro (yaw) se mide en grados, en sentido horario desde la dirección de marcha, sobre el eje Y del
 -- modelo: 0 = el eje Y del objeto mira hacia donde va el coche, 180 = mira al coche que llega, 90 = a la derecha.

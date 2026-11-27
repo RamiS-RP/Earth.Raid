@@ -1,4 +1,4 @@
--- Raid.Earth: crestas, saltos y badenes por delante del coche, del relieve del terreno ya cargado por BeamNG.Earth
+-- Earth.Raid: crestas, saltos y badenes por delante del coche, del relieve del terreno ya cargado por BeamNG.Earth
 -- (el terreno solo existe cerca del jugador: se mira unos cientos de metros por delante, en marcha).
 local geo = require('earthRaid/geo')
 local M = {}

@@ -1,4 +1,4 @@
--- Raid.Earth: río y mar helados en los tramos de nieve (27-nov, el usuario: «quiero que quede el suelo del río congelado a la
+-- Earth.Raid: río y mar helados en los tramos de nieve (27-nov, el usuario: «quiero que quede el suelo del río congelado a la
 -- altura que se ve el barco, para no caer al agua; la capa de hielo ha de tener al menos un metro y comportarse como tal»).
 --
 -- Sin tocar el terreno (las ediciones de terreno siguen en alpha): losas de hielo de 20 x 20 x 1 m (art/earthRaid/ice) con

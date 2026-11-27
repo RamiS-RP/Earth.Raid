@@ -1,9 +1,9 @@
 <template>
   <!-- La tarjeta de la pestaña Mods del menú de pausa: un botón al menú -->
   <div class="er-card">
-    <h3>Raid.Earth</h3>
+    <h3>Earth.Raid</h3>
     <p class="muted">{{ t("sub") }}</p>
-    <BngButton :accent="ACCENTS.main" @click="open">Raid.Earth</BngButton>
+    <BngButton :accent="ACCENTS.main" @click="open">Earth.Raid</BngButton>
   </div>
 </template>
 

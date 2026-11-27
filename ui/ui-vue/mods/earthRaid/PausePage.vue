@@ -1,10 +1,10 @@
 <template>
-  <!-- Raid.Earth en el menú de pausa (Esc), con su propia pestaña como BeamNG.Earth y BeamMP: cada botón del lado
+  <!-- Earth.Raid en el menú de pausa (Esc), con su propia pestaña como BeamNG.Earth y BeamMP: cada botón del lado
        muestra una de estas páginas en la tarjeta central; la tarjeta de la derecha es el estado del tramo -->
   <div class="erp" :class="'erp-' + page">
     <!-- tramo en marcha (tarjeta de la derecha) -->
     <template v-if="page === 'status'">
-      <h3 class="erp-h"><span class="slash"></span>Raid.Earth</h3>
+      <h3 class="erp-h"><span class="slash"></span>Earth.Raid</h3>
       <!-- rally completo: abandonar o reiniciar (desde el último TC o desde el principio) -->
       <template v-if="rallyOn">
         <div class="erp-run">

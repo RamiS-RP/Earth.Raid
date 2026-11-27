@@ -7,7 +7,7 @@
   Los audios son propiedad de su autor; no los reutilices en otros proyectos sin pedirle permiso. / The audio belongs to its author; do not reuse it elsewhere without asking.
 - **Voz neuronal / Neural voice — Piper `es_ES-davefx-medium`** (dataset CC0).
 
-El mod de voz independiente (mismos archivos, mismas rutas) no entra en conflicto con Raid.Earth.
-The standalone voice mod (same files, same paths) does not conflict with Raid.Earth.
+El mod de voz independiente (mismos archivos, mismas rutas) no entra en conflicto con Earth.Raid.
+The standalone voice mod (same files, same paths) does not conflict with Earth.Raid.
 
 Descarga / Download: https://github.com/RamiS-RP/Earth.Raid/releases/latest

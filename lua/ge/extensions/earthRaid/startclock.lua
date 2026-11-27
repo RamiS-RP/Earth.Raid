@@ -1,5 +1,5 @@
 -- ███ BLOQUEADO (23-nov, orden del usuario): funciona y está aprobado. NO modificar sin su permiso expreso. Ver LOCKED.md ███
--- Raid.Earth: el reloj LED de salida del juego (gameplay_rallyStartClock pinta la pantalla sobre cada semáforo
+-- Earth.Raid: el reloj LED de salida del juego (gameplay_rallyStartClock pinta la pantalla sobre cada semáforo
 -- s_rally_start_tree de la escena) alimentado con nuestros datos, y la ventana de cámara con zoom al reloj durante la
 -- cuenta atrás, hecha igual que la del juego (RenderViewManagerInstance:updateViewCamera, 20 % del ancho, FOV 25,
 -- a 1 m del reloj, desplazada 1/3). La del juego solo funciona dentro de sus misiones: esta es una copia.

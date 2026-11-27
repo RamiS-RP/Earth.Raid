@@ -1,4 +1,4 @@
-# Catálogo de Raid.Earth
+# Catálogo de Earth.Raid
 
 El juego lee los eventos de:
 

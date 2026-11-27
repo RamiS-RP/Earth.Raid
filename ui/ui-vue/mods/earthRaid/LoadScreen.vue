@@ -1,5 +1,5 @@
 <template>
-  <!-- Raid.Earth: pantalla de carga al iniciar un tramo o un rally, copia del estilo de la del juego
+  <!-- Earth.Raid: pantalla de carga al iniciar un tramo o un rally, copia del estilo de la del juego
        (ui-vue/src/common/modules/loading/views/LoadingScreen.vue): iconos que se rellenan de naranja de abajo arriba,
        barra inclinada, estado en cursiva, historial y barra de DATOS abajo. A la derecha, la imagen del evento. -->
   <!-- MARK:cover-v1 — aparece en 0,2 s (el juego no mueve nada hasta que tapa) y, mientras está (y mientras se va),

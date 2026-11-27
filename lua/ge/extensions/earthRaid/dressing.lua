@@ -1,4 +1,4 @@
--- Raid.Earth: el montaje de un tramo como el rally del juego (medido en Utah NGRC26):
+-- Earth.Raid: el montaje de un tramo como el rally del juego (medido en Utah NGRC26):
 --   control horario antes de la salida (preaviso, cartel, sensores hacia la carretera, carpa, mesa, sillas, conos)
 --   salida (2 carteles enfrentados, 2 sensores con el láser hacia el coche, semáforo con reloj delante a la derecha,
 --   vallas con publicidad, fin de zona), avisos de peligro (1, 2 o 3 según el peligro), flechas en las curvas,

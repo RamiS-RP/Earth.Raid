@@ -61,8 +61,8 @@
    }
   }
  ],
- "description": "Raid.Earth: hardcore mode, the minimum HUD (speed, start countdown, stage time and time card; no pacenote screens, minimap or aids)",
- "title": "Raid.Earth - Hardcore",
+ "description": "Earth.Raid: hardcore mode, the minimum HUD (speed, start countdown, stage time and time card; no pacenote screens, minimap or aids)",
+ "title": "Earth.Raid - Hardcore",
  "type": "earthRaidHardcore",
  "version": 1
 }

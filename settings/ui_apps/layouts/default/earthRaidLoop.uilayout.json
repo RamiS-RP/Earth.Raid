@@ -142,8 +142,8 @@
       }
     }
   ],
-  "description": "Raid.Earth: the game Rally Loop layout (rallyModeLoop) plus the BeamNG.Earth map credits",
-  "title": "Raid.Earth - Rally",
+  "description": "Earth.Raid: the game Rally Loop layout (rallyModeLoop) plus the BeamNG.Earth map credits",
+  "title": "Earth.Raid - Rally",
   "type": "earthRaidLoop",
   "version": 7
 }

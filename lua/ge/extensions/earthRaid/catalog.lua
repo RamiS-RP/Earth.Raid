@@ -1,4 +1,4 @@
--- Raid.Earth: el catálogo de eventos y la búsqueda por zona. Puro (sin juego): todo en lat/lon.
+-- Earth.Raid: el catálogo de eventos y la búsqueda por zona. Puro (sin juego): todo en lat/lon.
 -- index.json: { events = { { id, file, name, type, surface, dates, centre = {lat, lon}, bbox = {latMin, lonMin, latMax,
 -- lonMax}, radiusKm, stageCount, stageKm, stages = { { id, title, km, start = {lat, lon} } } } } }
 local M = {}

@@ -1,4 +1,4 @@
-"""Raid.Earth: construye un paquete de eventos (index.json + events/*.json) a partir de los trazados que publican
+"""Earth.Raid: construye un paquete de eventos (index.json + events/*.json) a partir de los trazados que publican
 los organizadores (KMZ, KML o GPX), listados en un sources.json.
 
     python build_catalog.py sources.json salida/            # descarga (con caché) y convierte todo
@@ -22,7 +22,7 @@ Clasificación (por el nombre de la línea o de su carpeta, en español o inglé
 import argparse, hashlib, html, io, json, math, os, re, sys, time, urllib.parse, urllib.request, urllib.robotparser, zipfile
 import xml.etree.ElementTree as ET
 
-UA = 'RaidEarthCatalog/0.5 (+https://github.com/; BeamNG.Earth add-on catalogue builder)'
+UA = 'EarthRaidCatalog/0.5 (+https://github.com/; BeamNG.Earth add-on catalogue builder)'
 DELAY_S = 2.0
 TOL_STAGE_M, TOL_LIAISON_M = 1.0, 3.0
 

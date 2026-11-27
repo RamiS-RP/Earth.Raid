@@ -1,4 +1,4 @@
--- Raid.Earth: la voz del copiloto y los sonidos de sistema con los voicepacks del juego
+-- Earth.Raid: la voz del copiloto y los sonidos de sistema con los voicepacks del juego
 -- (Engine.Audio.intercomPlayPacenote, como gameplay/rally/audioManager.lua). Una cola sencilla: una nota detrás de otra.
 local M = {}
 local TAG = 'earthRaid'

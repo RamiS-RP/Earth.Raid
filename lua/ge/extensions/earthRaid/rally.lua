@@ -1,4 +1,4 @@
--- Raid.Earth: el rally completo, como el modo rally del juego (gameplay_rallyLoop):
+-- Earth.Raid: el rally completo, como el modo rally del juego (gameplay_rallyLoop):
 --   TC0 en el parque de asistencia -> enlace con hora prevista -> control horario (TC) antes de cada salida -> tramo ->
 --   STOP -> enlace al siguiente TC ... -> TC final de vuelta a la asistencia.
 -- Reglas del juego (referencia-rally-vanilla-fases.md): el carnet de ruta tiene una hora prevista por control que no se

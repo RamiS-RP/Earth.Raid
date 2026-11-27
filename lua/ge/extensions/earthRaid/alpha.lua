@@ -1,4 +1,4 @@
--- Raid.Earth: funciones en ALPHA, apagadas por defecto para que el rally sea lo más estable posible (23-nov, orden del usuario:
+-- Earth.Raid: funciones en ALPHA, apagadas por defecto para que el rally sea lo más estable posible (23-nov, orden del usuario:
 -- «todo el tema de repintar o remodelar el terreno lo dejamos como alpha y lo seguiremos investigando más adelante»).
 -- Para investigarlas: poner TERRAIN_EDIT = true (recargar Lua con Ctrl+L y reiniciar el tramo).
 local M = {}

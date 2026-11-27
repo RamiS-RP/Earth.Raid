@@ -1,4 +1,4 @@
--- Raid.Earth: geometría de un tramo en metros locales (este, norte) alrededor de su salida. Puro.
+-- Earth.Raid: geometría de un tramo en metros locales (este, norte) alrededor de su salida. Puro.
 local M = {}
 local rad, cos, sqrt, max, min = math.rad, math.cos, math.sqrt, math.max, math.min
 M.M_PER_DEG = 111195
