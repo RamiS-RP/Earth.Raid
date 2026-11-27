@@ -1,10 +1,12 @@
 # Earth.Raid
 
+![Earth.Raid: tramos de rally reales sobre carreteras reales](docs/img/banner.jpg)
+
 **Español** · [English](README.en.md)
 
 Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de **BeamNG.Earth**: los mismos tramos, con sus controles horarios, sus enlaces y su señalización según el reglamento de la FIA, y un copiloto que canta las notas.
 
-> Proyecto en desarrollo (alfa). Se buscan probadores y colaboradores: mira [Colaborar](#colaborar).
+> En desarrollo activo (v0.9). Se buscan probadores y colaboradores: mira [Colaborar](#colaborar).
 
 ![Rally completo en marcha: carnet de ruta, siguiente control y reloj del evento](docs/img/05-rally-time-card.jpg)
 

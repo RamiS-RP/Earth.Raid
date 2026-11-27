@@ -1,10 +1,12 @@
 # Earth.Raid
 
+![Earth.Raid: real rally stages on real roads](docs/img/banner.jpg)
+
 [Español](README.md) · **English**
 
 Real rallies, raids and the Dakar in **BeamNG.drive**, on the real-world map of **BeamNG.Earth**: the same stages, with their time controls, road sections and FIA-style signage, and a co-driver calling the pacenotes.
 
-> Work in progress (alpha). Testers and contributors are welcome: see [Contributing](#contributing).
+> In active development (v0.9). Testers and contributors are welcome: see [Contributing](#contributing).
 
 ![Full rally running: time card, next control and event clock](docs/img/05-rally-time-card.jpg)
 
