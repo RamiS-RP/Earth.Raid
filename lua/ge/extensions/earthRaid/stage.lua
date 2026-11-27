@@ -22,6 +22,7 @@ local settings = require('earthRaid/settings')
 local clean = require('earthRaid/clean')
 local winter = require('earthRaid/winter')
 local bridges = require('earthRaid/bridges')
+local roadmesh = require('earthRaid/roadmesh')
 local M = {}
 -- metas adelantadas a mano (evento/tramo -> metros), para paquetes importados que se regeneran (MARK:finish-back-v1)
 M.FINISH_BACK = {
@@ -308,6 +309,7 @@ end
 local function cleanupProps(keepTraffic, recycle)
   pcall(pathgen.clear)
   pcall(bridges.clear)
+  pcall(roadmesh.clear)
   if recycle then props.retire() else props.clear() props.setVirtualRoad(nil) end
   startclock.clear()
   if not keepTraffic then M.trafficBack() end
@@ -1541,6 +1543,7 @@ function M.update(dtSim, dtReal)
   guide.tick(dtReal or dtSim)
   winter.update(dtReal or dtSim)
   pcall(bridges.update, dtReal or dtSim or 0)
+  pcall(roadmesh.update, dtReal or dtSim or 0)
   pcall(preloadAhead, dtReal or dtSim or 0)
   -- carteles, conos y cintas con física cerca del coche
   if props.count() > 0 then

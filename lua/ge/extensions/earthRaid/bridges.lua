@@ -71,6 +71,7 @@ end
 -- del terreno hasta juntarse con él. El perfil es la envolvente superior (casco convexo por arriba) del terreno más alto
 -- en el ancho del camino: nunca queda por debajo del suelo y no hace escalones. Si para eso tuviera que subir más de
 -- RAMP_MAX_RAISE m sobre el terreno, ese lado no se hace. MARK:bridge-ramp-v1
+M.RAMPS = false
 M.RAMP_SHAPE = '/art/earthRaid/ice/ice_slab.dae'
 M.RAMP_MATS = '/art/earthRaid/ice/main.materials.json'
 M.RAMP_W, M.RAMP_FROM, M.RAMP_LEN, M.RAMP_SEG, M.RAMP_MAX_RAISE = 5, 10, 40, 2.5, 1.1
@@ -190,7 +191,8 @@ local function place(b)
   if not ok or not o then log('W', TAG, 'bridge: ' .. tostring(o)) b.failed = true return false end
   objs[#objs + 1] = o
   b.z, b.placed = z, true
-  pcall(ramps, b)
+  -- (27-nov, noche) las rampas de placas no gustaron (sobresalían, rectas): el camino lo hace roadmesh.lua
+  if M.RAMPS then pcall(ramps, b) end
   log('I', TAG, ('wooden bridge %d: %.0f m between the banks, deck at %.2f'):format(b.i, b.span, z))
   return true
 end

@@ -1,0 +1,18 @@
+{
+ "earthRaid_dirtroad": {
+  "name": "earthRaid_dirtroad",
+  "mapTo": "earthRaid_dirtroad",
+  "class": "Material",
+  "persistentId": "6a2d1f0e-8c41-4b7a-9e12-earthraid0drd",
+  "Stages": [
+   {
+    "colorMap": "/assets/materials/decalroad/dirt/road_gravel/t_dirt_road_02_b.color.png"
+   },
+   {},
+   {},
+   {}
+  ],
+  "groundType": "GRAVEL",
+  "translucent": false
+ }
+}
