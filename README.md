@@ -10,6 +10,13 @@ Rallies, raids y el Dakar de verdad en **BeamNG.drive**, sobre el mundo real de 
 
 ![Rally completo en marcha: carnet de ruta, siguiente control y reloj del evento](docs/img/05-rally-time-card.jpg)
 
+## Galería
+
+| | |
+|---|---|
+| ![Rally Sweden 2027: persecución en el bosque nevado](docs/img/gal-suecia-persecucion.jpg) | ![Rally Sweden 2027: vista aérea del tramo](docs/img/gal-suecia-aerea.jpg) |
+| ![Rally Islas Canarias: curva con barreras y malla](docs/img/gal-canarias-barreras.jpg) | ![Rally Islas Canarias: tramo de montaña junto al mar](docs/img/gal-canarias-aerea.jpg) |
+
 ## Así se juega
 
 ### 1. Los eventos, en el menú de pausa

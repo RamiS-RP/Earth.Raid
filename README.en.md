@@ -10,6 +10,13 @@ Real rallies, raids and the Dakar in **BeamNG.drive**, on the real-world map of 
 
 ![Full rally running: time card, next control and event clock](docs/img/05-rally-time-card.jpg)
 
+## Gallery
+
+| | |
+|---|---|
+| ![Rally Sweden 2027: chasing through the snowy forest](docs/img/gal-suecia-persecucion.jpg) | ![Rally Sweden 2027: aerial view of the stage](docs/img/gal-suecia-aerea.jpg) |
+| ![Rally Islas Canarias: corner with barriers and mesh](docs/img/gal-canarias-barreras.jpg) | ![Rally Islas Canarias: mountain stage by the sea](docs/img/gal-canarias-aerea.jpg) |
+
 ## How it plays
 
 ### 1. Events, in the pause menu
