@@ -1161,6 +1161,7 @@ end
 -- 1,45 m siguiendo el borde; nunca en la calzada (place/offRoad). Las vallas publicitarias quedan solo en salida y meta
 -- (pesaban demasiado por el tramo).
 M.TAPE_EDGE_M = 0.2           -- la cinta de un corte, a esto por fuera del borde de la carretera del tramo
+M.ROW_TRACK_M = 5.5          -- (27-nov) las barreras de detrás de la cinta, a más de esto del eje del trazado
 M.TAPE_TRACK_M = 2.0          -- y nunca a menos de esto del eje del trazado (el KML va desplazado 1-2 m de la calzada)
 M.BARRIER_MIN_STRAIGHT_M = 120
 M.BARRIER_STEP_M = 1.45
@@ -1864,10 +1865,16 @@ function M.closures(t, from, to)
                       row[#row + 1] = { 0, 'barrel', 2.4 }
                       for _, b in ipairs(row) do
                         local bx, by = cx + ex * b[3] + px * b[1], cy + ey * b[3] + py * b[1]
-                        local bl, bo = geo.toGeo(t, bx, by)
-                        -- en la calle cortada a propósito: no se vuelve a comprobar contra la calzada
-                        local it2 = props.add(b[2], bl, bo, px, py, b[2] == 'barrel' and 0 or 90)
-                        if it2 then it2.roadOk = true it2.closure = true end
+                        -- (27-nov, pasada de la IA en el shakedown: a 104 km/h se llevó la fila de un corte cuyas barreras
+                        -- de los extremos quedaban a 3,5 m del eje del tramo) la fila es más ancha que la cinta: una pieza
+                        -- que caiga cerca del trazado no se pone (la misma distancia que exige la cinta)
+                        local _, latB = geo.project(t, bx, by, 1, 0, #t.pts)
+                        if latB > M.ROW_TRACK_M then
+                          local bl, bo = geo.toGeo(t, bx, by)
+                          -- en la calle cortada a propósito: no se vuelve a comprobar contra la calzada
+                          local it2 = props.add(b[2], bl, bo, px, py, b[2] == 'barrel' and 0 or 90)
+                          if it2 then it2.roadOk = true it2.closure = true end
+                        end
                       end
                     end
                     n, tapeCount, placed = n + 1, tapeCount + 1, true
