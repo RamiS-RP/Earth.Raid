@@ -44,6 +44,11 @@ M.RAMP_SLOPE = 0.10       -- pendiente máxima de la rampa que une el terreno co
 M.RAMP_MAX_M = 60
 M.LEAD_M = 40
 M.BLEND_MAX_M = 8
+-- (27-nov, el usuario, puente del shakedown: «el camino integrado con el terreno; rellenar el terreno suavizándolo más ancho,
+-- que si te sales del camino puedas incorporarte») el terreno se vuelve a remodelar, pero SOLO en los huecos con un puente
+-- (lo demás sigue en alpha.TERRAIN_EDIT): explanada, rampas al tablero y taludes anchos (WIDE_BLEND_M a cada lado)
+M.EDIT_BRIDGE_GAPS = true
+M.WIDE_BLEND_M = 8
 M.BRIDGE_SHIFT_M = 20     -- y el eje vuelve al trazado en esta
 -- (22-nov, el usuario: "la calzada me gustaría verla como las de tierra, para diferenciarla de la nieve"): con nieve el
 -- material 2 (tierra suelta) se ve blanco y el 6 (tierra) marrón, así que el camino generado va entero en el 6
@@ -1207,7 +1212,24 @@ local function build(t, tb, sec)
     sec.mat = ((cnt[6] or 0) > (cnt[2] or 0)) and 6 or 2
   end
   bridges(S)
+  do
+    local hasB = false
+    for _, p in ipairs(S) do if p.bridge then hasB = true break end end
+    -- (el hueco se hace por trozos de CHUNK_M: los trozos seguidos de uno con puente son el mismo camino)
+    local joined = false
+    for _, o in ipairs(sections) do
+      if o ~= sec and o.edit and (math.abs(o.to - sec.from) < 1 or math.abs(o.from - sec.to) < 1) then joined = true break end
+    end
+    sec.edit = alpha.TERRAIN_EDIT or (M.EDIT_BRIDGE_GAPS and (hasB or joined)) or false
+    sec.wide = (not alpha.TERRAIN_EDIT) and sec.edit or false
+  end
   profile(S, sec)
+  if sec.wide then
+    for _, p in ipairs(S) do
+      p.blend = math.max(p.blend or 0, M.WIDE_BLEND_M)
+      p.sbl, p.sbr = math.max(p.sbl or 0, M.WIDE_BLEND_M), math.max(p.sbr or 0, M.WIDE_BLEND_M)
+    end
+  end
   do
     local nw, nr, nb = 0, 0, 0
     for _, p in ipairs(S) do if p.water then nw = nw + 1 end if p.ramp then nr = nr + 1 end if p.bridge then nb = nb + 1 end end
@@ -1215,7 +1237,7 @@ local function build(t, tb, sec)
   end
   -- (23-nov, ALPHA: alpha.lua) sin remodelar ni repintar el terreno; el despeje de árboles, las señales y las guías siguen
   local n = 0
-  if alpha.TERRAIN_EDIT then n = applyTerrain(tb, S, sec) else sec.probe, sec.cells = {}, {} end
+  if sec.edit then n = applyTerrain(tb, S, sec) else sec.probe, sec.cells = {}, {} end
   sec.S, sec.built = S, true
   -- la línea de guía, a la altura del terreno nuevo (22-nov: quedaba a la altura de antes de aplanar)
   local g = package.loaded['earthRaid/guide']
@@ -1594,7 +1616,9 @@ function M.update(t, along, dt)
   if not M.enabled or not t then return end
   if T == t then
     local tb0 = terrain()
-    if tb0 and alpha.TERRAIN_EDIT then pcall(verify, t, tb0, along) pcall(guardMaterials, tb0, along, dt) end
+    local anyEdit = alpha.TERRAIN_EDIT
+    if not anyEdit then for _, sec in ipairs(sections) do if sec.edit then anyEdit = true break end end end
+    if tb0 and anyEdit then pcall(verify, t, tb0, along) pcall(guardMaterials, tb0, along, dt) end
   end
   tick = tick + (dt or 0)
   if tick < 1 then return end
