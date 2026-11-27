@@ -1195,6 +1195,17 @@ local function exitMouth(h, cx, cy, z)
             if bnx and bnx * ux + bny * uy > 0.2 then ux, uy = bnx, bny end
           end
           local os_ = M._openSide
+          if os_ and os_.apron then
+            local ap = os_.apron
+            -- la línea del TC0 a lo largo del camino, 3 m dentro del borde de la franja; casetas en los extremos
+            local mx, my = (ap.A2[1] + ap.B2[1]) / 2 - ap.ux * 3, (ap.A2[2] + ap.B2[2]) / 2 - ap.uy * 3
+            -- la ruta de salida (la que se deja libre de vallas): del centro de los boxes al lado abierto, a la línea y recta
+            -- al camino; no en diagonal hacia el punto del camino más cercano, que cruzaba los alargues de la valla
+            local ex_, ey_ = (ap.A[1] + ap.B[1]) / 2, (ap.A[2] + ap.B[2]) / 2
+            if M.dbg then M.dbg.route = { { cx, cy }, { ex_, ey_ }, { mx, my }, { mx + ap.ux * 6, my + ap.uy * 6 } } end
+            return { x = mx, y = my, z = terrainZ(mx, my) or z, ux = ap.ux, uy = ap.uy, bx = -ap.ux, by = -ap.uy,
+              hw = math.max(3, ap.W / 2 - 3.4), gate = true, mouth = true, openSide = true, apron = ap }
+          end
           return { x = x, y = y, z = terrainZ(x, y) or z, ux = ux, uy = uy, bx = -ux, by = -uy,
             -- lado abierto: el carril del TC0 ocupa el lado, con las casetas hacia sus extremos
             hw = os_ and math.max(3, math.min(8, os_.L / 2 - 3.5)) or math.max(2.5, math.min(3.5, rad + 1)),
@@ -1242,6 +1253,7 @@ M.treeAt = treeAt
 -- remolques, muros: rayo de arriba abajo), sin árboles y sin escalones. Gana el lado con el camino más cerca; en él, el punto
 -- limpio más centrado. Ese lado queda abierto (sin valla) y el TC0 en medio, con una caseta a cada extremo. MARK:open-side-v1
 M.OPEN_CORRIDOR_W, M.OPEN_MAX_M, M.OPEN_SIDE_MAX_M = 6, 45, 45
+M.APRON_EDGE_M, M.APRON_MAX_M = 1.5, 30   -- franja hasta el camino: la línea a 1,5 m del borde de la calzada; alargues de hasta 30 m
 M.OPEN_TENT_OUT_M = 3.0   -- las casetas de un lado abierto, por fuera de la línea (la carpa 3x3 queda entre 1,5 y 4,5 m)
 function M.clearSideRoute(m, h, cx, cy)
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
@@ -1263,7 +1275,7 @@ function M.clearSideRoute(m, h, cx, cy)
       local vx, vy = g[3] - g[1], g[4] - g[2]
       local L2 = vx * vx + vy * vy
       local t = L2 > 0 and math.max(0, math.min(1, ((x - g[1]) * vx + (y - g[2]) * vy) / L2)) or 0
-      if (x - g[1] - vx * t) ^ 2 + (y - g[2] - vy * t) ^ 2 < g[5] * g[5] then return g[5] end
+      if (x - g[1] - vx * t) ^ 2 + (y - g[2] - vy * t) ^ 2 < g[5] * g[5] then return g[5], g end
     end
     return nil
   end
@@ -1287,10 +1299,10 @@ function M.clearSideRoute(m, h, cx, cy)
       local minS
       for t = 3, L - 3, 2 do
         local Ex, Ey = A[1] + ex * t, A[2] + ey * t
-        local hitS, rad
+        local hitS, rad, seg
         for s = 0, M.OPEN_MAX_M, 1 do
-          local r = onRoad(Ex + nx * s, Ey + ny * s)
-          if r then hitS, rad = s, r break end
+          local r, g = onRoad(Ex + nx * s, Ey + ny * s)
+          if r then hitS, rad, seg = s, r, g break end
         end
         if hitS then
           local clear, zPrev = true, terrainZ(Ex, Ey)
@@ -1307,7 +1319,7 @@ function M.clearSideRoute(m, h, cx, cy)
             if not clear then break end
           end
           if clear then
-            ok_[#ok_ + 1] = { t = t, s = hitS, x = Ex, y = Ey, qx = Ex + nx * hitS, qy = Ey + ny * hitS, rad = rad }
+            ok_[#ok_ + 1] = { t = t, s = hitS, x = Ex, y = Ey, qx = Ex + nx * hitS, qy = Ey + ny * hitS, rad = rad, seg = seg }
             if not minS or hitS < minS then minS = hitS end
           end
         end
@@ -1318,13 +1330,49 @@ function M.clearSideRoute(m, h, cx, cy)
         for _, c in ipairs(ok_) do
           if c.s <= minS + 6 and (not pick or math.abs(c.t - L / 2) < math.abs(pick.t - L / 2)) then pick = c end
         end
-        best = { s = minS, c = pick, i = i, L = L, nx = nx, ny = ny }
+        best = { s = minS, c = pick, i = i, L = L, nx = nx, ny = ny, A = A, B = B }
       end
     end
   end
   if not best then return nil end
   local c = best.c
   M._openSide = { i = best.i, L = best.L }
+  -- (27-nov, dibujo del usuario) el recinto llega hasta el camino: los lados vecinos se alargan con valla hasta el borde del
+  -- camino y la salida es la franja junto a él, entre las dos casetas (A2-B2, paralela al camino). Solo si los dos
+  -- alargues quedan limpios y cortos; si no, la salida es el propio lado (casetas en sus extremos).
+  do
+    local g = c.seg
+    local vx, vy = g[3] - g[1], g[4] - g[2]
+    local vl = math.sqrt(vx * vx + vy * vy)
+    if vl > 1 then
+      vx, vy = vx / vl, vy / vl
+      -- normal del camino hacia el recinto
+      local rnx, rny = -vy, vx
+      if (c.x - g[1]) * rnx + (c.y - g[2]) * rny < 0 then rnx, rny = -rnx, -rny end
+      local off = c.rad + M.APRON_EDGE_M
+      local function proj(P)
+        local d = (P[1] - g[1]) * rnx + (P[2] - g[2]) * rny     -- distancia del punto al eje del camino
+        return { P[1] - rnx * (d - off), P[2] - rny * (d - off) }, d - off
+      end
+      local A2, da = proj(best.A)
+      local B2, db = proj(best.B)
+      local function lineClear(P, Q)
+        local L = math.sqrt((Q[1] - P[1]) ^ 2 + (Q[2] - P[2]) ^ 2)
+        for t = 0, L, 1 do
+          local f = L > 0 and t / L or 0
+          if blockedAt(P[1] + (Q[1] - P[1]) * f, P[2] + (Q[2] - P[2]) * f) then return false end
+        end
+        return true
+      end
+      if da >= 0 and db >= 0 and da <= M.APRON_MAX_M and db <= M.APRON_MAX_M and lineClear(best.A, A2) and lineClear(best.B, B2)
+        and lineClear(A2, B2) then
+        local W = math.sqrt((B2[1] - A2[1]) ^ 2 + (B2[2] - A2[2]) ^ 2)
+        M._openSide.apron = { A = { best.A[1], best.A[2] }, B = { best.B[1], best.B[2] }, A2 = A2, B2 = B2, W = W,
+          ux = -rnx, uy = -rny }
+        log('I', TAG, string.format('lot exit: enclosure out to the road, exit strip of %.0f m along it', W))
+      end
+    end
+  end
   log('I', TAG, string.format('lot exit: open side %.0f m long, clear path of %.0f m to the road at (%.1f, %.1f)', best.L, c.s, c.qx, c.qy))
   return { { cx, cy, c.rad }, { c.x - best.nx * 3, c.y - best.ny * 3, c.rad }, { c.x + best.nx * 1, c.y + best.ny * 1, c.rad }, { c.qx, c.qy, c.rad } }
 end
@@ -1451,7 +1499,9 @@ local function fenceClearance(cx, cy, h)
   end
   -- y del TC0 a la carretera más cercana (por donde sale el coche, el GPS empieza ahí)
   local ts = M.tcSpot
-  if ts and ts.x and okM and m and m.nodes then
+  if ts and ts.apron then
+    corridor[#corridor + 1] = { ts.x, ts.y, ts.x + ts.ux * 6, ts.y + ts.uy * 6, 4.5 }
+  elseif ts and ts.x and okM and m and m.nodes then
     local bx, by, bd
     for _, nd in pairs(m.nodes) do
       local d = (nd.pos.x - ts.x) ^ 2 + (nd.pos.y - ts.y) ^ 2
@@ -1502,6 +1552,14 @@ local function lotFence(site)
         local t = math.max(0, math.min(1, ((M.tcSpot.x - A[1]) * ex + (M.tcSpot.y - A[2]) * ey) / (L * L)))
         local d = (M.tcSpot.x - A[1] - ex * t) ^ 2 + (M.tcSpot.y - A[2] - ey * t) ^ 2
         if not bd or d < bd then bi, bd = i, d end
+      end
+    end
+    -- con franja hasta el camino, el lado abierto es el de sus esquinas (la caseta ya no está junto a él)
+    if M.tcSpot.apron then
+      local ap = M.tcSpot.apron
+      for i = 1, #h do
+        local A, B = h[i], h[i % #h + 1]
+        if math.abs(A[1] - ap.A[1]) < 0.01 and math.abs(A[2] - ap.A[2]) < 0.01 and math.abs(B[1] - ap.B[1]) < 0.01 and math.abs(B[2] - ap.B[2]) < 0.01 then bi = i end
       end
     end
     if bi then
@@ -1559,6 +1617,30 @@ local function lotFence(site)
       end
     end
     ::nextSide::
+  end
+  -- (27-nov) franja hasta el camino: los alargues de valla desde las esquinas del lado abierto hasta las casetas
+  if M.tcSpot and M.tcSpot.apron then
+    local ap = M.tcSpot.apron
+    for _, arm in ipairs({ { ap.A, ap.A2 }, { ap.B, ap.B2 } }) do
+      local P, Q = arm[1], arm[2]
+      local ex, ey = Q[1] - P[1], Q[2] - P[2]
+      local L = math.sqrt(ex * ex + ey * ey)
+      if L > 3 then
+        ex, ey = ex / L, ey / L
+        local la0, lo0 = a.toGeo(P[1], P[2], z0)
+        local la1, lo1 = a.toGeo(P[1] + ex * 10, P[2] + ey * 10, z0)
+        local kk = math.cos(math.rad(la0)) * 111195
+        local gx, gy = (lo1 - lo0) * kk, (la1 - la0) * 111195
+        local gl = math.sqrt(gx * gx + gy * gy)
+        if gl > 0.01 then gx, gy = gx / gl, gy / gl else gx, gy = 0, 1 end
+        -- hasta 3,5 m antes de la caseta (la carpa y su valla)
+        for d = M.LOT_FENCE_PITCH_M / 2, L - 3.5, M.LOT_FENCE_PITCH_M do
+          local x, y = P[1] + ex * d, P[2] + ey * d
+          local z = terrainZ(x, y)
+          if z and math.abs(z - z0) < 2.5 and clear(x, y) then cands[#cands + 1] = { x = x, y = y, z = z, gx = gx, gy = gy } end
+        end
+      end
+    end
   end
   -- (26-nov) con el tope de piezas, primero las más cercanas a la salida (TC0) y a los boxes: antes se cortaba según por qué
   -- esquina empezaba la vuelta y el lado de la salida podía quedar sin vallar
@@ -1951,7 +2033,8 @@ function M.tc0(site, dressing)
     -- (27-nov, el usuario: «las casetas perpendiculares a la carretera y al parking; así no dejan entrar ni salir») en un lado
     -- abierto las dos casetas van enfrentadas, a la misma altura y por fuera del recinto, una en cada extremo del lado: la
     -- línea entre ellas queda paralela al lado y el paso, libre en medio. MARK:open-side-v1
-    local twin = sp.openSide and { g = 1.5, s1 = M.OPEN_TENT_OUT_M, s2 = M.OPEN_TENT_OUT_M, noOpposite = true }
+    local twin = sp.apron and { g = 1.5, s1 = 0, s2 = 0, noOpposite = true }
+      or sp.openSide and { g = 1.5, s1 = M.OPEN_TENT_OUT_M, s2 = M.OPEN_TENT_OUT_M, noOpposite = true }
       or { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 }
     local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, twin)
     if ok then
