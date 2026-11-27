@@ -930,7 +930,8 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
     local fy = sgn > 0 and 0 or 180
     place(M.FENCE_KINDS[1], t, endAlong, side - sgn * 0.6, fy, f - 1.9, fo)
     place(M.FENCE_KINDS[2], t, endAlong, side + sgn * 0.7, fy, f + 2.0, fo)
-    place(M.FENCE_KINDS[3], t, endAlong, -side, fy + 180, f + 2.6, fo)
+    -- (27-nov) con dos casetas una frente a otra (salida por un lado abierto del aparcamiento) esa valla caería en la otra
+    if not (type(twin) == 'table' and twin.noOpposite) then place(M.FENCE_KINDS[3], t, endAlong, -side, fy + 180, f + 2.6, fo) end
     return true
   end
   local done, chosen = false, nil

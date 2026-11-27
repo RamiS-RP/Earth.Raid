@@ -1242,6 +1242,7 @@ M.treeAt = treeAt
 -- remolques, muros: rayo de arriba abajo), sin árboles y sin escalones. Gana el lado con el camino más cerca; en él, el punto
 -- limpio más centrado. Ese lado queda abierto (sin valla) y el TC0 en medio, con una caseta a cada extremo. MARK:open-side-v1
 M.OPEN_CORRIDOR_W, M.OPEN_MAX_M, M.OPEN_SIDE_MAX_M = 6, 45, 45
+M.OPEN_TENT_OUT_M = 3.0   -- las casetas de un lado abierto, por fuera de la línea (la carpa 3x3 queda entre 1,5 y 4,5 m)
 function M.clearSideRoute(m, h, cx, cy)
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
   local segs = {}
@@ -1947,7 +1948,12 @@ function M.tc0(site, dressing)
       -- (tcPost: lateral = out * lado, con out = -1; los boxes a la derecha de quien sale -> lado -1)
       lado = (sp.ux * sp.by - sp.uy * sp.bx) < 0 and -1 or 1
     elseif sp.fx and (sp.uy * sp.fx - sp.ux * sp.fy) < 0 then lado = 1 end
-    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 })
+    -- (27-nov, el usuario: «las casetas perpendiculares a la carretera y al parking; así no dejan entrar ni salir») en un lado
+    -- abierto las dos casetas van enfrentadas, a la misma altura y por fuera del recinto, una en cada extremo del lado: la
+    -- línea entre ellas queda paralela al lado y el paso, libre en medio. MARK:open-side-v1
+    local twin = sp.openSide and { g = 1.5, s1 = M.OPEN_TENT_OUT_M, s2 = M.OPEN_TENT_OUT_M, noOpposite = true }
+      or { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 }
+    local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, twin)
     if ok then
       local la, lo = geo.toGeo(t, geo.at(t, 20))
       return { lat = la, lon = lo }
