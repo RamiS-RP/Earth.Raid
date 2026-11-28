@@ -2,35 +2,11 @@
   "pacenote_100.ogg": {
     "audioLen": 0.441995
   },
-  "pacenote_150.ogg": {
-    "audioLen": 0.86127
-  },
-  "pacenote_1_km.ogg": {
-    "audioLen": 0.721429
-  },
-  "pacenote_1_point_2_5_km.ogg": {
-    "audioLen": 1.676009
-  },
-  "pacenote_1_point_5_km.ogg": {
-    "audioLen": 1.152449
-  },
-  "pacenote_1_point_7_5_km.ogg": {
-    "audioLen": 1.696417
-  },
   "pacenote_200.ogg": {
     "audioLen": 0.677823
   },
-  "pacenote_250.ogg": {
-    "audioLen": 1.158027
-  },
-  "pacenote_2_km.ogg": {
-    "audioLen": 0.954694
-  },
   "pacenote_300.ogg": {
     "audioLen": 0.781111
-  },
-  "pacenote_350.ogg": {
-    "audioLen": 1.034762
   },
   "pacenote_40.ogg": {
     "audioLen": 0.477868
@@ -38,119 +14,26 @@
   "pacenote_400.ogg": {
     "audioLen": 0.778549
   },
-  "pacenote_450.ogg": {
-    "audioLen": 1.050975
-  },
   "pacenote_50.ogg": {
     "audioLen": 0.56839
   },
   "pacenote_500.ogg": {
     "audioLen": 0.681814
   },
-  "pacenote_550.ogg": {
-    "audioLen": 0.990249
-  },
-  "pacenote_60.ogg": {
-    "audioLen": 0.652948
-  },
-  "pacenote_600.ogg": {
-    "audioLen": 0.741814
-  },
-  "pacenote_650.ogg": {
-    "audioLen": 1.049932
-  },
   "pacenote_70.ogg": {
     "audioLen": 0.632925
-  },
-  "pacenote_700.ogg": {
-    "audioLen": 0.791655
-  },
-  "pacenote_750.ogg": {
-    "audioLen": 1.098367
   },
   "pacenote_80.ogg": {
     "audioLen": 0.574943
   },
-  "pacenote_800.ogg": {
-    "audioLen": 0.796054
-  },
-  "pacenote_850.ogg": {
-    "audioLen": 1.064649
-  },
-  "pacenote_90.ogg": {
-    "audioLen": 0.58644
-  },
-  "pacenote_900.ogg": {
-    "audioLen": 0.762608
-  },
-  "pacenote_950.ogg": {
-    "audioLen": 1.084127
-  },
   "pacenote_and.ogg": {
     "audioLen": 0.332494
-  },
-  "pacenote_at_junction.ogg": {
-    "audioLen": 0.738707
-  },
-  "pacenote_at_rock.ogg": {
-    "audioLen": 0.725261
-  },
-  "pacenote_at_tree.ogg": {
-    "audioLen": 0.660249
-  },
-  "pacenote_bad_dip.ogg": {
-    "audioLen": 0.641927
-  },
-  "pacenote_bad_dip_jump.ogg": {
-    "audioLen": 0.893288
-  },
-  "pacenote_bad_drop.ogg": {
-    "audioLen": 0.81585
-  },
-  "pacenote_bad_jump.ogg": {
-    "audioLen": 0.754104
-  },
-  "pacenote_bad_kick.ogg": {
-    "audioLen": 0.592902
-  },
-  "pacenote_be_brave.ogg": {
-    "audioLen": 0.64102
-  },
-  "pacenote_big_crest.ogg": {
-    "audioLen": 0.84034
-  },
-  "pacenote_big_cut.ogg": {
-    "audioLen": 0.630794
   },
   "pacenote_big_jump.ogg": {
     "audioLen": 0.871088
   },
-  "pacenote_brake.ogg": {
-    "audioLen": 0.404059
-  },
-  "pacenote_brake_over_bumps.ogg": {
-    "audioLen": 1.084376
-  },
-  "pacenote_brake_over_crest.ogg": {
-    "audioLen": 0.992789
-  },
-  "pacenote_braking.ogg": {
-    "audioLen": 0.509229
-  },
-  "pacenote_bumpy.ogg": {
-    "audioLen": 0.578866
-  },
-  "pacenote_care.ogg": {
-    "audioLen": 0.365079
-  },
   "pacenote_caution.ogg": {
     "audioLen": 0.925011
-  },
-  "pacenote_chicane_left_entry.ogg": {
-    "audioLen": 1.292494
-  },
-  "pacenote_chicane_right_entry.ogg": {
-    "audioLen": 1.216599
   },
   "pacenote_crest.ogg": {
     "audioLen": 0.80424
@@ -158,44 +41,8 @@
   "pacenote_cut.ogg": {
     "audioLen": 0.395147
   },
-  "pacenote_deceptive.ogg": {
-    "audioLen": 0.568095
-  },
-  "pacenote_dip.ogg": {
-    "audioLen": 0.525624
-  },
-  "pacenote_dont.ogg": {
-    "audioLen": 0.336259
-  },
   "pacenote_dont_cut.ogg": {
     "audioLen": 0.997052
-  },
-  "pacenote_dont_cut_late.ogg": {
-    "audioLen": 0.900385
-  },
-  "pacenote_dont_go_wide.ogg": {
-    "audioLen": 0.624467
-  },
-  "pacenote_double_caution.ogg": {
-    "audioLen": 0.802676
-  },
-  "pacenote_down.ogg": {
-    "audioLen": 0.478027
-  },
-  "pacenote_drop.ogg": {
-    "audioLen": 0.510454
-  },
-  "pacenote_early.ogg": {
-    "audioLen": 0.493379
-  },
-  "pacenote_early_cut.ogg": {
-    "audioLen": 0.765283
-  },
-  "pacenote_easy_left.ogg": {
-    "audioLen": 0.765646
-  },
-  "pacenote_easy_right.ogg": {
-    "audioLen": 0.867324
   },
   "pacenote_extra_long.ogg": {
     "audioLen": 0.750045
@@ -206,23 +53,11 @@
   "pacenote_five_right.ogg": {
     "audioLen": 0.741701
   },
-  "pacenote_flat_left.ogg": {
-    "audioLen": 0.886395
-  },
-  "pacenote_flat_right.ogg": {
-    "audioLen": 1.007302
-  },
   "pacenote_four_left.ogg": {
     "audioLen": 0.893492
   },
   "pacenote_four_right.ogg": {
     "audioLen": 0.729365
-  },
-  "pacenote_gets_faster_now.ogg": {
-    "audioLen": 1.019456
-  },
-  "pacenote_go_wide.ogg": {
-    "audioLen": 0.446327
   },
   "pacenote_hairpin_left.ogg": {
     "audioLen": 0.881338
@@ -230,92 +65,20 @@
   "pacenote_hairpin_right.ogg": {
     "audioLen": 0.951497
   },
-  "pacenote_half_long.ogg": {
-    "audioLen": 0.717075
-  },
-  "pacenote_hard_left.ogg": {
-    "audioLen": 0.870363
-  },
-  "pacenote_hard_right.ogg": {
-    "audioLen": 0.8822
-  },
-  "pacenote_into.ogg": {
-    "audioLen": 0.307007
-  },
-  "pacenote_into_bridge.ogg": {
-    "audioLen": 0.629365
-  },
-  "pacenote_into_crest.ogg": {
-    "audioLen": 0.71059
-  },
-  "pacenote_into_turn.ogg": {
-    "audioLen": 0.592562
-  },
-  "pacenote_into_water.ogg": {
-    "audioLen": 0.481315
-  },
   "pacenote_jump.ogg": {
     "audioLen": 0.557075
-  },
-  "pacenote_keep_in.ogg": {
-    "audioLen": 0.654467
   },
   "pacenote_keep_left.ogg": {
     "audioLen": 0.814785
   },
-  "pacenote_keep_left_over_crest.ogg": {
-    "audioLen": 1.308254
-  },
-  "pacenote_keep_middle.ogg": {
-    "audioLen": 0.797438
-  },
-  "pacenote_keep_middle_over_crest.ogg": {
-    "audioLen": 1.34229
-  },
   "pacenote_keep_right.ogg": {
     "audioLen": 0.824127
-  },
-  "pacenote_keep_right_over_crest.ogg": {
-    "audioLen": 1.325624
-  },
-  "pacenote_kick.ogg": {
-    "audioLen": 0.444422
-  },
-  "pacenote_late.ogg": {
-    "audioLen": 0.382449
-  },
-  "pacenote_late_cut.ogg": {
-    "audioLen": 0.630612
-  },
-  "pacenote_left.ogg": {
-    "audioLen": 0.611134
   },
   "pacenote_long.ogg": {
     "audioLen": 0.579569
   },
-  "pacenote_long_crest.ogg": {
-    "audioLen": 0.826463
-  },
-  "pacenote_medium_left.ogg": {
-    "audioLen": 0.812063
-  },
-  "pacenote_medium_right.ogg": {
-    "audioLen": 0.817778
-  },
-  "pacenote_middle.ogg": {
-    "audioLen": 0.447098
-  },
-  "pacenote_middle_over_crest.ogg": {
-    "audioLen": 1.08229
-  },
-  "pacenote_narrow_bridge.ogg": {
-    "audioLen": 0.883946
-  },
   "pacenote_narrows.ogg": {
     "audioLen": 0.777302
-  },
-  "pacenote_nips.ogg": {
-    "audioLen": 0.577302
   },
   "pacenote_one_left.ogg": {
     "audioLen": 0.806712
@@ -325,9 +88,6 @@
   },
   "pacenote_onto_gravel.ogg": {
     "audioLen": 0.844943
-  },
-  "pacenote_onto_ice.ogg": {
-    "audioLen": 0.409796
   },
   "pacenote_onto_mud.ogg": {
     "audioLen": 0.588322
@@ -344,95 +104,20 @@
   "pacenote_opens.ogg": {
     "audioLen": 0.674649
   },
-  "pacenote_opens_and_tightens.ogg": {
-    "audioLen": 0.839524
-  },
-  "pacenote_opens_over_crest.ogg": {
-    "audioLen": 0.984059
-  },
   "pacenote_over_bridge.ogg": {
     "audioLen": 0.611315
-  },
-  "pacenote_over_bump.ogg": {
-    "audioLen": 0.750295
   },
   "pacenote_over_crest_1.ogg": {
     "audioLen": 0.80424
   },
-  "pacenote_over_crest_2.ogg": {
-    "audioLen": 0.811701
-  },
-  "pacenote_over_crest_3.ogg": {
-    "audioLen": 0.811701
-  },
-  "pacenote_over_dip.ogg": {
-    "audioLen": 0.600567
-  },
   "pacenote_over_finish.ogg": {
     "audioLen": 0.604898
-  },
-  "pacenote_over_jump.ogg": {
-    "audioLen": 0.777687
-  },
-  "pacenote_past_fence.ogg": {
-    "audioLen": 0.833197
-  },
-  "pacenote_past_house.ogg": {
-    "audioLen": 0.879093
-  },
-  "pacenote_past_junction.ogg": {
-    "audioLen": 0.805079
-  },
-  "pacenote_past_rock.ogg": {
-    "audioLen": 0.941678
-  },
-  "pacenote_past_tree.ogg": {
-    "audioLen": 0.869705
-  },
-  "pacenote_past_wall.ogg": {
-    "audioLen": 0.838503
-  },
-  "pacenote_right.ogg": {
-    "audioLen": 0.564535
-  },
-  "pacenote_short.ogg": {
-    "audioLen": 0.450771
   },
   "pacenote_six_left.ogg": {
     "audioLen": 0.92102
   },
   "pacenote_six_right.ogg": {
     "audioLen": 0.888299
-  },
-  "pacenote_slippy.ogg": {
-    "audioLen": 0.536644
-  },
-  "pacenote_slowing.ogg": {
-    "audioLen": 0.544263
-  },
-  "pacenote_small_crest.ogg": {
-    "audioLen": 0.867324
-  },
-  "pacenote_small_cut.ogg": {
-    "audioLen": 0.70576
-  },
-  "pacenote_square_left.ogg": {
-    "audioLen": 0.936213
-  },
-  "pacenote_square_right.ogg": {
-    "audioLen": 0.946236
-  },
-  "pacenote_stop.ogg": {
-    "audioLen": 0.461655
-  },
-  "pacenote_sudden.ogg": {
-    "audioLen": 0.746236
-  },
-  "pacenote_system_beltsCheck_1.ogg": {
-    "audioLen": 0.710907
-  },
-  "pacenote_system_commsCheck_1.ogg": {
-    "audioLen": 0.58644
   },
   "pacenote_system_countdown1_1.ogg": {
     "audioLen": 0.451791
@@ -443,56 +128,17 @@
   "pacenote_system_countdown3_1.ogg": {
     "audioLen": 0.464444
   },
-  "pacenote_system_countdown4_1.ogg": {
-    "audioLen": 0.436667
-  },
-  "pacenote_system_countdown5_1.ogg": {
-    "audioLen": 0.381066
-  },
   "pacenote_system_countdowngo_1.ogg": {
     "audioLen": 0.568889
   },
-  "pacenote_system_falseStart_1.ogg": {
-    "audioLen": 0.888027
-  },
   "pacenote_system_precountdown_1.ogg": {
     "audioLen": 4.3
-  },
-  "pacenote_system_precountdown_2.ogg": {
-    "audioLen": 0.587642
-  },
-  "pacenote_system_rescheduled_1.ogg": {
-    "audioLen": 1.035964
-  },
-  "pacenote_system_warningSeconds10_1.ogg": {
-    "audioLen": 0.982744
-  },
-  "pacenote_system_warningSeconds15_1.ogg": {
-    "audioLen": 0.905261
-  },
-  "pacenote_system_warningSeconds30_1.ogg": {
-    "audioLen": 0.996553
-  },
-  "pacenote_system_warningSeconds60_1.ogg": {
-    "audioLen": 0.599796
   },
   "pacenote_three_left.ogg": {
     "audioLen": 0.885011
   },
   "pacenote_three_right.ogg": {
     "audioLen": 0.7
-  },
-  "pacenote_through_bridge.ogg": {
-    "audioLen": 0.722449
-  },
-  "pacenote_through_dip.ogg": {
-    "audioLen": 0.586236
-  },
-  "pacenote_through_gate.ogg": {
-    "audioLen": 0.656077
-  },
-  "pacenote_through_tunnel.ogg": {
-    "audioLen": 0.673469
   },
   "pacenote_tight_hairpin_left.ogg": {
     "audioLen": 0.881338
@@ -503,43 +149,10 @@
   "pacenote_tightens.ogg": {
     "audioLen": 0.676939
   },
-  "pacenote_tightens_and_opens.ogg": {
-    "audioLen": 0.833152
-  },
-  "pacenote_tightens_down.ogg": {
-    "audioLen": 0.793741
-  },
-  "pacenote_tightens_over_crest.ogg": {
-    "audioLen": 0.955896
-  },
-  "pacenote_to_stop.ogg": {
-    "audioLen": 0.41551
-  },
-  "pacenote_turn.ogg": {
-    "audioLen": 0.385714
-  },
-  "pacenote_twisty.ogg": {
-    "audioLen": 0.547959
-  },
   "pacenote_two_left.ogg": {
     "audioLen": 0.918594
   },
   "pacenote_two_right.ogg": {
     "audioLen": 0.779615
-  },
-  "pacenote_under_bridge.ogg": {
-    "audioLen": 0.891746
-  },
-  "pacenote_up.ogg": {
-    "audioLen": 0.609592
-  },
-  "pacenote_water.ogg": {
-    "audioLen": 0.527029
-  },
-  "pacenote_watersplash.ogg": {
-    "audioLen": 0.489819
-  },
-  "pacenote_wide.ogg": {
-    "audioLen": 0.61619
   }
 }

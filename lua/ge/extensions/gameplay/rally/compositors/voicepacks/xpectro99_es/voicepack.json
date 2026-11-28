@@ -7,12 +7,14 @@
     "enthusiast",
     "structured"
   ],
-  "styleLabel": "Voz real + Piper (experimental)",
+  "styleLabel": "Voz real (experimental)",
   "styleDetailLevel": 50,
   "enableSpeedScaling": true,
   "codriverTimingOffsetSeconds": 0.0,
   "linkWordGapMs": 0,
   "cornerGapMs": -30,
   "phraseGapMs": 0,
-  "pacenoteGapMs": 200
+  "pacenoteGapMs": 200,
+  "raidEarthPartialOk": true,
+  "raidEarthNoFallback": true
 }

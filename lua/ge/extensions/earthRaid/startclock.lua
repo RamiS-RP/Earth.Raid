@@ -99,18 +99,23 @@ function M.setClock(obj) clockObj, display = obj, nil end
 function M.setLine(pos, fwd) linePos = pos if fwd then roadFwd = fwd end end
 
 -- como startClocks/rallyStartTree.getView: dirección (horizontal) desde el reloj hasta la cámara
+-- Dirección de la cámara desde el reloj, en el marco de la carretera. VIEW_ALONG: + hacia delante (sentido de la
+-- marcha); VIEW_OUT: + hacia fuera de la calzada, - hacia la carretera.
+-- (28-nov, probado con capturas de OBS en Suecia SS3) la cara del reloj mira al coche: la cámara va por detrás del reloj
+-- (del lado de la línea de salida) y hacia la carretera, en diagonal como la del juego (rallyStartTree.getView), a 1 m.
+-- Antes iba por detrás y HACIA FUERA: veía el reloj de canto, con el display apagado. Nota: la captura de pantalla del
+-- MCP no incluye esta ventana (es una vista compuesta); para revisarla, usar una captura de OBS.
+M.VIEW_ALONG, M.VIEW_OUT = -1, -1
 local function viewDir(target)
-  if not (roadFwd and clockObj and simObjectExists(clockObj)) then return nil end
+  if not (roadFwd and linePos) then return nil end
   local f = vec3(roadFwd.x, roadFwd.y, 0)
   if f:squaredLength() <= 0.01 then return nil end
   f = f:normalized()
   local right = f:cross(vec3(0, 0, 1))
-  local clockIsRight = (target - linePos):dot(right) >= 0
-  -- geometría de la carretera, no la orientación del modelo: la cámara detrás del reloj (la cara mira al coche) y del lado de fuera (derecho si
-  -- el reloj está a la derecha), mirando al reloj y a la carretera
-  local outward = right * (clockIsRight and 1 or -1)
-  -- (23-nov) la cara del reloj mira hacia atrás (hacia el coche parado en la línea): la cámara va DETRÁS del reloj y fuera
-  local d = outward - f
+  local rel = target - linePos
+  rel.z = 0
+  local outward = right * ((rel:dot(right) >= 0) and 1 or -1)
+  local d = f * M.VIEW_ALONG + outward * M.VIEW_OUT
   if d:squaredLength() < 0.01 then return nil end
   return d:normalized()
 end

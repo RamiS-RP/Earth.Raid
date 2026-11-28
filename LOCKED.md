@@ -5,7 +5,7 @@ algo de esta lista, avisar de las dependencias y esperar el visto bueno. Comprob
 
 | Bloqueado | Archivo | Lo que se aprobó |
 |---|---|---|
-| Reloj de salida (semáforo) | `startclock.lua` | posición/cámara, tiempos unificados Staged/Skip/reloj, lado derecho |
+| Reloj de salida (semáforo) | `startclock.lua` | posición/cámara, tiempos unificados Staged/Skip/reloj, lado derecho. 28-nov (con permiso del usuario): cámara por detrás del reloj y hacia la carretera (`VIEW_ALONG`/`VIEW_OUT` = −1/−1, 1 m); antes miraba el reloj de canto y el display salía apagado. Revisar siempre con captura de OBS: la del MCP no incluye la ventana |
 | Pantalla de carga y reinicio rápido | `loader.lua` | pasos cover/tp/roads/dress/place/settle, `L.fast` (26-nov: el usuario dio permiso para optimizar la carga) |
 | HUD (apps del rally del juego) | `vhud.lua` | 27-nov: revisado en asistencia (límite 30), enlace, TC, camino a la salida (SSn), staged, cuenta atrás, tramo, meta (SLOW + distancia) y STOP; sin «STOP 0.0m» en el enlace |
 
