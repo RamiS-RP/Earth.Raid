@@ -54,6 +54,10 @@ end
 -- verdad, uno mínimo que solo da la etiqueta del tramo
 function M.setStage(label)
   stageLabel = label
+  -- (28-nov) un gestor mínimo NUESTRO que quedó de antes de recargar el mod apunta al módulo viejo (hora nil: la pantalla
+  -- LED se quedaba congelada con lo último pintado): se sustituye siempre por uno de este módulo
+  local prev = rawget(_G, 'gameplay_rallyLoop')
+  if prev and rawget(prev, '__earthRaidShim') then rawset(_G, 'gameplay_rallyLoop', nil) end
   if label and rawget(_G, 'gameplay_rallyLoop') == nil then
     -- el reloj del juego toma la hora de getWallClockTimeSecs si hay gestor: sin ella no pintaba ni hora ni cuenta
     -- atrás (16-nov)
@@ -99,25 +103,31 @@ function M.setClock(obj) clockObj, display = obj, nil end
 function M.setLine(pos, fwd) linePos = pos if fwd then roadFwd = fwd end end
 
 -- como startClocks/rallyStartTree.getView: dirección (horizontal) desde el reloj hasta la cámara
--- Dirección de la cámara desde el reloj, en el marco de la carretera. VIEW_ALONG: + hacia delante (sentido de la
--- marcha); VIEW_OUT: + hacia fuera de la calzada, - hacia la carretera.
--- (28-nov, probado con capturas de OBS en Suecia SS3) la cara del reloj mira al coche: la cámara va por detrás del reloj
--- (del lado de la línea de salida) y hacia la carretera, en diagonal como la del juego (rallyStartTree.getView), a 1 m.
--- Antes iba por detrás y HACIA FUERA: veía el reloj de canto, con el display apagado. Nota: la captura de pantalla del
--- MCP no incluye esta ventana (es una vista compuesta); para revisarla, usar una captura de OBS.
-M.VIEW_ALONG, M.VIEW_OUT = -1, -1
+-- Cámara de la cuenta atrás. (28-nov, el usuario: «copia la posición de la cámara del juego y el efecto steadycam»)
+-- COPIA EXACTA de gameplay/rally/startClocks/rallyStartTree.getView + rallyStartClock (BeamNG 0.40): dirección =
+-- eje X del reloj (hacia delante en la marcha) + eje Y del reloj (hacia la calzada), a 1 m del centro de la pantalla
+-- LED, FOV 25, shift 1/3 y bobbing standingBobScale = 1. Revisar con una captura de OBS (el MCP no la ve).
 local function viewDir(target)
-  if not (roadFwd and linePos) then return nil end
+  if not (roadFwd and linePos and clockObj and simObjectExists(clockObj)) then return nil end
   local f = vec3(roadFwd.x, roadFwd.y, 0)
   if f:squaredLength() <= 0.01 then return nil end
-  f = f:normalized()
+  -- (28-nov, comprobado con la captura de Utah SS1) el «roadForward» del juego (quat(startLine.rot) * (0,-1,0)) sale
+  -- CONTRARIO a la marcha: con él la cámara queda 1 m por detrás y por FUERA del reloj (a su derecha), mirando hacia
+  -- delante y hacia la calzada. Nuestro roadFwd es el sentido de la marcha: se invierte para dar lo mismo.
+  f = f:normalized() * -1
   local right = f:cross(vec3(0, 0, 1))
-  local rel = target - linePos
-  rel.z = 0
-  local outward = right * ((rel:dot(right) >= 0) and 1 or -1)
-  local d = f * M.VIEW_ALONG + outward * M.VIEW_OUT
+  local clockIsRight = (target - linePos):dot(right) >= 0
+  local T = clockObj:getTransform()
+  local tangent, normal = vec3(T:getColumn(0)), vec3(T:getColumn(1))
+  tangent.z, normal.z = 0, 0
+  if tangent:squaredLength() <= 0.01 or normal:squaredLength() <= 0.01 then return nil end
+  tangent, normal = tangent:normalized(), normal:normalized()
+  if tangent:dot(f) < 0 then tangent = tangent * -1 end
+  local inward = right * (clockIsRight and -1 or 1)
+  if normal:dot(inward) < 0 then normal = normal * -1 end
+  local d = tangent + normal
   if d:squaredLength() < 0.01 then return nil end
-  return d:normalized()
+  return d:normalized(), M.DIST_M
 end
 
 local function rect()
@@ -195,22 +205,23 @@ function M.update(dtReal, active, code)
     if not (display and simObjectExists(display)) or displayT <= 0 then display, displayT = findDisplay(), 1 end
     local target, shift
     if display then
-      target, shift = display:getWorldBox():getCenter(), 0
+      target, shift = display:getWorldBox():getCenter(), M.SHIFT   -- (28-nov) como el juego: defaultViewShift 1/3 también con el display
     else
       local box = clockObj:getWorldBox()
       target, shift = box:getCenter() + vec3(0, 0, (box.maxExtents.z - box.minExtents.z) * 0.25), M.SHIFT
     end
-    local dir = viewDir(target)
+    local dir, dist = viewDir(target)
     if not dir then
       dir = vec3(linePos.x - target.x, linePos.y - target.y, 0)
       if dir:squaredLength() < 0.01 then return end
       dir = dir:normalized()
     end
-    local cam = target + dir * M.DIST_M
+    dist = dist or M.DIST_M
+    local cam = target + dir * dist
     M.dbg = { cam = cam, target = target, dir = dir }
     local look = target - cam
     local right = look:cross(vec3(0, 0, 1)):normalized()
-    local half = math.tan(math.rad(M.FOV * 0.5)) * M.DIST_M * w / h
+    local half = math.tan(math.rad(M.FOV * 0.5)) * dist * w / h
     local lookTarget = target - right * half * shift
     local q = quatFromDir(lookTarget - cam, vec3(0, 0, 1))
     bob = bob or newBob()

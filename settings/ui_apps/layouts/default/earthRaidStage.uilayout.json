@@ -151,19 +151,6 @@
       }
     },
     {
-      "appName": "odometer",
-      "placement": {
-        "bottom": "",
-        "height": "4.07em",
-        "left": "70.94em",
-        "position": "absolute",
-        "right": "",
-        "top": "57.3em",
-        "width": "15.69em"
-      },
-      "settings": {}
-    },
-    {
       "appName": "beamngEarthCredits",
       "placement": {
         "bottom": "0px",

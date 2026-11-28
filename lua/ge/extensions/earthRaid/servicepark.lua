@@ -24,15 +24,24 @@ M.BLD_PAD = 3        -- de un edificio
 M.SLOPE_MAX = 0.08   -- pendiente máxima (desnivel / distancia)
 M.EXIT_ROAD_M = 70   -- la carretera de salida, como mucho a esta distancia del sitio
 M.BUILDINGS_WAIT_S = 5
-M.PAIR_M = 6.2       -- entre boxes (una carpa 3x6 por coche, girada 90°: el coche queda a lo largo)
+M.PAIR_M = 9.7       -- (28-nov) entre boxes, como NGRC Rally Utah: cada box son dos carpas 3x6 (6x6) y 3,7 m de hueco
 M.MAX_BOXES = 4      -- (a futuro: según los jugadores inscritos en el evento)
 M.BOX_LEVELS = { 1, 2, 4, 8 }   -- boxes según el sitio (22-nov): 1 mínimo obligatorio, 2 recomendable, 4 de norma, 8 máximo
-M.ROW_GAP_M = 15     -- entre dos filas de boxes: 6 m de fondo de carpa + pasillo de maniobra
+M.ROW_GAP_M = 18     -- entre dos filas de boxes: 6 m de fondo de carpa + pasillo de maniobra
 M.BIG_EXTRA = 4      -- en un aparcamiento grande (caben todos), estos boxes más, para llenar (19-nov)
 M.NO_PARK_M = 45     -- sin coches de tráfico aparcados a menos de esto de un box (19-nov: solo los de rally)
 -- El box, como en los rallies del juego (19-nov, colocado a mano por el usuario con el editor): el coche entra de
 -- morro y sale marcha atrás; los extintores al fondo de la carpa, no delante cortando el paso
 M.EXT_BACK_M = 2.0
+-- (28-nov, el usuario: «replica los objetos del box igual que el juego») el box de NGRC Rally Utah (mainPrefab): dos
+-- carpas 3x6 de la misma marca, una detrás de otra a 3,1 m (un box de 6x6 con el coche dentro) y dos extintores juntos
+-- en una esquina trasera. put(kind, haciaElPasillo, aLoLargoDeLaFila, giro) en el marco del box. MARK:box-utah
+function M.utahBox(put, kind)
+  put(kind, 1.55, 0, 0)
+  put(kind, -1.55, 0, 0)
+  put('extinguisher', -2.4, 3.05, -14)
+  put('extinguisher', -2.6, 3.05, 160)
+end
 M.BUDGET_MS = 6
 
 local function terrainZ(x, y)
@@ -1422,7 +1431,7 @@ end
 -- (22-nov, el usuario colocó a mano los boxes en fila contra el muro SO) El tramo recto más largo del recinto: aristas
 -- consecutivas casi alineadas. Los boxes van en fila a lo largo de él, centrados, y la segunda fila es una copia trasladada
 -- hacia dentro ROW_GAP_M (alineada y cuadrada con la primera, con pasillo para maniobrar).
-M.BOX_PITCH_M = 7.8
+M.BOX_PITCH_M = 9.7
 M.TWIN_S1, M.TWIN_S2 = -2.7, 3.6      -- casetas del TC0 de box: antes y después de la línea de stop (medidas de la marca del usuario)
 M.STREET_W_M, M.RUN_OFF_M = 9.2, 0.3 -- calle junto al aparcamiento: ancho entre vallas, y valla del lado del aparcamiento pegada al recinto
 local function wallPicks(site, h)
@@ -1879,11 +1888,9 @@ local function buildOnStalls(site)
     end
     -- una sola carpa 3x6 por coche, girada 90° (su lado largo, el del coche) y con los objetos del box de NGRC Rally Utah:
     -- dos extintores delante y un cono pequeño a rayas
-    put(k, 0, 0, 90)
+    M.utahBox(put, k)
     -- en los boxes de al lado del tuyo, un coche de rally aparcado (ambiente)
     if cars[i] then put('rallyCar', 0, 0, 180, { vehicle = cars[i] }) end
-    put('extinguisher', -M.EXT_BACK_M - 0.05, -0.7, 40)
-    put('extinguisher', -M.EXT_BACK_M, -0.95, 250)
     -- (20-nov, norma del usuario: sin conos en los boxes; cada cono cerca del coche es un objeto con física)
     if i == mine then
       local la, lo = a.toGeo(p[1], p[2], p[3])
@@ -1915,10 +1922,8 @@ local function buildManual(site)
     return props.add(kind, pla, plo, mx, my, yaw or 0, opts)
   end
   for i, b in ipairs(man.boxes) do
-    put(kinds[(i - 1) % #kinds + 1], b[1], b[2], 0, 0, 90)
+    M.utahBox(function(kind, fwd, side, yaw) return put(kind, b[1], b[2], -fwd, side, yaw) end, kinds[(i - 1) % #kinds + 1])
     if cars[i] then put('rallyCar', b[1], b[2], 0, 0, 180, { vehicle = cars[i] }) end
-    put('extinguisher', b[1], b[2], M.EXT_BACK_M + 0.05, 0.7, 40)
-    put('extinguisher', b[1], b[2], M.EXT_BACK_M, 0.95, 250)
     if i == mine then
       local x, y = a.toGame(b[1], b[2], 0)
       local fla, flo = a.toGeo(x - mx * 12, y - my * 12, site.z)
@@ -1994,10 +1999,8 @@ function M.build(site)
   for i = 1, n do
     local along = along0 + (i - 1) * M.PAIR_M
     local k = kinds[(i - 1) % #kinds + 1]
-    put(k, along, rowSide, 90)
+    M.utahBox(function(kind, fwd, side, yaw) return put(kind, along + side, rowSide - sideSign * fwd, yaw) end, k)
     if cars[i] then put('rallyCar', along, rowSide, 180, { vehicle = cars[i] }) end
-    put('extinguisher', along + 0.7, rowSide + sideSign * (M.EXT_BACK_M + 0.05), 40)
-    put('extinguisher', along + 0.95, rowSide + sideSign * M.EXT_BACK_M, 250)
     if i == mine then
       local la, lo = a.toGeo(site.x + hx * along + rx * rowSide, site.y + hy * along + ry * rowSide, z)
       local fla, flo = a.toGeo(site.x + hx * along + rx * (rowSide + sideSign * 12), site.y + hy * along + ry * (rowSide + sideSign * 12), z)

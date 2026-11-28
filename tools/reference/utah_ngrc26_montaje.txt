@@ -1,0 +1,357 @@
+# Medidas del montaje de NGRC Rally Utah 2026 (juego), extraidas el 28-nov-2026 de gameplay/missions/utah/rallyLoop/ngrc26-rally-utah/mainPrefab.prefab.json
+# fwd = metros hacia delante (sentido de la marcha), right = metros a la derecha, z = altura relativa, yawY = giro del eje Y del objeto respecto a la marcha (grados, + a la derecha)
+
+== SALIDA en (454.9,396.6) separacion carteles 6.16 m
+  fwd=-13.03 right= -4.71 z=-0.98 yawY=  -33  s_corner_dir225_left.dae
+  fwd=-12.69 right= -3.69 z=-1.20 yawY= -179  s_spectator_grid_b_2m.dae
+  fwd=-11.80 right= -5.08 z=-1.00 yawY=   44  p_metal_fence_branding_ngrc.prefab.json
+  fwd=-11.72 right= -4.86 z=-1.00 yawY= -136  p_metal_fence_branding_blastr.prefab.json
+  fwd=-10.71 right=  4.72 z=-1.06 yawY=  -98  s_corner_dir135_right.dae
+  fwd= -9.84 right= -6.98 z=-0.81 yawY=   44  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -9.75 right= -2.85 z=-1.11 yawY= -110  s_corner_dir135_right.dae
+  fwd= -9.73 right= -6.77 z=-0.81 yawY= -136  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -8.70 right= -4.07 z=-0.96 yawY= -170  s_spectator_grid_center.dae
+  fwd= -7.93 right= -8.84 z=-0.75 yawY=   44  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -7.80 right= -8.61 z=-0.76 yawY= -136  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -6.75 right= -4.42 z=-0.79 yawY= -170  s_spectator_grid_b_2m.dae
+  fwd= -6.52 right=-14.31 z=-0.45 yawY= -119  s_rally_fold_table_01.dae
+  fwd= -6.03 right=-10.69 z=-0.56 yawY=   44  p_metal_fence_branding_blastr.prefab.json
+  fwd= -5.90 right=-10.43 z=-0.57 yawY= -136  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -5.84 right=-13.78 z=-0.40 yawY= -136  s_rally_fold_chair_01.dae
+  fwd= -5.45 right=-14.21 z=-0.41 yawY=   54  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd= -2.98 right= -5.58 z=-0.52 yawY= -156  s_spectator_grid_center.dae
+  fwd= -1.21 right= -6.38 z=-0.45 yawY= -156  s_spectator_grid_b_2m.dae
+  fwd=  0.00 right= -3.08 z= 0.14 yawY=    3  s_rally_signboard_start.dae
+  fwd=  0.00 right=  3.08 z=-0.14 yawY=    3  s_rally_signboard_start.dae
+  fwd=  0.28 right=  3.08 z=-0.54 yawY=  -92  s_rally_start_sensor.dae
+  fwd=  0.45 right= -2.41 z=-0.36 yawY= None  
+  fwd=  0.46 right= -2.87 z=-0.22 yawY=   90  s_rally_start_sensor.dae
+  fwd=  0.97 right=  3.53 z=-0.53 yawY=  180  s_cooldown_board_01.dae
+  fwd=  1.36 right= -3.54 z= 0.01 yawY=  180  s_cooldown_board_01.dae
+  fwd=  2.63 right= -7.29 z=-0.22 yawY=    2  s_spectator_grid_center.dae
+  fwd=  5.79 right=  3.26 z=-0.20 yawY=  -27  s_rally_start_tree.dae
+  fwd=  6.59 right= -7.46 z= 0.11 yawY=    2  s_spectator_grid_b_2m.dae
+  fwd=  8.55 right= -7.54 z= 0.27 yawY=    2  s_spectator_grid_center.dae
+  fwd= 12.51 right= -7.71 z= 0.59 yawY=    2  s_spectator_grid_b_2m.dae
+== SALIDA en (632.0,843.0) separacion carteles 5.89 m
+  fwd=  0.00 right= -2.94 z= 0.05 yawY=   -4  s_rally_signboard_start.dae
+  fwd=  0.00 right=  2.94 z=-0.05 yawY=   -4  s_rally_signboard_start.dae
+  fwd=  0.27 right=  2.55 z=-0.36 yawY= None  
+  fwd=  0.29 right=  2.90 z=-0.40 yawY=  -90  s_rally_start_sensor.dae
+  fwd=  0.43 right= -3.00 z=-0.05 yawY=   94  s_rally_start_sensor.dae
+  fwd=  5.82 right=  2.36 z= 0.06 yawY=  -14  s_rally_start_tree.dae
+  fwd= 13.08 right=  4.12 z= 1.95 yawY=   -7  s_rally_signboard_end_of_area.dae
+== SALIDA en (90.0,-111.1) separacion carteles 7.93 m
+  fwd= -9.00 right= -3.06 z=-0.40 yawY=  166  s_cooldown_board_01.dae
+  fwd= -7.94 right=  5.90 z=-0.19 yawY= -173  s_cooldown_board_01.dae
+  fwd= -0.52 right=  6.63 z= 0.14 yawY=   49  p_metal_fence_branding_rotopad.prefab.json
+  fwd=  0.00 right= -3.97 z=-0.04 yawY=   23  s_rally_signboard_start.dae
+  fwd=  0.00 right=  3.97 z= 0.04 yawY=   -6  s_rally_signboard_start.dae
+  fwd=  0.38 right= -3.99 z=-0.04 yawY=   94  s_rally_start_sensor.dae
+  fwd=  0.44 right=  4.04 z= 0.03 yawY=  -80  s_rally_start_sensor.dae
+  fwd=  0.49 right=  3.93 z= 0.03 yawY= None  
+  fwd=  0.55 right= 10.55 z= 0.50 yawY=  -94  s_spectator_tarp_4m.dae
+  fwd=  3.41 right= -5.01 z=-0.33 yawY=  -18  p_metal_fence_branding_blastr.prefab.json
+  fwd=  3.49 right= 14.67 z= 0.92 yawY=  -85  ut_race_mesh_barricade_curve.DAE
+  fwd=  6.09 right= -4.47 z=-0.32 yawY=   -8  p_metal_fence_branding_ngrc.prefab.json
+  fwd=  6.11 right=  7.18 z= 0.17 yawY=  -51  s_rally_start_tree.dae
+  fwd=  6.88 right= -2.50 z= 0.09 yawY=  114  ut_race_mesh_barricade_curve_b.DAE
+  fwd=  8.62 right= -3.66 z=-0.28 yawY=  -28  p_metal_fence_branding_rotopad.prefab.json
+  fwd= 10.82 right= -2.24 z=-0.17 yawY=  -41  p_metal_fence_branding_ngrc.prefab.json
+  fwd= 12.87 right= -0.58 z=-0.21 yawY=  -38  p_metal_fence_branding_blastr.prefab.json
+  fwd= 15.12 right=  0.83 z=-0.29 yawY=  -27  p_metal_fence_branding_ngrc.prefab.json
+== SALIDA en (-410.3,-634.8) separacion carteles 5.29 m
+  fwd= -0.00 right= -2.65 z=-0.12 yawY=    3  s_rally_signboard_start.dae
+  fwd= -0.00 right=  2.65 z= 0.12 yawY=    3  s_rally_signboard_start.dae
+  fwd=  0.19 right= -2.78 z=-0.37 yawY=   91  s_rally_start_sensor.dae
+  fwd=  0.27 right=  2.69 z=-0.17 yawY=  -88  s_rally_start_sensor.dae
+  fwd=  0.29 right=  2.48 z=-0.17 yawY= None  
+  fwd=  1.24 right= -3.58 z=-0.59 yawY=  180  s_cooldown_board_01.dae
+  fwd=  1.66 right=  3.16 z=-0.23 yawY= -180  s_cooldown_board_01.dae
+  fwd=  7.41 right=  2.40 z=-0.87 yawY=   -6  s_rally_start_tree.dae
+  fwd= 13.55 right=  1.50 z=-0.91 yawY=   -5  s_rally_signboard_end_of_area.dae
+
+== META en (-430.2,-735.4) separacion carteles 7.71 m
+  fwd=-21.19 right=  4.98 z=-0.83 yawY=  -68  s_spectator_grid_a_2m.dae
+  fwd=-20.46 right=  6.83 z=-0.80 yawY=  -68  s_spectator_grid_center.dae
+  fwd=-18.95 right= 10.49 z=-0.77 yawY=  -68  s_spectator_grid_a_2m.dae
+  fwd=-14.98 right=  1.24 z=-0.65 yawY=   56  s_tube_01.dae
+  fwd=-10.51 right=  7.49 z=-0.69 yawY=  118  p_metal_fence_branding_blastr.prefab.json
+  fwd= -9.12 right=  9.84 z=-0.67 yawY=  124  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -8.13 right=  5.28 z=-0.57 yawY=  -19  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -7.75 right= 12.13 z=-0.62 yawY=  119  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -6.45 right= 14.45 z=-0.56 yawY=  118  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -5.48 right=  6.11 z=-0.54 yawY=  -16  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -5.18 right= 16.80 z=-0.47 yawY=  118  p_metal_fence_branding_blastr.prefab.json
+  fwd= -3.91 right= 19.10 z=-0.39 yawY=  118  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -2.88 right=  6.67 z=-0.46 yawY=  -10  p_metal_fence_branding_blastr.prefab.json
+  fwd= -2.64 right= 21.38 z=-0.28 yawY=  119  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -0.19 right=  6.70 z=-0.26 yawY=    7  p_metal_fence_branding_ngrc.prefab.json
+  fwd=  0.00 right= -3.85 z=-0.02 yawY=    6  s_rally_signboard_finish.dae
+  fwd=  0.00 right=  3.85 z= 0.02 yawY=   -8  s_rally_signboard_finish.dae
+  fwd=  0.38 right= -3.84 z=-0.44 yawY=   91  s_rally_start_sensor.dae
+  fwd=  0.38 right= -3.67 z=-0.43 yawY= None  
+  fwd=  0.39 right=  3.88 z=-0.21 yawY=  -91  s_rally_start_sensor.dae
+  fwd=  2.09 right= -3.90 z=-0.36 yawY=  101  hr_plasticbarrier_red.DAE
+  fwd=  3.62 right= -4.21 z=-0.27 yawY=  106  hr_plasticbarrier_red.DAE
+  fwd=  5.01 right= -4.63 z=-0.21 yawY=  106  hr_plasticbarrier_red.DAE
+  fwd=  6.43 right= -5.04 z=-0.13 yawY=  106  hr_plasticbarrier_red.DAE
+  fwd=  7.85 right= -5.45 z=-0.03 yawY=  106  hr_plasticbarrier_red.DAE
+  fwd=  9.25 right= -5.85 z= 0.08 yawY=  109  hr_plasticbarrier_red.DAE
+  fwd= 10.61 right= -6.36 z= 0.18 yawY=  110  hr_plasticbarrier_red.DAE
+  fwd= 11.98 right= -6.89 z= 0.30 yawY=  110  hr_plasticbarrier_red.DAE
+  fwd= 13.32 right= -7.43 z= 0.42 yawY=  116  hr_plasticbarrier_red.DAE
+  fwd= 14.19 right= -8.54 z= 0.50 yawY=  168  hr_plasticbarrier_red.DAE
+  fwd= 14.44 right=-10.01 z= 0.60 yawY=  168  hr_plasticbarrier_red.DAE
+  fwd= 14.85 right=-11.43 z= 0.76 yawY=  168  hr_plasticbarrier_red.DAE
+  fwd= 15.20 right=-12.83 z= 0.92 yawY=  168  hr_plasticbarrier_red.DAE
+  fwd= 15.58 right=-14.28 z= 1.07 yawY=  168  hr_plasticbarrier_red.DAE
+== META en (415.8,782.7) separacion carteles 7.19 m
+  fwd= -0.00 right= -3.60 z= 0.06 yawY=    2  s_rally_signboard_finish.dae
+  fwd= -0.00 right=  3.60 z=-0.06 yawY=    2  s_rally_signboard_finish.dae
+  fwd=  0.33 right= -3.01 z=-0.15 yawY= None  
+  fwd=  0.42 right= -3.44 z=-0.16 yawY=   88  s_rally_start_sensor.dae
+  fwd=  0.46 right=  3.50 z=-0.24 yawY=  -90  s_rally_start_sensor.dae
+  fwd=  1.87 right=  3.80 z= 0.02 yawY=   36  hr_plasticbarrier_red.DAE
+  fwd=  1.88 right= -3.49 z= 0.10 yawY=  112  hr_plasticbarrier_red.DAE
+== META en (-1.6,-109.9) separacion carteles 9.49 m
+  fwd=  0.00 right= -4.74 z= 0.41 yawY=   11  s_rally_signboard_finish.dae
+  fwd= -0.00 right=  4.74 z=-0.41 yawY=  -21  s_rally_signboard_finish.dae
+  fwd=  0.36 right=  4.77 z=-0.73 yawY=  -89  s_rally_start_sensor.dae
+  fwd=  0.43 right= -2.95 z=-0.32 yawY= None  
+  fwd=  0.53 right= -4.79 z= 0.21 yawY=   87  s_rally_start_sensor.dae
+  fwd=  0.57 right= -3.32 z=-0.23 yawY= None  
+== META en (537.7,480.1) separacion carteles 6.39 m
+  fwd=-15.44 right=  7.01 z= 2.09 yawY= -180  ut_race_mesh_barricade_.DAE
+  fwd= -5.36 right=  6.99 z= 1.24 yawY= -180  ut_race_mesh_barricade_.DAE
+  fwd= -0.00 right= -3.19 z=-0.11 yawY=   -1  s_rally_signboard_finish.dae
+  fwd= -0.00 right=  3.19 z= 0.11 yawY=   -1  s_rally_signboard_finish.dae
+  fwd=  0.12 right=  2.34 z=-0.05 yawY= None  
+  fwd=  0.24 right= -3.20 z=-0.11 yawY=   89  s_rally_start_sensor.dae
+  fwd=  0.30 right=  3.48 z= 0.09 yawY=  -90  s_rally_start_sensor.dae
+  fwd=  0.48 right=  2.47 z=-0.07 yawY= None  
+  fwd=  1.92 right= -3.31 z=-0.22 yawY=  130  hr_plasticbarrier_red.DAE
+  fwd=  2.22 right=  3.70 z=-0.10 yawY=   35  hr_plasticbarrier_red.DAE
+== s_rally_signboard_time_control.dae en (-588.1,299.1)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -6.42 right=  3.93 z=-0.42 yawY= None  
+  fwd= -5.96 right=  3.83 z=-0.43 yawY= None  cone.dae
+  fwd= -0.99 right=  2.95 z=-0.68 yawY= None  cone.dae
+  fwd= -0.19 right= -0.05 z=-0.80 yawY=   21  clutter_workshop_fire_extinguisher.dae
+  fwd=  0.00 right= -0.00 z= 0.00 yawY= -180  s_rally_signboard_time_control.dae
+  fwd=  0.51 right= -0.34 z=-0.14 yawY= -120  s_laptop.dae
+  fwd=  0.52 right= -0.34 z=-0.89 yawY=   10  s_rally_fold_table_01.dae
+  fwd=  0.54 right= -0.80 z=-0.92 yawY=   31  s_rally_fold_chair_01.dae
+  fwd=  1.04 right= -1.41 z=-1.09 yawY=  -80  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  1.59 right= -1.22 z=-1.02 yawY=   -9  s_rally_fold_chair_01.dae
+  fwd=  1.71 right= -0.54 z=-0.99 yawY=   10  s_rally_fold_table_01.dae
+  fwd=  3.36 right=  2.22 z=-0.87 yawY= None  cone.dae
+  fwd=  7.81 right=  1.41 z=-1.05 yawY= None  cone.dae
+  fwd= 12.41 right=  3.38 z=-1.27 yawY= -171  s_rally_fold_table_01.dae
+  fwd= 12.43 right=  0.55 z=-1.20 yawY= None  cone.dae
+  fwd= 12.52 right=  4.04 z=-1.33 yawY= -179  s_rally_fold_chair_01.dae
+  fwd= 13.25 right=  4.36 z=-1.61 yawY=  100  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd= 13.60 right=  3.18 z=-1.29 yawY= -171  s_rally_fold_table_01.dae
+  fwd= 13.60 right=  3.76 z=-1.34 yawY= -170  s_rally_fold_chair_01.dae
+  fwd= 13.68 right=  3.16 z=-0.54 yawY=   59  s_laptop.dae
+  fwd= 14.32 right=  2.89 z=-1.26 yawY= -160  clutter_workshop_fire_extinguisher.dae
+  fwd= 14.42 right=  2.97 z=-0.51 yawY=    3  s_rally_signboard_time_control.dae
+  fwd= 17.07 right= -0.29 z=-1.35 yawY= None  cone.dae
+== s_rally_signboard_time_control.dae en (-575.2,292.0)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -7.41 right=  9.40 z=-1.07 yawY=    6  s_rally_signboard_time_control_entry.dae
+  fwd= -2.79 right=  3.13 z=-0.84 yawY= None  cone.dae
+  fwd=  0.00 right=  0.00 z= 0.00 yawY= -180  s_rally_signboard_time_control.dae
+  fwd=  0.10 right=  0.08 z=-0.76 yawY=   18  clutter_workshop_fire_extinguisher.dae
+  fwd=  0.75 right= -0.16 z=-0.03 yawY= -123  s_laptop.dae
+  fwd=  0.83 right= -0.17 z=-0.78 yawY=    7  s_rally_fold_table_01.dae
+  fwd=  0.85 right= -0.76 z=-0.84 yawY=    7  s_rally_fold_chair_01.dae
+  fwd=  1.23 right= -1.34 z=-1.10 yawY=  -83  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  1.87 right=  2.50 z=-0.70 yawY= None  cone.dae
+  fwd=  1.95 right= -0.98 z=-0.82 yawY=   -1  s_rally_fold_chair_01.dae
+  fwd=  2.03 right= -0.32 z=-0.76 yawY=    7  s_rally_fold_table_01.dae
+  fwd=  6.54 right=  1.86 z=-0.54 yawY= None  cone.dae
+  fwd= 11.01 right=  1.25 z=-0.37 yawY= None  cone.dae
+  fwd= 12.54 right=  4.08 z=-0.48 yawY= -173  s_rally_fold_table_01.dae
+  fwd= 12.62 right=  4.76 z=-0.51 yawY=  168  s_rally_fold_chair_01.dae
+  fwd= 13.16 right=  4.98 z=-0.58 yawY=   98  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd= 13.70 right=  4.39 z=-0.41 yawY= -152  s_rally_fold_chair_01.dae
+  fwd= 13.73 right=  3.94 z=-0.39 yawY= -173  s_rally_fold_table_01.dae
+  fwd= 13.74 right=  3.94 z= 0.37 yawY=   57  s_laptop.dae
+  fwd= 14.27 right=  3.62 z= 0.51 yawY=   -3  s_rally_signboard_time_control.dae
+  fwd= 14.46 right=  3.68 z=-0.29 yawY= -162  clutter_workshop_fire_extinguisher.dae
+  fwd= 15.40 right=  0.71 z=-0.17 yawY= None  cone.dae
+== s_rally_signboard_time_control.dae en (121.7,-121.9)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -0.96 right=  1.76 z=-0.12 yawY=   86  s_metal_fence.dae
+  fwd= -0.34 right= -5.42 z= 0.11 yawY=   84  s_metal_fence.dae
+  fwd=  0.00 right= -0.00 z= 0.00 yawY= -180  s_rally_signboard_time_control.dae
+  fwd=  0.39 right=  1.36 z=-0.24 yawY=  144  s_rally_fold_chair_01.dae
+  fwd=  0.62 right=  0.65 z=-0.23 yawY=  174  s_rally_fold_table_01.dae
+  fwd=  0.91 right=  0.66 z= 0.48 yawY=   87  s_laptop.dae
+  fwd=  1.25 right=  0.68 z=-0.33 yawY=  -71  clutter_workshop_fire_extinguisher.dae
+  fwd=  1.26 right=  0.92 z=-0.34 yawY=  178  clutter_workshop_fire_extinguisher.dae
+  fwd=  1.31 right=  1.90 z=-0.55 yawY=   86  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  1.60 right=  2.52 z=-0.47 yawY= -179  s_rally_fold_chair_01.dae
+  fwd=  3.39 right=  4.55 z=-0.88 yawY=   86  s_metal_fence.dae
+  fwd=  3.56 right=  1.88 z=-0.75 yawY=   86  s_metal_fence.dae
+  fwd=  3.59 right= -4.13 z=-0.09 yawY=   -7  s_rally_signboard_stop.dae
+== s_rally_signboard_time_control.dae en (440.3,403.3)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd=-15.45 right= -4.69 z=-0.92 yawY=    0  s_spectator_grid_b_2m.dae
+  fwd=-13.48 right= -4.69 z=-0.84 yawY=    0  s_spectator_grid_center.dae
+  fwd=-11.15 right=  2.16 z=-0.76 yawY=  127  s_spectator_grid_b_2m.dae
+  fwd=-10.69 right= -3.95 z=-0.52 yawY=  -87  s_corner_dir225_left.dae
+  fwd=-10.53 right=  1.29 z=-0.55 yawY=  -87  s_corner_dir225_left.dae
+  fwd=-10.11 right=  5.04 z=-0.67 yawY= -165  s_corner_dir135_right.dae
+  fwd= -9.64 right=  2.26 z=-0.57 yawY=  170  p_metal_fence_branding_blastr.prefab.json
+  fwd= -9.55 right= -4.90 z=-0.68 yawY=    5  s_spectator_grid_b_2m.dae
+  fwd= -9.51 right=  2.06 z=-0.56 yawY=  -10  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -8.51 right=  5.17 z=-0.52 yawY=  136  s_spectator_grid_center.dae
+  fwd= -7.59 right= -5.08 z=-0.60 yawY=    5  s_spectator_grid_center.dae
+  fwd= -7.09 right=  6.55 z=-0.35 yawY=  136  s_spectator_grid_b_2m.dae
+  fwd= -6.93 right=  2.76 z=-0.37 yawY=  170  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -6.82 right=  2.54 z=-0.37 yawY=  -10  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -5.23 right= -1.39 z=-0.43 yawY= None  
+  fwd= -4.51 right= 13.56 z= 0.07 yawY= None  
+  fwd= -4.31 right=  3.24 z=-0.32 yawY=  170  p_metal_fence_branding_rotopad.prefab.json
+  fwd= -4.22 right= 12.81 z= 0.57 yawY=  -51  s_rally_signboard_start.dae
+  fwd= -4.19 right=  3.00 z=-0.32 yawY=  -10  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -4.13 right= 13.30 z= 0.21 yawY=   36  s_rally_start_sensor.dae
+  fwd= -3.94 right=  8.92 z=-0.09 yawY=  150  s_spectator_grid_center.dae
+  fwd= -3.64 right= -5.53 z=-0.44 yawY=    7  s_spectator_grid_b_2m.dae
+  fwd= -3.05 right= 13.64 z= 0.44 yawY=  126  s_cooldown_board_01.dae
+  fwd= -2.26 right=  9.89 z=-0.02 yawY=  150  s_spectator_grid_b_2m.dae
+  fwd= -1.72 right=  3.72 z=-0.14 yawY=  170  p_metal_fence_branding_ngrc.prefab.json
+  fwd= -1.70 right= -5.78 z=-0.43 yawY=    7  s_spectator_grid_center.dae
+  fwd= -1.58 right=  3.46 z=-0.13 yawY=  -10  p_metal_fence_branding_blastr.prefab.json
+  fwd=  0.00 right=  0.00 z= 0.00 yawY= -180  s_rally_signboard_time_control.dae
+  fwd=  0.72 right= 12.47 z= 0.22 yawY=  -52  s_spectator_grid_center.dae
+  fwd=  1.03 right=  1.81 z= 0.03 yawY=  170  s_rally_fold_chair_01.dae
+  fwd=  1.07 right=  0.95 z=-0.01 yawY= -173  s_rally_fold_table_01.dae
+  fwd=  1.61 right=  1.87 z= 0.02 yawY=    0  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  2.03 right=  0.72 z= 0.76 yawY=   91  s_laptop.dae
+  fwd=  2.23 right=  1.26 z= 0.05 yawY= -173  s_rally_fold_chair_01.dae
+  fwd=  2.25 right= -6.30 z=-0.29 yawY=    7  s_spectator_grid_b_2m.dae
+  fwd=  2.27 right=  0.81 z= 0.02 yawY= -173  s_rally_fold_table_01.dae
+  fwd=  2.72 right=  0.80 z=-0.00 yawY=   -7  clutter_workshop_fire_extinguisher.dae
+  fwd=  2.97 right=  0.61 z=-0.01 yawY=  141  clutter_workshop_fire_extinguisher.dae
+  fwd=  3.18 right= 15.59 z= 0.54 yawY=  -52  s_spectator_grid_b_2m.dae
+  fwd=  3.20 right= -5.36 z=-0.00 yawY=   14  s_rally_signboard_stop.dae
+  fwd=  4.20 right= -6.55 z=-0.17 yawY=    7  s_spectator_grid_center.dae
+  fwd=  4.39 right= 17.13 z= 0.70 yawY=  -52  s_spectator_grid_center.dae
+  fwd=  5.69 right=  0.45 z= 0.10 yawY=    0  s_spectator_grid_b_2m.dae
+  fwd=  7.70 right=  0.45 z= 0.33 yawY=    0  s_spectator_grid_center.dae
+  fwd=  8.12 right= -7.07 z= 0.12 yawY=    7  s_spectator_grid_b_2m.dae
+  fwd=  9.91 right= -7.81 z= 0.14 yawY=   22  s_spectator_grid_b_2m.dae
+  fwd= 11.66 right=  0.45 z= 1.19 yawY=    0  s_spectator_grid_b_2m.dae
+== s_rally_signboard_time_control.dae en (-378.9,-637.4)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -0.63 right=  1.66 z=-0.37 yawY=   77  s_metal_fence.dae
+  fwd=  0.00 right=  0.00 z= 0.00 yawY=  180  s_rally_signboard_time_control.dae
+  fwd=  0.77 right= -5.72 z=-0.48 yawY=  -22  s_metal_fence.dae
+  fwd=  1.00 right=  1.67 z=-0.18 yawY=  135  s_rally_fold_chair_01.dae
+  fwd=  1.10 right=  0.99 z=-0.17 yawY=  172  s_rally_fold_table_01.dae
+  fwd=  1.46 right=  2.03 z=-0.26 yawY=   82  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  2.14 right=  1.60 z=-0.12 yawY=  172  s_rally_fold_chair_01.dae
+  fwd=  2.30 right=  1.17 z=-0.11 yawY=  172  s_rally_fold_table_01.dae
+  fwd=  2.33 right=  1.15 z= 0.64 yawY=   42  s_laptop.dae
+  fwd=  3.00 right=  1.43 z=-0.06 yawY=   34  clutter_workshop_fire_extinguisher.dae
+  fwd=  3.07 right=  1.12 z=-0.05 yawY= -178  clutter_workshop_fire_extinguisher.dae
+  fwd=  3.40 right= -4.49 z=-0.05 yawY=   16  s_rally_signboard_stop.dae
+  fwd=  3.89 right=  2.21 z=-0.14 yawY=   91  s_metal_fence.dae
+  fwd=  6.23 right= -5.73 z=-0.16 yawY= -145  s_metal_fence.dae
+  fwd= 13.43 right=-10.11 z= 0.39 yawY=  -12  ut_race_mesh_barricade_curve_b.DAE
+== s_rally_signboard_time_control.dae en (675.6,835.6)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -0.66 right=  1.58 z=-0.77 yawY=   88  s_metal_fence.dae
+  fwd= -0.11 right=  0.46 z=-0.70 yawY= -120  clutter_workshop_fire_extinguisher.dae
+  fwd=  0.00 right= -0.00 z= 0.00 yawY=  180  s_rally_signboard_time_control.dae
+  fwd=  0.12 right=  0.68 z=-0.77 yawY=   91  clutter_workshop_fire_extinguisher.dae
+  fwd=  1.10 right=  1.48 z=-1.18 yawY=   88  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  1.17 right= -5.94 z=-0.50 yawY=  -18  s_metal_fence.dae
+  fwd=  1.33 right=  0.69 z=-1.03 yawY=   68  s_rally_fold_chair_01.dae
+  fwd=  1.59 right=  1.97 z=-1.24 yawY=   84  s_rally_fold_chair_01.dae
+  fwd=  2.02 right=  2.09 z=-1.37 yawY=   84  s_rally_fold_table_01.dae
+  fwd=  2.14 right=  0.89 z=-1.24 yawY=   84  s_rally_fold_table_01.dae
+  fwd=  2.19 right=  2.07 z=-0.63 yawY=  -56  s_laptop.dae
+  fwd=  3.31 right=  1.51 z=-1.63 yawY=   92  s_metal_fence.dae
+  fwd=  3.49 right= -5.13 z=-1.17 yawY=   11  s_rally_signboard_stop.dae
+== s_rally_signboard_stop.dae en (679.9,840.1)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -0.00 right=  0.00 z= 0.00 yawY= -180  s_rally_signboard_stop.dae
+  fwd=  1.43 right= -6.49 z=-0.46 yawY=  -98  s_metal_fence.dae
+  fwd=  2.13 right=  1.23 z= 0.67 yawY=  151  s_metal_fence.dae
+  fwd=  2.46 right= -5.66 z=-0.06 yawY= -107  s_rally_fold_table_01.dae
+  fwd=  2.63 right= -6.82 z= 0.54 yawY=  113  s_laptop.dae
+  fwd=  2.81 right= -6.81 z=-0.20 yawY= -107  s_rally_fold_table_01.dae
+  fwd=  3.20 right= -6.61 z=-0.07 yawY= -107  s_rally_fold_chair_01.dae
+  fwd=  3.22 right= -5.31 z= 0.15 yawY= -123  s_rally_fold_chair_01.dae
+  fwd=  3.60 right= -6.04 z=-0.00 yawY= -103  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  4.40 right= -4.38 z= 1.17 yawY=  -11  s_rally_signboard_time_control.dae
+  fwd=  4.41 right= -5.07 z= 0.41 yawY= -100  clutter_workshop_fire_extinguisher.dae
+  fwd=  4.59 right= -4.81 z= 0.47 yawY=   49  clutter_workshop_fire_extinguisher.dae
+  fwd=  5.34 right= -5.80 z= 0.40 yawY= -103  s_metal_fence.dae
+== s_rally_signboard_stop.dae en (-380.0,-631.9)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd=-11.18 right=  2.66 z= 0.44 yawY=  152  ut_race_mesh_barricade_curve_b.DAE
+  fwd= -3.06 right=  0.43 z=-0.11 yawY=   19  s_metal_fence.dae
+  fwd= -0.00 right=  0.00 z= 0.00 yawY= -180  s_rally_signboard_stop.dae
+  fwd=  1.36 right= -6.58 z=-0.09 yawY= -105  s_metal_fence.dae
+  fwd=  1.85 right= -5.30 z= 0.00 yawY=  -14  clutter_workshop_fire_extinguisher.dae
+  fwd=  2.00 right= -5.59 z=-0.01 yawY= -162  clutter_workshop_fire_extinguisher.dae
+  fwd=  2.19 right=  1.90 z=-0.43 yawY=  142  s_metal_fence.dae
+  fwd=  2.57 right= -5.13 z= 0.69 yawY= -154  s_laptop.dae
+  fwd=  2.61 right= -5.14 z=-0.06 yawY=  -24  s_rally_fold_table_01.dae
+  fwd=  2.88 right= -5.51 z=-0.07 yawY=  -24  s_rally_fold_chair_01.dae
+  fwd=  3.65 right= -5.74 z=-0.20 yawY= -114  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  3.71 right= -4.64 z=-0.12 yawY=  -24  s_rally_fold_table_01.dae
+  fwd=  3.99 right= -5.27 z=-0.13 yawY=  -61  s_rally_fold_chair_01.dae
+  fwd=  4.50 right= -3.39 z= 0.05 yawY=  -16  s_rally_signboard_time_control.dae
+  fwd=  5.56 right= -4.81 z=-0.32 yawY= -119  s_metal_fence.dae
+== s_rally_signboard_stop.dae en (126.3,-118.9)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -0.90 right= -8.64 z=-0.79 yawY=  -87  s_metal_fence.dae
+  fwd= -0.73 right= -5.96 z=-0.66 yawY=  -86  s_metal_fence.dae
+  fwd=  0.00 right=  0.00 z= 0.00 yawY=  180  s_rally_signboard_stop.dae
+  fwd=  1.13 right= -6.85 z=-0.37 yawY=    8  s_rally_fold_chair_01.dae
+  fwd=  1.50 right= -6.27 z=-0.46 yawY=  -87  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  1.68 right= -5.31 z=-0.24 yawY=    6  clutter_workshop_fire_extinguisher.dae
+  fwd=  1.72 right= -5.07 z=-0.23 yawY=  117  clutter_workshop_fire_extinguisher.dae
+  fwd=  2.06 right= -5.09 z= 0.58 yawY=  -85  s_laptop.dae
+  fwd=  2.35 right= -5.12 z=-0.14 yawY=    1  s_rally_fold_table_01.dae
+  fwd=  2.49 right= -5.85 z=-0.14 yawY=  -28  s_rally_fold_chair_01.dae
+  fwd=  3.04 right= -4.55 z= 0.09 yawY=    7  s_rally_signboard_time_control.dae
+  fwd=  3.77 right= -6.42 z=-0.03 yawY=  -87  s_metal_fence.dae
+  fwd=  4.07 right=  0.77 z= 0.20 yawY=  -88  s_metal_fence.dae
+== s_rally_signboard_stop.dae en (435.0,406.5)  [marco del cartel: fwd = sentido de marcha si el cartel mira al coche]
+  fwd= -7.10 right=  0.80 z= 0.15 yawY= -171  s_spectator_grid_b_2m.dae
+  fwd= -6.84 right= -7.64 z= 1.19 yawY=  166  s_spectator_grid_b_2m.dae
+  fwd= -5.18 right=  0.50 z= 0.12 yawY=  174  s_spectator_grid_b_2m.dae
+  fwd= -2.99 right= -6.71 z= 0.33 yawY=  166  s_spectator_grid_center.dae
+  fwd= -1.25 right=  0.93 z=-0.17 yawY=  174  s_spectator_grid_center.dae
+  fwd= -1.04 right= -6.23 z= 0.11 yawY=  166  s_spectator_grid_b_2m.dae
+  fwd=  0.00 right= -0.00 z= 0.00 yawY= -180  s_rally_signboard_stop.dae
+  fwd=  0.71 right=  1.14 z=-0.29 yawY=  174  s_spectator_grid_b_2m.dae
+  fwd=  1.64 right= -5.74 z=-0.01 yawY=  -53  clutter_workshop_fire_extinguisher.dae
+  fwd=  1.93 right= -5.87 z= 0.00 yawY=  159  clutter_workshop_fire_extinguisher.dae
+  fwd=  2.37 right= -5.77 z= 0.03 yawY=   -7  s_rally_fold_table_01.dae
+  fwd=  2.51 right= -6.20 z= 0.06 yawY=   -7  s_rally_fold_chair_01.dae
+  fwd=  2.58 right= -5.63 z= 0.77 yawY= -102  s_laptop.dae
+  fwd=  3.26 right= -6.65 z= 0.03 yawY=  166  p_rally_gazebo_mod_ngrc_3x3.prefab.json
+  fwd=  3.57 right= -5.63 z=-0.01 yawY=   -7  s_rally_fold_table_01.dae
+  fwd=  3.81 right= -6.45 z= 0.04 yawY=  -24  s_rally_fold_chair_01.dae
+  fwd=  4.38 right= -4.45 z= 0.00 yawY=  -14  s_rally_signboard_time_control.dae
+  fwd=  4.66 right=  1.57 z=-0.43 yawY=  174  s_spectator_grid_center.dae
+  fwd=  6.61 right=  1.78 z=-0.43 yawY=  174  s_spectator_grid_b_2m.dae
+  fwd=  6.74 right= -7.43 z=-0.12 yawY=  156  p_metal_fence_branding_blastr.prefab.json
+  fwd=  6.93 right= -7.65 z=-0.13 yawY=  -24  p_metal_fence_branding_ngrc.prefab.json
+  fwd=  8.91 right=-13.52 z=-0.01 yawY=  -44  s_spectator_grid_b_2m.dae
+  fwd=  9.13 right= -1.86 z=-0.42 yawY= None  
+  fwd=  9.16 right= -6.37 z=-0.32 yawY=  156  p_metal_fence_branding_ngrc.prefab.json
+  fwd=  9.33 right= -6.58 z=-0.32 yawY=  -24  p_metal_fence_branding_rotopad.prefab.json
+  fwd= 10.32 right=-12.18 z=-0.09 yawY=  -43  s_spectator_grid_center.dae
+  fwd= 10.55 right=  2.28 z=-0.59 yawY=  172  s_spectator_grid_center.dae
+  fwd= 11.61 right= -5.30 z=-0.37 yawY=  156  p_metal_fence_branding_rotopad.prefab.json
+  fwd= 11.76 right= -5.49 z=-0.37 yawY=  -24  p_metal_fence_branding_ngrc.prefab.json
+  fwd= 12.50 right=  2.57 z=-0.67 yawY=  172  s_spectator_grid_b_2m.dae
+  fwd= 12.82 right= -9.13 z=-0.35 yawY=  -58  s_spectator_grid_b_2m.dae
+  fwd= 13.83 right=  1.92 z=-0.51 yawY=   79  s_corner_dir225_left.dae
+  fwd= 13.87 right= -7.46 z=-0.52 yawY=  -58  s_spectator_grid_center.dae
+  fwd= 14.11 right= -4.20 z=-0.56 yawY=  156  p_metal_fence_branding_ngrc.prefab.json
+  fwd= 14.28 right= -4.36 z=-0.56 yawY=  -24  p_metal_fence_branding_blastr.prefab.json
+  fwd= 14.91 right= -3.21 z=-0.55 yawY=   79  s_corner_dir225_left.dae
+  fwd= 15.40 right= -6.95 z=-0.67 yawY=    2  s_corner_dir135_right.dae
+  fwd= 15.73 right= -3.91 z=-0.76 yawY=  -67  s_spectator_grid_b_2m.dae
+  fwd= 16.37 right=  3.30 z=-0.83 yawY=  166  s_spectator_grid_center.dae

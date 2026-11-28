@@ -39,8 +39,8 @@ M.PAIR_OUT_M = 0            -- el del otro sentido, en la misma línea lateral (
 M.SENSOR_SIDE_M = 1.0       -- (22-nov) el sensor, centrado ENTRE los dos carteles (medido: con 0,5 asomaba 0,4 m hacia la calzada)
 M.SIGN_YAW = 0             -- todos los carteles de rally del juego: la cara está en -Y (vista en Córdoba SS1: a 180 se
                            -- veían por detrás desde el coche)
-M.TREE_FWD_M = 5.5         -- semáforo: por delante de la línea...
-M.TREE_SIDE_M = 1.2        -- ... fuera del borde derecho...
+M.TREE_FWD_M = 6.3         -- semáforo: por delante de la línea...
+M.TREE_SIDE_M = 0.4        -- ... fuera del borde derecho...
 M.TREE_YAW = 15            -- ... con el reloj hacia el coche, un poco abierto hacia la carretera
 M.RADIO_EVERY_M = 5000
 M.SPECTATOR_MAX = 6
@@ -263,7 +263,7 @@ local function beyond(t, extra, right)
 end
 
 -- ---- edificios: nada se pone si hay un edificio o un muro entre la carretera y su sitio --------------------------------
-M.AVOID = { hayBale = true, hayBale2 = true, fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
+M.AVOID = { hayBale = true, hayBale2 = true, fencePlain = true, fenceNgrc = true, fenceBlastr = true, fenceRotopad = true, fenceApm = true, fenceApmSpecial = true,
   specTarp = true, specTarp2 = true, specTarp3 = true, specTape = true, specGrid = true, gazebo3x3 = true, gazebo3x6 = true,
   gazebo3x6b = true, table = true, chair = true, cushion = true, ambulance = true, extinguisher = true }
 M.PULL_IN = { start = true, finish = true, tc = true, tcEntry = true, finishEntry = true, stop = true, endArea = true,
@@ -882,7 +882,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   local S, P = hw + M.SIGN_SIDE_M, hw + M.SIDE_PAD_M
   paintLine(t, endAlong, hw, out * D, full and 'stop' or 'tc')
   put('tcEntry', -P, D + M.TC_ENTRY_M, 'in')
-  put('tc', -S, D + M.PAIR_FWD_M, 'in')
+  M._boothTc = false
   if full then
     for i, b in ipairs({ 'board3', 'board2', 'board1' }) do
       local d = D * i / 4
@@ -897,7 +897,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
   -- 18-nov (norma del usuario): UNA sola carpa por control, como en NGRC Rally Utah: dos mesas, la silla del comisario,
   -- el portátil en la mesa y dos extintores (docs/utah_vanilla_scan.json)
   local _ = both
-  local g = (type(twin) == 'table' and twin.g) or 2.6
+  local g = (type(twin) == 'table' and twin.g) or 1.7   -- (28-nov) Utah: frente de la carpa al borde de la calzada
   -- SIEMPRE hay caseta de comisario en un control (19-nov, norma del usuario: el TC0 a la salida de un aparcamiento se
   -- quedaba sin carpa, mesa ni reloj porque no cabían "fuera de toda calzada" entre los pasillos del aparcamiento, y
   -- el control pasaba inadvertido). Se prueba en su lado, en el otro y unos metros antes o después; y si en ningún
@@ -913,25 +913,32 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
       for k2, v2 in pairs(extra or {}) do r[k2] = v2 end
       return r
     end
-    if not place('gazebo3x3', t, endAlong, side, ty, f, o({ keepSide = true })) then return false end
-    place('table', t, endAlong, side - sgn * 0.9, ty, f + 0.6, o())
-    place('table', t, endAlong, side - sgn * 0.9, ty, f - 0.6, o())
-    place('laptop', t, endAlong, side - sgn * 0.9, ty + 180, f + 0.6, o({ dz = 0.75 }))
-    place('chair', t, endAlong, side - sgn * 0.3, (sgn > 0 and 0 or 180) + M.CHAIR_YAW, f + 0.6, o())
-    -- (26-nov, auditoría: extintores en la calzada cuando la carpa va pegada al borde) los extintores, por detrás de la
-    -- carpa, del lado contrario a la carretera
-    place('extinguisher', t, endAlong, side + sgn * 1.3, 40, f + 1.2, o())
-    place('extinguisher', t, endAlong, side + sgn * 1.3, 250, f - 1.2, o())
+    -- (28-nov, el usuario: «las casetas de los TC idénticas a las del juego») calcada de NGRC Rally Utah: las tres casetas
+    -- de control de su mainPrefab tienen la misma disposición medida en el marco de la carpa (X a lo largo de la
+    -- carretera, Y hacia la calzada; tools/reference/utah_ngrc26_montaje.txt). vb(x, y, giro): pieza en ese marco.
+    -- El cartel de TC va en la esquina delantera de la carpa (hacia donde se sale), como allí. MARK:booth-utah
+    local function vb(kind, x, y, yawg, extra)
+      return place(kind, t, endAlong, side - sgn * y, -sgn * 90 + yawg, f + sgn * x, o(extra))
+    end
+    if not vb('gazebo3x3', 0, 0, 0, { keepSide = true }) then return false end
+    vb('table', 0.70, 0.96, -90)
+    vb('table', -0.50, 0.97, -90)
+    vb('laptop', 0.72, 0.97, 40, { dz = 0.75 })
+    vb('chair', 0.61, 0.52, -90)
+    vb('chair', -0.50, 0.29, -60)
+    vb('extinguisher', 1.45, 1.10, -100)
+    vb('extinguisher', 1.46, 0.80, 48)
+    place('tc', t, endAlong, side - sgn * 1.55, -sgn * 9, f + 1.5, o())
+    M._boothTc = true
     -- de noche, una luz bajo la carpa (de día no se nota)
     place('lamp', t, endAlong, side, 0, f, o({ dz = 2.4 }))
-    -- vallas como las de NGRC Rally Utah (mainPrefab, medidas respecto al cartel): una detrás de la carpa junto a la
-    -- carretera, otra delante, y una enfrente al otro lado del asfalto. Sin reloj: solo las salidas lo llevan. MARK:tcfence-v1
-    local fo = { row = true, noPush = true, chord = true }
-    local fy = sgn > 0 and 0 or 180
-    place(M.FENCE_KINDS[1], t, endAlong, side - sgn * 0.6, fy, f - 1.9, fo)
-    place(M.FENCE_KINDS[2], t, endAlong, side + sgn * 0.7, fy, f + 2.0, fo)
-    -- (27-nov) con dos casetas una frente a otra (salida por un lado abierto del aparcamiento) esa valla caería en la otra
-    if not (type(twin) == 'table' and twin.noOpposite) then place(M.FENCE_KINDS[3], t, endAlong, -side, fy + 180, f + 2.6, fo) end
+    -- las vallas lisas de Utah: una a cada costado de la carpa y otra enfrente, al otro lado de la calzada
+    local fo = { row = true, noPush = true }
+    vb('fencePlain', -2.15, 0.10, 3, fo)
+    vb('fencePlain', 2.30, 0.10, -6, fo)
+    if not (type(twin) == 'table' and twin.noOpposite) then
+      place('fencePlain', t, endAlong, -sgn * (hw + 1.0), -sgn * 90 + 104, f - sgn * 1.9, fo)
+    end
     return true
   end
   local done, chosen = false, nil
@@ -985,6 +992,7 @@ function M.tcPost(t, endAlong, out, hw, D, clockLado, full, forceBooth, twin)
       if usable({ -chosen, sh }, false) and booth(-chosen, sh, true) then break end
     end
   end
+  if not M._boothTc then put('tc', -S, D + M.PAIR_FWD_M, 'in') end   -- sin carpa, el cartel suelto de antes
   put('sndGenerator', hw + g + 2.5, D + 1, nil, 0)
   -- (22-nov, el usuario colocó los conos del TC0 con F11) el TC0 lleva 3, juntos, para dejar la salida libre y que ninguno
   -- caiga fuera de la calzada; los demás controles, como antes
@@ -1065,7 +1073,10 @@ function M.endKit(t, endAlong, out, hw, D, role)
   -- (5,5 m fuera, a la derecha de quien llega); y los ánimos al llegar
   local clock
   if role == 'start' then
-    clock = place('tree', t, endAlong, out * -(hw + M.TREE_SIDE_M), M.TREE_YAW + ((out > 0) and 180 or 0), -out * M.TREE_FWD_M)
+    -- (28-nov) como en Utah: el reloj mira al coche parado en la línea (sus 4 salidas: 6,3 m delante, en la fila de los
+    -- carteles, girado hacia el coche)
+    local aim = math.deg(math.atan((hw + M.TREE_SIDE_M) / M.TREE_FWD_M))
+    clock = place('tree', t, endAlong, out * -(hw + M.TREE_SIDE_M), aim + ((out > 0) and 180 or 0), -out * M.TREE_FWD_M)
   else
     -- (sin reloj en la meta ni en los controles: como NGRC Rally Utah, solo las salidas llevan el reloj LED)
     M.crowdZones[#M.crowdZones + 1] = { at = endAlong - 40, mid = endAlong - 6 }

@@ -38,6 +38,7 @@ M.SHAPES = {
   tape = A .. 's_tape_road_closure_8m.dae', tape6 = A .. 's_tape_road_closure_6m.dae', tape10 = A .. 's_tape_road_closure_10m.dae',
   specTape = A .. 's_spectator_tape_5m.dae', specGrid = A .. 's_spectator_grid_center.dae',
   fenceNgrc = A .. 's_metal_fence_branding_ngrc.dae', fenceBlastr = A .. 's_metal_fence_branding_blastr.dae',
+  fencePlain = '/art/shapes/objects/s_metal_fence.dae',
   fenceRotopad = A .. 's_metal_fence_branding_rotopad.dae', cushion = A .. 's_safety_cushion_01.dae',
   fenceApm = A .. 's_metal_fence_branding_apm.dae', fenceApmSpecial = A .. 's_metal_fence_branding_apm_special.dae',
   specTarp = A .. 's_spectator_tarp_4m.dae', specTarp2 = A .. 's_spectator_tarp_4m_02.dae', specTarp3 = A .. 's_spectator_tarp_4m_03.dae',
