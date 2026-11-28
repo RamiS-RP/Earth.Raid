@@ -37,10 +37,13 @@ M.EXT_BACK_M = 2.0
 -- carpas 3x6 de la misma marca, una detrás de otra a 3,1 m (un box de 6x6 con el coche dentro) y dos extintores juntos
 -- en una esquina trasera. put(kind, haciaElPasillo, aLoLargoDeLaFila, giro) en el marco del box. MARK:box-utah
 function M.utahBox(put, kind)
-  put(kind, 1.55, 0, 0)
-  put(kind, -1.55, 0, 0)
-  put('extinguisher', -2.4, 3.05, -14)
-  put('extinguisher', -2.6, 3.05, 160)
+  -- (28-nov, el usuario: «el coche cruza uno de los palos; cuadra la caseta al coche») las dos carpas 3x6 con el lado
+  -- largo a lo largo del coche: una centrada en el coche y la otra pegada a su lado (zona de trabajo). Así ningún
+  -- poste cae en el sitio del coche (el par de Utah tiene un poste en el centro del box).
+  put(kind, 0, 0, 90)
+  put(kind, 0, 3.1, 90)
+  put('extinguisher', -2.7, 1.45, -14)
+  put('extinguisher', -2.7, 1.7, 160)
 end
 M.BUDGET_MS = 6
 
@@ -88,6 +91,14 @@ M.MANUAL = {
   { name = 'cristian-lopez', lat = 43.31945, lon = -3.85400, radius = 500, aisle = 0,
     boxes = { { 43.3195578, -3.8542240 }, { 43.3194210, -3.8541920 }, { 43.3193697, -3.8540132 }, { 43.3193634, -3.8539023 } },
     tc0 = { lat = 43.3196299, lon = -3.8536290, out = 90, face = 180, hw = 3.0 } },
+  -- Rally Sweden 2027 (28-nov, el usuario, sobre una captura cenital): el claro junto a Ersmarksvägen, a 1 km del TC1.
+  -- Dos filas de dos boxes enfrentadas a los lados del camino de entrada (cada box con su pasillo: tercer número),
+  -- se sale marcha atrás y por el camino hacia el TC0, con las dos casetas enfrentadas junto a la carretera.
+  -- clearTrees: se quitan los árboles de BeamNG.Earth que caen en los boxes, el pasillo y el TC0.
+  { name = 'sweden-ersmarksvagen', lat = 63.8724938, lon = 20.3038654, radius = 6500, aisle = 180, clearTrees = true,
+    boxes = { { 63.8725880, 20.3039712, 180 }, { 63.8723996, 20.3040342, 0 }, { 63.8723996, 20.3038369, 0 },
+      { 63.8725880, 20.3037738, 180 } },
+    tc0 = { lat = 63.8724938, lon = 20.3035500, out = 270, face = 90, hw = 4.5, facing = true } },
 }
 local function manualFor(lat, lon)
   for _, m in ipairs(M.MANUAL) do
@@ -1215,9 +1226,12 @@ local function exitMouth(h, cx, cy, z)
             return { x = mx, y = my, z = terrainZ(mx, my) or z, ux = ap.ux, uy = ap.uy, bx = -ap.ux, by = -ap.uy,
               hw = math.max(3, ap.W / 2 - 3.4), gate = true, mouth = true, openSide = true, apron = ap }
           end
+          -- (28-nov, segundo dibujo del usuario) en un lado abierto la línea del TC0 va en el borde del asfalto (el recinto
+          -- de las plazas queda unos metros dentro) y las casetas, por fuera, sobre el terreno
+          if os_ and os_.L <= M.OPEN_SIDE_MAX_M then x, y = x + ux * M.OPEN_LINE_OUT_M, y + uy * M.OPEN_LINE_OUT_M end
           return { x = x, y = y, z = terrainZ(x, y) or z, ux = ux, uy = uy, bx = -ux, by = -uy,
             -- lado abierto: el carril del TC0 ocupa el lado, con las casetas hacia sus extremos
-            hw = os_ and math.max(3, math.min(8, os_.L / 2 - 3.5)) or math.max(2.5, math.min(3.5, rad + 1)),
+            hw = os_ and M.OPEN_GAP_HW_M or math.max(2.5, math.min(3.5, rad + 1)),
             gate = true, mouth = true, openSide = os_ ~= nil and os_.L <= M.OPEN_SIDE_MAX_M or nil }
         end
       end
@@ -1262,7 +1276,11 @@ M.treeAt = treeAt
 -- remolques, muros: rayo de arriba abajo), sin árboles y sin escalones. Gana el lado con el camino más cerca; en él, el punto
 -- limpio más centrado. Ese lado queda abierto (sin valla) y el TC0 en medio, con una caseta a cada extremo. MARK:open-side-v1
 M.OPEN_CORRIDOR_W, M.OPEN_MAX_M, M.OPEN_SIDE_MAX_M = 6, 45, 45
+M.APRON_MIN_W = 8
+M.APRON_SLIDE_M = 0   -- (28-nov) sin correr la franja: si no cabe limpia, la salida es el propio lado abierto (dibujo del usuario)
 M.APRON_EDGE_M, M.APRON_MAX_M = 1.5, 30   -- franja hasta el camino: la línea a 1,5 m del borde de la calzada; alargues de hasta 30 m
+M.OPEN_LINE_OUT_M = 3.0  -- (28-nov) la línea del TC0, esto por fuera del lado del recinto (borde del asfalto)
+M.OPEN_GAP_HW_M = 3.5    -- (28-nov) medio hueco de la salida en un lado abierto sin franja: 7 m entre casetas
 M.OPEN_TENT_OUT_M = 3.0   -- las casetas de un lado abierto, por fuera de la línea (la carpa 3x3 queda entre 1,5 y 4,5 m)
 function M.clearSideRoute(m, h, cx, cy)
   local R2 = (M.GATE_SEARCH_M + 40) ^ 2
@@ -1296,6 +1314,21 @@ function M.clearSideRoute(m, h, cx, cy)
     if ok and d and d < 24.6 then return true end   -- algo de más de 0,4 m sobre el suelo
     return false, z
   end
+  -- (28-nov, Ersboda) una valla de malla de BeamNG.Earth entre el recinto y el camino no la ve el rayo de arriba abajo
+  -- (es una lámina): además, rayos horizontales a 0,5 y 1,1 m del suelo de un punto a otro. MARK:open-side-fence
+  local function hClear(x1, y1, x2, y2)
+    local z1, z2 = terrainZ(x1, y1), terrainZ(x2, y2)
+    if not (z1 and z2) then return false end
+    for _, hgt in ipairs({ 0.5, 1.1 }) do
+      local d = vec3(x2 - x1, y2 - y1, z2 - z1)
+      local L = d:length()
+      if L > 0.5 then
+        local ok, hit = pcall(castRayStatic, vec3(x1, y1, z1 + hgt), d / L, L)
+        if ok and hit and hit < L - 0.2 then return false end
+      end
+    end
+    return true
+  end
   local best
   for i = 1, #h do
     local A, B = h[i], h[i % #h + 1]
@@ -1326,6 +1359,11 @@ function M.clearSideRoute(m, h, cx, cy)
               end
             end
             if not clear then break end
+          end
+          if clear then
+            for _, l in ipairs({ -hw, 0, hw }) do
+              if not hClear(Ex + ex * l, Ey + ey * l, Ex + nx * hitS + ex * l, Ey + ny * hitS + ey * l) then clear = false break end
+            end
           end
           if clear then
             ok_[#ok_ + 1] = { t = t, s = hitS, x = Ex, y = Ey, qx = Ex + nx * hitS, qy = Ey + ny * hitS, rad = rad, seg = seg }
@@ -1365,20 +1403,54 @@ function M.clearSideRoute(m, h, cx, cy)
       end
       local A2, da = proj(best.A)
       local B2, db = proj(best.B)
+      M._apronDbg = string.format('A=%.1f,%.1f B=%.1f,%.1f A2=%.1f,%.1f B2=%.1f,%.1f da=%.1f db=%.1f', best.A[1], best.A[2], best.B[1], best.B[2], A2[1], A2[2], B2[1], B2[2], da, db)
+      M._apronWhy = nil
       local function lineClear(P, Q)
         local L = math.sqrt((Q[1] - P[1]) ^ 2 + (Q[2] - P[2]) ^ 2)
         for t = 0, L, 1 do
           local f = L > 0 and t / L or 0
-          if blockedAt(P[1] + (Q[1] - P[1]) * f, P[2] + (Q[2] - P[2]) * f) then return false end
+          if blockedAt(P[1] + (Q[1] - P[1]) * f, P[2] + (Q[2] - P[2]) * f) then
+            M._apronWhy = string.format('blocked at %.1f, %.1f (t=%.0f of %.0f)', P[1] + (Q[1] - P[1]) * f, P[2] + (Q[2] - P[2]) * f, t, L)
+            return false
+          end
         end
         return true
       end
-      if da >= 0 and db >= 0 and da <= M.APRON_MAX_M and db <= M.APRON_MAX_M and lineClear(best.A, A2) and lineClear(best.B, B2)
-        and lineClear(A2, B2) then
-        local W = math.sqrt((B2[1] - A2[1]) ^ 2 + (B2[2] - A2[2]) ^ 2)
-        M._openSide.apron = { A = { best.A[1], best.A[2] }, B = { best.B[1], best.B[2] }, A2 = A2, B2 = B2, W = W,
-          ux = -rnx, uy = -rny }
-        log('I', TAG, string.format('lot exit: enclosure out to the road, exit strip of %.0f m along it', W))
+      -- (28-nov, Ersboda: BeamNG.Earth puso una valla de malla entre el recinto y el camino y el alargue de un extremo
+      -- chocaba con ella: la salida se quedaba dentro del recinto) si un alargue no está limpio, ese extremo de la
+      -- franja se corre hacia el otro, de metro en metro, hasta que lo esté; la franja, de 8 m como poco.
+      if da >= 0 and db >= 0 and da <= M.APRON_MAX_M and db <= M.APRON_MAX_M then
+        local W0 = math.sqrt((B2[1] - A2[1]) ^ 2 + (B2[2] - A2[2]) ^ 2)
+        local ex, ey = (B2[1] - A2[1]) / math.max(W0, 0.01), (B2[2] - A2[2]) / math.max(W0, 0.01)
+        local found
+        -- MARK:apron-slide  ka, kb: metros que se corre cada extremo hacia el otro (negativo: hacia fuera, alargando la franja por ese lado)
+        local Wmax = math.max(W0, 12) + 0.5
+        local mx, my = (best.A[1] + best.B[1]) / 2, (best.A[2] + best.B[2]) / 2
+        for total = 0, M.APRON_SLIDE_M do
+          for ka = -12, 12 do
+            for _, kb in ipairs({ total - math.abs(ka), -(total - math.abs(ka)) }) do
+              if math.abs(ka) <= total and math.abs(kb) <= 12 and not (kb == 0 and _ == 2) then
+                local W = W0 - ka - kb
+                if W >= M.APRON_MIN_W and W <= Wmax then
+                  local a2 = { A2[1] + ex * ka, A2[2] + ey * ka }
+                  local b2 = { B2[1] - ex * kb, B2[2] - ey * kb }
+                  if lineClear(best.A, a2) and lineClear(best.B, b2) and lineClear(a2, b2)
+                    and hClear(mx, my, a2[1], a2[2]) and hClear(mx, my, b2[1], b2[2])
+                    and hClear(mx, my, (a2[1] + b2[1]) / 2, (a2[2] + b2[2]) / 2) then found = { a2, b2 } break end
+                end
+              end
+            end
+            if found then break end
+          end
+          if found then break end
+        end
+        if found then
+          A2, B2 = found[1], found[2]
+          local W = math.sqrt((B2[1] - A2[1]) ^ 2 + (B2[2] - A2[2]) ^ 2)
+          M._openSide.apron = { A = { best.A[1], best.A[2] }, B = { best.B[1], best.B[2] }, A2 = A2, B2 = B2, W = W,
+            ux = -rnx, uy = -rny }
+          log('I', TAG, string.format('lot exit: enclosure out to the road, exit strip of %.0f m along it', W))
+        end
       end
     end
   end
@@ -1589,8 +1661,11 @@ local function lotFence(site)
     if L > 1 then
       ex, ey = ex / L, ey / L
       local OFF = runSet[i] and M.RUN_OFF_M or M.LOT_FENCE_OFF_M
+      if runSet[i] and M.tcSpot and M.tcSpot.openSide and not M.tcSpot.apron then OFF = M.OPEN_LINE_OUT_M end
       -- lado abierto (MARK:open-side-v1): sin valla en todo el lado de la salida
-      if runSet[i] and M.tcSpot and M.tcSpot.openSide then goto nextSide end
+      -- (28-nov, segundo dibujo del usuario) sin franja, el lado de la salida SÍ lleva valla desde cada esquina hasta el
+      -- hueco del TC0 (lo abren las «gates» de la ruta de salida); las casetas, por fuera, a cada lado del hueco
+      if runSet[i] and M.tcSpot and M.tcSpot.openSide and M.tcSpot.apron then goto nextSide end
       local ox, oy = ey * OFF, -ex * OFF       -- hacia fuera (derecha del lado)
       local la0, lo0 = a.toGeo(A[1], A[2], z0)
       local la1, lo1 = a.toGeo(A[1] + ex * 10, A[2] + ey * 10, z0)
@@ -1905,23 +1980,65 @@ end
 
 
 -- Boxes en los puntos de M.MANUAL: la misma pieza que en la fila (carpa girada 90°, coche de morro, extintores atrás)
+-- Quita los árboles (objetos Forest de BeamNG.Earth) a menos de r m de un punto; devuelve cuántos
+function M.clearTreesAt(x, y, r)
+  local n = 0
+  for _, name in ipairs(scenetree.findClassObjects('Forest') or {}) do
+    local f = scenetree.findObject(name)
+    local ok, items = pcall(function() return f:getData():getItems() end)
+    if ok and items then
+      for _, it in ipairs(items) do
+        local okP, p = pcall(function() return it:getPosition() end)
+        if okP and p and (p.x - x) ^ 2 + (p.y - y) ^ 2 < r * r then
+          if pcall(function() f:getData():removeItem(it) end) then n = n + 1 end
+        end
+      end
+    end
+  end
+  return n
+end
+
+-- (28-nov) BeamNG.Earth planta el bosque después de montar el parque (y lo repone al recargar la zona): las zonas a
+-- despejar se repasan cada 2 s mientras el parque exista
+local clearZones, clearT = nil, 0
+function M.tick(dt)
+  if not clearZones then return end
+  clearT = clearT - (dt or 0)
+  if clearT > 0 then return end
+  clearT = 2
+  local n = 0
+  for _, zn in ipairs(clearZones) do n = n + M.clearTreesAt(zn[1], zn[2], zn[3]) end
+  if n > 0 then
+    log('I', TAG, ('manual park: %d trees removed'):format(n))
+    pcall(function() M.cacheTrees(clearZones[1][1], clearZones[1][2], 80) end)
+  end
+end
+
 local function buildManual(site)
   local a = api()
   local man = site.manual
-  local rad = math.rad(man.aisle)
-  local mx, my = math.sin(rad), math.cos(rad)       -- "marcha": hacia donde sale el coche (el pasillo)
   local kinds = { 'gazebo3x6', 'gazebo3x6b', 'gazebo3x6r' }
   local n = #man.boxes
   local mine = n                                      -- el coche del jugador, en el box más cercano al camino
   local cars = M.parkedCars(n, mine)
   local box
-  local function put(kind, la, lo, back, along, yaw, opts)
-    local x, y = a.toGame(la, lo, 0)
-    x, y = x - mx * back - my * along, y - my * back + mx * along
-    local pla, plo = a.toGeo(x, y, terrainZ(x, y) or site.z)
-    return props.add(kind, pla, plo, mx, my, yaw or 0, opts)
-  end
+  clearZones = man.clearTrees and {} or nil
+  local function zone(x, y, r) clearZones[#clearZones + 1] = { x, y, r } end
   for i, b in ipairs(man.boxes) do
+    -- (28-nov) cada box puede llevar su propio pasillo (tercer número): filas enfrentadas
+    local rad = math.rad(b[3] or man.aisle)
+    local mx, my = math.sin(rad), math.cos(rad)       -- "marcha": hacia donde sale el coche (el pasillo)
+    local function put(kind, la, lo, back, along, yaw, opts)
+      local x, y = a.toGame(la, lo, 0)
+      x, y = x - mx * back - my * along, y - my * back + mx * along
+      local pla, plo = a.toGeo(x, y, terrainZ(x, y) or site.z)
+      return props.add(kind, pla, plo, mx, my, yaw or 0, opts)
+    end
+    if man.clearTrees then
+      local x, y = a.toGame(b[1], b[2], 0)
+      zone(x - my * 1.55, y + mx * 1.55, 8)
+      zone(x + mx * 7, y + my * 7, 6)
+    end
     M.utahBox(function(kind, fwd, side, yaw) return put(kind, b[1], b[2], -fwd, side, yaw) end, kinds[(i - 1) % #kinds + 1])
     if cars[i] then put('rallyCar', b[1], b[2], 0, 0, 180, { vehicle = cars[i] }) end
     if i == mine then
@@ -1931,11 +2048,20 @@ local function buildManual(site)
     end
   end
   local o, f = math.rad(man.tc0.out), math.rad(man.tc0.face)
-  M.tcSpot = { x = site.x, y = site.y, z = site.z, ux = math.sin(o), uy = math.cos(o), fx = math.sin(f), fy = math.cos(f), hw = man.tc0.hw }
+  M.tcSpot = { x = site.x, y = site.y, z = site.z, ux = math.sin(o), uy = math.cos(o), fx = math.sin(f), fy = math.cos(f),
+    hw = man.tc0.hw, facing = man.tc0.facing }
+  if man.clearTrees then
+    -- el TC0 con sus casetas y el camino del TC0 al centro de los boxes
+    zone(site.x, site.y, 9)
+    local cx, cy = a.toGame(man.lat, man.lon, 0)
+    for k = 0, 1, 0.2 do zone(site.x + (cx - site.x) * k, site.y + (cy - site.y) * k, 6) end
+    clearT = 0
+  end
   return box
 end
 
 function M.build(site)
+  clearZones = nil
   local a = api()
   M.tcSpot = nil
   if not (a and site) then return nil end
@@ -2036,7 +2162,7 @@ function M.tc0(site, dressing)
     -- (27-nov, el usuario: «las casetas perpendiculares a la carretera y al parking; así no dejan entrar ni salir») en un lado
     -- abierto las dos casetas van enfrentadas, a la misma altura y por fuera del recinto, una en cada extremo del lado: la
     -- línea entre ellas queda paralela al lado y el paso, libre en medio. MARK:open-side-v1
-    local twin = sp.apron and { g = 1.5, s1 = 0, s2 = 0, noOpposite = true }
+    local twin = (sp.apron or sp.facing) and { g = 1.5, s1 = 0, s2 = 0, noOpposite = true }
       or sp.openSide and { g = 1.5, s1 = M.OPEN_TENT_OUT_M, s2 = M.OPEN_TENT_OUT_M, noOpposite = true }
       or { g = 1.9, s1 = M.TWIN_S1, s2 = M.TWIN_S2 }
     local ok = pcall(dressing.tcPost, t, 20, -1, sp.hw or 3.5, 0, lado, false, true, twin)
