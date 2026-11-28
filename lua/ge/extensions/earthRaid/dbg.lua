@@ -90,7 +90,10 @@ function M.aiOff()
   end
 end
 
+local P
 function M.handBack()
+  -- (28-nov) el piloto de pruebas seguía replanificando tras devolver el coche: se apaga también
+  if P then P.on = false end
   M.aiOff()
   if commands and commands.isFreeCamera and commands.isFreeCamera() then pcall(core_camera.setByName, 0, 'orbit') end
   return true
@@ -104,7 +107,6 @@ end
 -- la curva (agarre lateral `alat`), frenando antes (`brake`) y acelerando después (`acc`), con tope `vmax`. Se replanifica
 -- cada REPLAN_M desde la posición y velocidad reales. Se mide: tiempo, velocidad media, separación máxima de la línea,
 -- segundos y veces fuera del camino, daños.
-local P
 M.REPLAN_M = 120
 M.PLAN_AHEAD_M = 450
 M.OFF_M = 3.0
