@@ -1939,6 +1939,7 @@ M.loadMute = loadMute
 function M.onUpdate(dtReal, dtSim)
   if S.earthLevel == nil then S.earthLevel = M.isEarthLevel() end
   if servicepark.tick then pcall(servicepark.tick, dtReal) end
+  pcall(function() require('earthRaid/phys').parkTick(dtReal) end)
   loadPriority(loader.active())
   loadMute(loader.active())
   -- (27-nov, el usuario: «se ha quedado colgado cargando») el cargador no avanza con el juego en pausa (BeamNG.Earth pausa

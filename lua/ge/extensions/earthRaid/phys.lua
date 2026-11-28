@@ -164,6 +164,32 @@ end
 
 -- crea el vehículo (lo caro). Devuelve la ficha { vid, key, c, off, rot0 }: c y off son lo que el juego añade al giro y
 -- a la posición pedidos (medidos en el recién creado), para poder recolocar luego el mismo vehículo en otro sitio
+-- (28-nov, el usuario: «hay un coche mal aparcado, fuera del box; déjalos apagados») un coche aparcado sacado de la
+-- reserva no llevaba freno de mano ni contacto quitado (solo el recién creado) y rodaba cuesta abajo. Ahora siempre:
+-- motor y contacto apagados, freno de mano y una marcha metida; se repite varias veces durante un minuto porque recolocar el
+-- vehículo reinicia sus mandos.
+local PARK_CMD = "if controller and controller.mainController and controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end "
+  .. "if electrics and electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end "
+  .. "input.event('throttle', 0, 1) input.event('parkingbrake', 1, 1) "
+  .. "if controller and controller.mainController and controller.mainController.shiftToGearIndex then pcall(controller.mainController.shiftToGearIndex, 1) end"
+local parkQueue = {}
+local function parkOff(vid)
+  local v = be:getObjectByID(vid)
+  if v then pcall(function() v:queueLuaCommand(PARK_CMD) end) end
+end
+local function parkLater(vid)
+  parkOff(vid)
+  -- (durante la pantalla de carga el vehículo tarda en estar listo: se insiste un minuto)
+  for _, t in ipairs({ 1.5, 4, 8, 15, 25, 40, 60 }) do parkQueue[#parkQueue + 1] = { vid = vid, t = t } end
+end
+local function parkTick(dt)
+  for i = #parkQueue, 1, -1 do
+    local q = parkQueue[i]
+    q.t = q.t - dt
+    if q.t <= 0 then parkOff(q.vid) table.remove(parkQueue, i) end
+  end
+end
+
 local function create(m, pos, rot, kind)
   local v = core_vehicles.spawnNewVehicle(m[1], {
     config = 'vehicles/' .. m[1] .. '/' .. m[2] .. '.pc', pos = vec3(pos.x, pos.y, pos.z + 0.02), rot = rot,
@@ -173,7 +199,7 @@ local function create(m, pos, rot, kind)
   pcall(function() v:setDynDataFieldbyName('earthRaidProp', 0, '1') end)
   if kind == 'rallyCar' then
     -- aparcado: sin contacto y con el freno de mano
-    pcall(function() v:queueLuaCommand("if electrics and electrics.setIgnitionLevel then electrics.setIgnitionLevel(0) end input.event('parkingbrake', 1, 1)") end)
+    parkLater(v:getID())
   end
   if kind == 'ambulance' then
     -- las luces de la ambulancia encendidas (barra de emergencia y warning): el puesto médico se ve de lejos y avisa del corte
@@ -223,7 +249,10 @@ local function spawn(it, pooledOnly)
     local p = takePooled(keyOf(m))
     if p then
       local okP, done = pcall(place, p, pos, rot)
-      if okP and done then return p end
+      if okP and done then
+        if it.kind == 'rallyCar' then parkLater(p.vid) end
+        return p
+      end
       pcall(function() local v = be:getObjectByID(p.vid) if v then v:delete() end end)
     end
     if pooledOnly then return false end
@@ -290,6 +319,7 @@ end
 -- cada fotograma: x, y del coche (coordenadas del juego); items = props.all()
 local scanT = 0
 local lastX, lastY
+M.parkTick = function(dt) if #parkQueue > 0 then parkTick(dt or 0.02) end end
 function M.update(dt, px, py, items, burst)
   if not M.enabled then return end
   spawnT = spawnT + (dt or 0)
